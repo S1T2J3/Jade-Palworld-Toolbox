@@ -62,7 +62,7 @@ function initTraitPlanner({species,pairs,readPairs=()=>pairs,traitData,inventory
     const names = [t.zh,t.en].map(normalize);
     return names.includes(q) ? 4 : names.some(s=>s.startsWith(q)) ? 3 : names.some(s=>s.includes(q)) ? 2 : 0;
   }
-  function attachPicker(input,list,{keys,match,caption,choose,edit,browseAll}) {
+  function attachPicker(input,list,{keys,match,caption,choose,edit,browseAll,showAll=false}) {
     let visible = [];
     let active = 0;
     input.setAttribute('role','combobox');
@@ -95,7 +95,7 @@ function initTraitPlanner({species,pairs,readPairs=()=>pairs,traitData,inventory
       if (browseAll && !q) {close();return;}
       const matches=keys().map(key=>({key,score:match(key,q)})).filter(item=>item.score);
       if(!browseAll) matches.sort((a,b)=>b.score-a.score);
-      visible=(browseAll ? matches : matches.slice(0,28)).map(item=>item.key);
+      visible=(browseAll || showAll ? matches : matches.slice(0,28)).map(item=>item.key);
       active=0;
       list.innerHTML=visible.length ? visible.map((key,i)=>{
         const [name,extra,rank] = caption(key);
@@ -152,6 +152,7 @@ function initTraitPlanner({species,pairs,readPairs=()=>pairs,traitData,inventory
     goalChanged('目标已更改，请重新计算。');
   }
   const palPicker=attachPicker(targetInput,$('tp-target-options'),{
+    showAll:true,
     keys:()=>allSpecies,match:matchScore,
     caption:i=>[species[i].zh,`${dex(species[i])} · ${species[i].en}`],choose:chooseTarget,
     edit:()=>{selectedTarget=exact(allSpecies,matchScore,targetInput.value);syncTargetLocation();goalChanged('目标已更改，请重新计算。');}
