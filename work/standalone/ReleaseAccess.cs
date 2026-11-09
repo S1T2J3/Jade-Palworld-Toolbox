@@ -27,6 +27,7 @@ internal sealed class ReleaseAccess {
             return value=="machine" || value=="stored" ? value : "off";
         }
     }
+    internal bool HasStoredCredential { get {return File.Exists(secretPath);} }
     internal void Switch(string mode) {
         UpdateService.AtomicWrite(modePath,Encoding.ASCII.GetBytes(mode));
         if(File.Exists(secretPath)) File.Delete(secretPath);
@@ -148,19 +149,23 @@ internal sealed class GithubReleaseApi {
             url.UserInfo.Length==0 && (url.Host=="release-assets.githubusercontent.com" ||
             url.Host=="objects.githubusercontent.com" || url.Host=="github-releases.githubusercontent.com");
     }
+    internal HttpWebRequest CreateRequest(Uri url,string accept,bool initial) {
+        var request=(HttpWebRequest)WebRequest.Create(url);
+        request.AllowAutoRedirect=false;
+        request.Timeout=20000;request.ReadWriteTimeout=30000;
+        request.UserAgent="Jade-Palworld-Toolbox";
+        request.Accept=accept;
+        if(initial && url.Scheme=="https" && url.Host=="api.github.com" && url.IsDefaultPort && url.UserInfo.Length==0) {
+            request.Headers["X-GitHub-Api-Version"]="2022-11-28";
+            if(!String.IsNullOrEmpty(token))request.Headers["Authorization"]="Bearer "+token;
+        }
+        return request;
+    }
     internal void Fetch(string path,string accept,long limit,Stream output,bool asset) {
         ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
         Uri url=new Uri("https://api.github.com/repos/"+repository+"/"+path);
         for(int hop=0;hop<5;hop++) {
-            var request=(HttpWebRequest)WebRequest.Create(url);
-            request.AllowAutoRedirect=false;
-            request.Timeout=20000;request.ReadWriteTimeout=30000;
-            request.UserAgent="Jade-Palworld-Toolbox";
-            request.Accept=accept;
-            if(hop==0) {
-                request.Headers["X-GitHub-Api-Version"]="2022-11-28";
-                request.Headers["Authorization"]="Bearer "+token;
-            }
+            var request=CreateRequest(url,accept,hop==0);
             using(var response=(HttpWebResponse)request.GetResponse()) {
                 int code=(int)response.StatusCode;
                 if(code>=300 && code<400) {

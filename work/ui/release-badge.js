@@ -2,6 +2,8 @@
 const jadeReleases=(()=>{
   const currentVersion=document.querySelector('meta[name="pal-release-version"]').content;
   const repository=document.querySelector('meta[name="pal-release-repository"]').content;
+  const publicChannel=repository.toLowerCase()==='s1t2j3/jade-palworld-toolbox';
+  const bundled=__BUNDLED_NOTICES__;
   const releaseUrl=/^[\w.-]+\/[\w.-]+$/.test(repository)?'https://github.com/'+repository+'/releases':'';
   const desktop=!!document.querySelector('meta[name="pal-desktop"][content="standalone"]');
   const first={
@@ -14,13 +16,13 @@ const jadeReleases=(()=>{
   const sessionReads=new Set();
   const safeGet=key=>{try{return localStorage.getItem(key);}catch{return null;}};
   const safeSet=(key,value)=>{try{localStorage.setItem(key,value);return true;}catch{return false;}};
-  function readArray(key) {
-    try {const rows=JSON.parse(safeGet(key));return Array.isArray(rows)?rows:[];}catch{return [];}
+  function readArray(key,fallback) {
+    try {const rows=JSON.parse(safeGet(key));return Array.isArray(rows)?rows:fallback;}catch{return fallback;}
   }
   function validId(s){return typeof s==='string'&&s.length>0&&s.length<=128;}
-  function loadIndex(){return [...new Set([first.id,...readArray(indexKey).filter(validId).slice(0,50)])];}
+  function loadIndex(){return [...new Set([first.id,...readArray(indexKey,bundled.map(row=>row.id)).filter(validId).slice(0,50)])];}
   let ids=loadIndex(), notices=null;
-  let snapshot={state:'idle',currentVersion,auto:true,accessMode:'machine'};
+  let snapshot={state:'idle',currentVersion,auto:true,accessMode:publicChannel?'public':'machine'};
   let popupsEnabled=safeGet(popupSettingKey)!=='0',popupShown=false,waiting=false,scheduled=false;
   let popupId=null;
   let installVersion='',shownInstall='',presentInstall=null;
@@ -48,7 +50,7 @@ const jadeReleases=(()=>{
     }
     return [...byId.values()].sort((a,b)=>(Date.parse(b.publishedAt)||0)-(Date.parse(a.publishedAt)||0));
   }
-  function entries(){return notices??=normalize(readArray(feedKey));}
+  function entries(){return notices??=normalize(readArray(feedKey,bundled));}
   function pendingPopup(){return entries().find(row=>row.popup&&!isRead(row.id)&&safeGet(shownPrefix+row.id)!=='1');}
   function pendingInstall(){
     return installVersion && installVersion!==shownInstall && safeGet(installShownPrefix+installVersion)!=='1';
@@ -165,6 +167,6 @@ const jadeReleases=(()=>{
     }
   });
   updateBadge();
-  return {currentVersion,releaseUrl,desktop,entries,isRead,markRead,setPopupsEnabled,setInstallPrompt,
+  return {currentVersion,releaseUrl,desktop,publicChannel,entries,isRead,markRead,setPopupsEnabled,setInstallPrompt,
     get popupsEnabled(){return popupsEnabled;},get snapshot(){return snapshot;}};
 })();

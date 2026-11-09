@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const releaseVersion = '1.0.6';
+const releaseVersion = '1.0.7';
 const releaseRepository = process.env.JADE_RELEASE_REPOSITORY || 'S1T2J3/Jade-Palworld-Toolbox';
 if (!/^[a-z\d][a-z\d-]{0,38}\/[a-z\d][a-z\d_.-]{0,99}$/i.test(releaseRepository)) {
   throw new Error('Invalid GitHub update repository');
@@ -35,7 +35,11 @@ const features={
   facilities:['facilities'], 'work-efficiency':['work-efficiency'], partner:['partner-skills'], guide:['combat-guide'], journals:['journals'], expeditions:['expeditions'], settings:['skin-picker'], updates:['release-center']
 };
 const scripts=names=>names.map(name=>read('ui',name+'.js')).join('\n;\n');
+const bundledNotices=JSON.parse(read('..','announcements.json')).announcements.map(
+  ({id,title,body,publishedAt})=>({id,title,body,publishedAt})
+);
 const program=scripts([...core,...(desktop?[]:Object.values(features).flat()),'app'])
+  .replace('__BUNDLED_NOTICES__',()=>JSON.stringify(bundledNotices).replace(/</g,'\\u003c'))
   .replace('__BANNER_SOURCE__','https://store.steampowered.com/app/1623730/Palworld/');
 const breeding=JSON.parse(read('data','breeding.json'));
 const enemyBook=JSON.parse(read('enemy-data','enemies.json'));

@@ -15,6 +15,33 @@ internal static class ReleaseTests {
         try {return Run(args);}
         catch(Exception e){Console.Error.WriteLine(e.GetType().Name+" "+e.Message+" "+e.StackTrace);return 1;}
     }
+    static void PublicAccess(string scratch) {
+        string root=Path.Combine(scratch,"public-channel");
+        var updates=new UpdateService(root,UpdateService.PublicRepository.ToLowerInvariant(),new Version(1,0,7,0));
+        var state=Json.Deserialize<UpdateService.Snapshot>(updates.Execute("auto-off"));
+        Assert(state.accessMode=="public" && !state.auto && !state.hasStoredCredential,"anonymous defaults");
+        string config=Directory.GetDirectories(Path.Combine(root,"updates"))[0];
+        File.WriteAllText(Path.Combine(config,"access.txt"),"stored");
+        File.WriteAllBytes(Path.Combine(config,"credential.bin"),new byte[]{0,1,2});
+        File.WriteAllText(Path.Combine(config,"cache.json"),"{\"state\":\"unauthorized\",\"accessMode\":\"stored\",\"message\":\"legacy error\"}");
+        state=Json.Deserialize<UpdateService.Snapshot>(updates.Execute("setAccess"));
+        Assert(state.state=="idle" && state.message==null && state.accessMode=="public" && state.hasStoredCredential,"old private cache or login prompt");
+        state=Json.Deserialize<UpdateService.Snapshot>(updates.Execute("auto"));
+        Assert(!state.auto && state.checkedAt==null,"automatic updates were disabled");
+        state=Json.Deserialize<UpdateService.Snapshot>(updates.Execute("clearAccess"));
+        Assert(state.accessMode=="public" && !state.hasStoredCredential && !File.Exists(Path.Combine(config,"credential.bin")),"legacy credential removal");
+        state=Json.Deserialize<UpdateService.Snapshot>(updates.Execute("auto-on"));
+        Assert(state.accessMode=="public" && state.auto,"public release access after clearing authorization");
+
+        var url=new Uri("https://api.github.com/repos/"+UpdateService.PublicRepository+"/releases/latest");
+        var guest=new GithubReleaseApi(UpdateService.PublicRepository,null);
+        Assert(guest.CreateRequest(url,"application/json",true).Headers["Authorization"]==null,"anonymous API header");
+        var custom=new GithubReleaseApi("Example/Toolbox","fixture");
+        Assert(custom.CreateRequest(url,"application/json",true).Headers["Authorization"]=="Bearer fixture","authenticated API header");
+        var cdn=new Uri("https://release-assets.githubusercontent.com/example");
+        Assert(custom.CreateRequest(cdn,"application/octet-stream",false).Headers["Authorization"]==null,"asset redirect authorization leak");
+        Assert(custom.CreateRequest(cdn,"application/json",true).Headers["Authorization"]==null,"unexpected host authorization leak");
+    }
     static int Run(string[] args) {
         string root=args[0], profile=Path.Combine(root,"profile"), stable=Path.Combine(root,"app","index.html");
         Directory.CreateDirectory(profile);Directory.CreateDirectory(Path.GetDirectoryName(stable));
@@ -76,8 +103,8 @@ internal static class ReleaseTests {
             !GithubReleaseApi.AssetLocation(new Uri("https://release-assets.githubusercontent.com.example.org/blob")) &&
             !GithubReleaseApi.AssetLocation(new Uri("http://release-assets.githubusercontent.com/blob")) &&
             !GithubReleaseApi.AssetLocation(new Uri("https://user@release-assets.githubusercontent.com/blob")),"redirect allowlist");
-        DeltaTests.Run(root);
-        Console.WriteLine("Passed release discovery, offline notices, private access modes, asset validation and rollback selection.");
+        PublicAccess(root);DeltaTests.Run(root);
+        Console.WriteLine("Passed public and private release access, notices, asset verification and rollback.");
         return 0;
     }
 }

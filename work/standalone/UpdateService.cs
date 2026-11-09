@@ -12,6 +12,7 @@ using System.Threading;
 using System.Web.Script.Serialization;
 
 internal sealed class UpdateService {
+    internal const string PublicRepository="S1T2J3/Jade-Palworld-Toolbox";
     internal const string FullName="Jade-Palworld-Toolbox.exe", FastName="Jade-Palworld-Toolbox-Fast.exe";
     const int MetaLimit=1024*1024, NoticeLimit=256*1024;
     internal delegate void Fetch(string path,string accept,long limit,Stream output,bool asset);
@@ -31,17 +32,19 @@ internal sealed class UpdateService {
         public string state="idle",currentVersion,latestVersion,readyVersion,checkedAt,message,releaseUrl,releaseNotes,accessMode;
         public string downloadKind;
         public long downloadBytes;
-        public bool auto;
+        public bool auto,hasStoredCredential;
         public Notice[] announcements;
     }
     readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=MetaLimit,RecursionLimit=24};
     readonly string directory,repository,baselineOverride;
     readonly Version current;
     readonly ReleaseAccess access;
+    readonly bool publicChannel;
     readonly string lockName;
     internal UpdateService(string root,string repo,Version current,string baselineOverride=null) {
         if(!Regex.IsMatch(repo,@"\A[a-zA-Z0-9][a-zA-Z0-9-]{0,38}/[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}\z")) throw new InvalidDataException();
         repository=repo;
+        publicChannel=String.Equals(repo,PublicRepository,StringComparison.OrdinalIgnoreCase);
         this.current=current;
         this.baselineOverride=baselineOverride;
         directory=Path.Combine(root,"updates",Key(repo.ToLowerInvariant()));
@@ -91,7 +94,11 @@ internal sealed class UpdateService {
         var result=Read<Snapshot>("cache.json")??new Snapshot();
         result.currentVersion=Display(current);
         result.auto=!File.Exists(Path.Combine(directory,"auto-off"));
-        result.accessMode=access.Mode;
+        if(publicChannel && result.accessMode!="public" && result.state=="unauthorized") {
+            result.state="idle";result.message=null;
+        }
+        result.accessMode=publicChannel?"public":access.Mode;
+        result.hasStoredCredential=access.HasStoredCredential;
         Ready ready=Read<Ready>("ready.json");
         result.readyVersion=ValidReady(ready) && IsNew(ready.version) && !File.Exists(Path.Combine(directory,ready.folder,"rejected")) &&
             File.Exists(Path.Combine(directory,ready.folder,FullName)) && File.Exists(Path.Combine(directory,ready.folder,FastName))?ready.version:null;
@@ -239,18 +246,21 @@ internal sealed class UpdateService {
             }
         } catch(IOException){} catch(UnauthorizedAccessException){}
     }
-    static bool Denied(Exception e) {
+    static string FailureKind(Exception e) {
         var web=e as WebException;
         var response=web==null?null:web.Response as HttpWebResponse;
-        if(response==null)return false;
-        using(response) {return response.StatusCode==HttpStatusCode.Unauthorized ||
-            response.StatusCode==HttpStatusCode.NotFound || (response.StatusCode==HttpStatusCode.Forbidden && response.Headers["X-RateLimit-Remaining"]!="0");}
+        if(response==null)return "error";
+        using(response) {
+            int code=(int)response.StatusCode;
+            if(code==429 || (code==403 && (response.Headers["X-RateLimit-Remaining"]=="0" || response.Headers["Retry-After"]!=null)))return "limited";
+            return code==401 || code==403 || code==404?"unauthorized":"error";
+        }
     }
     internal void Refresh(Snapshot result,Fetch get,bool prepare) {
         string noticeMessage=null;
         try {result.announcements=ParseNotices(ReadRemote(get,"contents/announcements.json","application/vnd.github.raw+json",NoticeLimit));}
         catch(Exception e) {
-            Denied(e);
+            FailureKind(e);
             noticeMessage="本次未能刷新公告，已保留本地公告。";
         }
         Release release=json.Deserialize<Release>(ReadRemote(get,"releases/latest","application/vnd.github+json",MetaLimit));
@@ -284,6 +294,7 @@ internal sealed class UpdateService {
                     return json.Serialize(Cached());
                 }
                 if(command=="setAccess" || command=="clearAccess" || command=="useMachine") {
+                    if(publicChannel && command!="clearAccess")return json.Serialize(result);
                     if(command=="setAccess" && !access.Prompt())return json.Serialize(result);
                     if(command!="setAccess") access.Switch(command=="clearAccess"?"off":"machine");
                     result=Cached();
@@ -297,11 +308,14 @@ internal sealed class UpdateService {
                 }
                 saveCheck=true;
                 result.checkedAt=DateTime.UtcNow.ToString("o");
-                string token=access.Token();
-                if(token==null) Fail(result,"unauthorized","未获得私有仓库的读取权限。请设置 GitHub 访问方式。");
+                string token=publicChannel?null:access.Token();
+                if(!publicChannel && token==null) Fail(result,"unauthorized","未获得私有仓库的读取权限。请设置 GitHub 访问方式。");
                 else Refresh(result,new GithubReleaseApi(repository,token).Fetch,command!="check");
             } catch(Exception e) {
-                if(Denied(e)) Fail(result,"unauthorized","无法读取私有仓库或正式版本，请检查 GitHub 权限。");
+                string kind=FailureKind(e);
+                if(kind=="limited") Fail(result,"error","GitHub 暂时限制了请求次数，请稍后再试。");
+                else if(kind=="unauthorized" && publicChannel) Fail(result,"error","暂时无法读取 GitHub 公开发布内容，请稍后再试。");
+                else if(kind=="unauthorized") Fail(result,"unauthorized","无法读取私有仓库或正式版本，请检查 GitHub 权限。");
                 else Fail(result,"error","检查或下载失败，请检查网络后重试。已下载的完整版本仍可使用。");
             } finally {
                 // Only network operations share a persistent check result.

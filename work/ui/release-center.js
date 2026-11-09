@@ -111,7 +111,7 @@ function initReleaseCenter(){
   version.textContent='当前版本 v'+releases.currentVersion;
   byId('release-desktop').hidden=!releases.desktop;
   if(!releases.desktop){
-    status.textContent='当前使用离线网页版。登录有权限的 GitHub 账号后，可从发布页下载新版或 Windows 桌面版。';
+    status.textContent='当前使用离线网页版。可从 GitHub 发布页下载新版或 Windows 桌面版。';
     document.addEventListener('jade-release-change',refreshNotices);
     return refreshNotices;
   }
@@ -163,13 +163,19 @@ function initReleaseCenter(){
     download.textContent=lastFailure==='download'?'重试下载':'下载更新';
     restart.hidden=!ready;
     for(const control of [auto,check,download,restart,token,machine,clear])control.disabled=!enabled;
-    machine.hidden=data.accessMode==='machine';
-    clear.hidden=data.accessMode==='off';
+    const isPublic=releases.publicChannel;
+    access.hidden=isPublic&&!data.hasStoredCredential;
+    byId('release-access-title').textContent=isPublic?'旧版授权':'仓库访问';
+    byId('release-token-help').hidden=isPublic;
+    token.hidden=isPublic;
+    machine.hidden=isPublic||data.accessMode==='machine';
+    clear.hidden=isPublic?!data.hasStoredCredential:data.accessMode==='off';
+    clear.textContent=isPublic?'清除旧令牌':'清除授权';
     token.textContent=data.accessMode==='stored'?'更换访问令牌':'绑定访问令牌';
     byId('release-access-info').textContent=({
-      stored:'当前使用已保存的访问令牌。',off:'已清除授权，本机 GitHub 登录访问已停用。',machine:'当前使用本机 GitHub 登录。'
+      public:'官方公告和更新使用公开渠道。你可以清除旧版保存的令牌。',stored:'当前使用已保存的访问令牌。',off:'已清除授权，本机 GitHub 登录访问已停用。',machine:'当前使用本机 GitHub 登录。'
     })[data.accessMode]||'正在读取仓库访问方式。';
-    if(state==='unauthorized'&&lastState!==state)access.open=true;
+    if(!isPublic&&state==='unauthorized'&&lastState!==state)access.open=true;
     lastState=state;
   }
   function request(action,enabled){
