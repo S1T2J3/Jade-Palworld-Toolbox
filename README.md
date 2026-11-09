@@ -4,7 +4,7 @@
 
 ## 下载和运行
 
-打开 [GitHub Releases](https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases)。私有仓库需要先登录有访问权的 GitHub 账号。
+工具箱已公开，可以直接从 [GitHub Releases](https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases/latest) 下载安装包。
 
 | 文件 | 用法 |
 | --- | --- |
@@ -17,7 +17,7 @@
 
 安装版与便携版沿用当前 Windows 用户原有的世界档案、帕鲁仓库和设置。已有同版 Gecko 的电脑可以复用运行环境。新电脑首次运行时会从 Mozilla 下载约 90.5 MB 并校验 SHA-512。离线准备运行环境时，把[简体中文 x64 官方安装包](https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe) 按原名 `Firefox Setup 153.6.0esr.exe` 放在安装后的主程序旁。引擎准备完毕后，配种、仓库、地图和图鉴均可离线使用。
 
-在「设置 → 公告与更新」查看公告和更新状态。桌面版可使用已登录的 GitHub CLI，或为这个私有仓库绑定仅具 Contents 读取权限的细粒度令牌。令牌由当前 Windows 用户凭据加密保存。
+在「设置 → 公告与更新」查看公告和更新状态。v1.0.7 起，官方桌面版会直接读取公开公告和更新。若旧版提示需要 GitHub 仓库权限，可从发布页下载新版安装包，沿用已有世界档案、仓库和设置。
 
 从 v1.0.5 起，开启自动下载后，工具箱会在启动后检查新版。匹配到当前主程序的差分时只下载变化的部分；没有合适的差分时下载完整包。校验通过后可以立即安装并重启，也可以选「下次启动时安装」，继续使用当前窗口。
 

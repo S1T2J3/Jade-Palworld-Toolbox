@@ -1,6 +1,13 @@
 {
   "announcements": [
     {
+      "id": "community-20261109-public",
+      "title": "工具箱已公开 · QQ 交流群",
+      "body": "Jade 幻兽帕鲁工具箱已在 GitHub 公开，欢迎下载使用。\n\nQQ 交流群号为 1126734443，欢迎交流配种心得和反馈工具箱问题。",
+      "publishedAt": "2026-11-09T04:50:00Z",
+      "popup": false
+    },
+    {
       "id": "release-v1.0.6",
       "title": "v1.0.6 · 辉月伊皮肤与 Windows 安装包",
       "body": "辉月伊皮肤采用月牙的青蓝与浅紫，降低了大面积阅读区域的亮度，并同步调整侧栏和窗口标题栏。新电脑可以直接使用 Windows 安装包，已安装的工具箱仍可使用增量更新。",
