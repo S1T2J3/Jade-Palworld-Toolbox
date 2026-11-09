@@ -29,18 +29,21 @@ internal sealed class UpdateService {
     internal class Ready { public string version,folder,fastHash; }
     internal class Snapshot {
         public string state="idle",currentVersion,latestVersion,readyVersion,checkedAt,message,releaseUrl,releaseNotes,accessMode;
+        public string downloadKind;
+        public long downloadBytes;
         public bool auto;
         public Notice[] announcements;
     }
     readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=MetaLimit,RecursionLimit=24};
-    readonly string directory,repository;
+    readonly string directory,repository,baselineOverride;
     readonly Version current;
     readonly ReleaseAccess access;
     readonly string lockName;
-    internal UpdateService(string root,string repo,Version current) {
+    internal UpdateService(string root,string repo,Version current,string baselineOverride=null) {
         if(!Regex.IsMatch(repo,@"\A[a-zA-Z0-9][a-zA-Z0-9-]{0,38}/[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}\z")) throw new InvalidDataException();
         repository=repo;
         this.current=current;
+        this.baselineOverride=baselineOverride;
         directory=Path.Combine(root,"updates",Key(repo.ToLowerInvariant()));
         access=new ReleaseAccess(directory,repo);
         lockName=@"Local\JadeRelease_"+Key(directory.ToUpperInvariant());
@@ -129,37 +132,95 @@ internal sealed class UpdateService {
         }
         return parsed.announcements.OrderByDescending(n=>n.publishedAt,StringComparer.Ordinal).ToArray();
     }
+    static bool ValidAsset(Asset asset,long maximum) {
+        return asset!=null && asset.id>0 && asset.state=="uploaded" && asset.size>0 && asset.size<=maximum &&
+            asset.digest!=null && Regex.IsMatch(asset.digest,@"\Asha256:[a-fA-F0-9]{64}\z");
+    }
     static Asset Select(Release release,string name,long maximum) {
         Asset asset=(release.assets??new Asset[0]).SingleOrDefault(a=>a!=null && a.name==name);
-        if(asset==null || asset.id<1 || asset.state!="uploaded" || asset.size<=0 || asset.size>maximum ||
-            asset.digest==null || !Regex.IsMatch(asset.digest,@"\Asha256:[a-fA-F0-9]{64}\z")) throw new InvalidDataException();
+        if(!ValidAsset(asset,maximum))throw new InvalidDataException();
         return asset;
     }
     static string FileHash(string path) {
         using(var file=File.OpenRead(path)) using(var sha=SHA256.Create()) return Hex(sha.ComputeHash(file));
     }
-    static void Download(Fetch get,Asset asset,string folder,Version expected) {
-        string path=Path.Combine(folder,asset.name);
+    static void Transfer(Fetch get,Asset asset,string path) {
         using(var file=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None)) {
             get("releases/assets/"+asset.id.ToString(CultureInfo.InvariantCulture),"application/octet-stream",asset.size,file,true);
-            if(file.Length!=asset.size) throw new InvalidDataException();
+            if(file.Length!=asset.size) throw new EndOfStreamException();
         }
-        if(!String.Equals(FileHash(path),asset.digest.Substring(7),StringComparison.OrdinalIgnoreCase) ||
-            AssemblyName.GetAssemblyName(path).Version!=expected) throw new InvalidDataException();
     }
-    void Stage(Fetch get,Release release,Version target) {
+    static bool Matches(string folder,Asset asset,Version version) {
+        string file=Path.Combine(folder,asset.name);
+        if(new FileInfo(file).Length!=asset.size || !String.Equals(FileHash(file),asset.digest.Substring(7),StringComparison.OrdinalIgnoreCase))return false;
+        try {return AssemblyName.GetAssemblyName(file).Version==version;}
+        catch(BadImageFormatException){return false;}
+    }
+    IEnumerable<string> BaseFiles() {
+        if(baselineOverride!=null){yield return baselineOverride;yield break;}
+        Assembly assembly=Assembly.GetExecutingAssembly();
+        using(var metadata=assembly.GetManifestResourceStream("pal.companion")) {
+            if(metadata==null){yield return assembly.Location;yield break;}
+            using(var reader=new StreamReader(metadata)) {
+                reader.ReadLine();
+                string name=reader.ReadLine(),dir=Path.GetDirectoryName(assembly.Location);
+                foreach(string candidate in new[]{name,FullName,"Jade 幻兽帕鲁工具箱.exe","帕鲁配种手册.exe"}.Distinct(StringComparer.OrdinalIgnoreCase))
+                    if(!String.IsNullOrEmpty(candidate) && candidate==Path.GetFileName(candidate)) yield return Path.Combine(dir,candidate);
+            }
+        }
+    }
+    bool TryDelta(Fetch get,Release release,string path,Version version,Asset full,Asset fast,ref long downloaded) {
+        long maximum=full.size+fast.size-1;
+        var options=release.assets.Where(a=>ValidAsset(a,maximum) && a.name!=null &&
+            Regex.IsMatch(a.name,@"\AJade-Delta-from-[a-f0-9]{64}\.jdp\z")).ToLookup(a=>a.name,StringComparer.Ordinal);
+        if(options.Count==0)return false;
+        foreach(string file in BaseFiles()) {
+            if(!File.Exists(file))continue;
+            FileStream basis;
+            try {basis=File.OpenRead(file);}
+            catch(IOException){continue;}catch(UnauthorizedAccessException){continue;}
+            using(basis)using(var hash=SHA256.Create()) {
+                if(basis.Length==0 || basis.Length>512L*1024*1024)continue;
+                string sourceHash=Hex(hash.ComputeHash(basis));
+                var matches=options[ReleaseDelta.Prefix+sourceHash+".jdp"];
+                if(matches.Count()!=1)continue;
+                Asset asset=matches.First();
+                string patch=Path.Combine(path,"download.jdp");
+                // Transport and permission failures escape: retry the small transfer later.
+                Transfer(get,asset,patch);
+                downloaded+=asset.size;
+                try {
+                    if(!String.Equals(FileHash(patch),asset.digest.Substring(7),StringComparison.OrdinalIgnoreCase))return false;
+                    try {ReleaseDelta.Apply(basis,patch,path,full.size,fast.size);}
+                    catch(InvalidDataException){return false;}catch(EndOfStreamException){return false;}
+                    return Matches(path,full,version) && Matches(path,fast,version);
+                } finally {File.Delete(patch);}
+            }
+        }
+        return false;
+    }
+    void Stage(Fetch get,Release release,Version target,Snapshot result) {
         Asset full=Select(release,FullName,512L*1024*1024),fast=Select(release,FastName,8L*1024*1024);
         string folder="v-"+Guid.NewGuid().ToString("N"),path=Path.Combine(directory,folder);
         Directory.CreateDirectory(path);
         bool committed=false;
         try {
-            Download(get,fast,path,target);
-            Download(get,full,path,target);
+            long downloaded=0;
+            bool delta=TryDelta(get,release,path,target,full,fast,ref downloaded);
+            if(!delta) foreach(Asset asset in new[]{fast,full}) {
+                string file=Path.Combine(path,asset.name);
+                File.Delete(file); // A rejected patch may have reconstructed part of this file.
+                Transfer(get,asset,file);
+                if(!Matches(path,asset,target))throw new InvalidDataException();
+                downloaded+=asset.size;
+            }
             var previous=Read<Ready>("ready.json");
             if(ValidReady(previous) && !File.Exists(Path.Combine(directory,previous.folder,"rejected"))) Save("previous.json",previous);
             AtomicWrite(Path.Combine(Path.GetDirectoryName(directory),"has-prepared"),new byte[0]);
             Save("ready.json",new Ready{version=Display(target),folder=folder,fastHash=fast.digest.Substring(7).ToLowerInvariant()});
             committed=true;
+            result.downloadKind=delta?"delta":"full";
+            result.downloadBytes=downloaded;
             TrimPackages(folder);
         } finally {if(!committed && Directory.Exists(path)) Directory.Delete(path,true);}
     }
@@ -202,7 +263,7 @@ internal sealed class UpdateService {
         if(version>current) {
             // A previously verified newer release takes precedence if the remote "latest" tag changes.
             if(result.readyVersion!=null && Parse(result.readyVersion)>=version) {result.state="ready";return;}
-            if(prepare) {Stage(get,release,version);result.readyVersion=Display(version);result.state="ready";}
+            if(prepare) {Stage(get,release,version,result);result.readyVersion=Display(version);result.state="ready";}
         }
     }
     static Snapshot Fail(Snapshot result,string state,string message) {result.state=state;result.message=message;return result;}
@@ -225,8 +286,6 @@ internal sealed class UpdateService {
                 if(command=="setAccess" || command=="clearAccess" || command=="useMachine") {
                     if(command=="setAccess" && !access.Prompt())return json.Serialize(result);
                     if(command!="setAccess") access.Switch(command=="clearAccess"?"off":"machine");
-                    string attempt=Path.Combine(directory,"last-auto");
-                    if(File.Exists(attempt))File.Delete(attempt);
                     result=Cached();
                     result.state=result.readyVersion!=null?"ready":"idle";result.message=null;result.checkedAt=null;
                     Save("cache.json",result);
@@ -234,11 +293,7 @@ internal sealed class UpdateService {
                 }
                 if(command!="check" && command!="download" && command!="auto") throw new ArgumentException();
                 if(command=="auto") {
-                    string attempt=Path.Combine(directory,"last-auto");
-                    var age=DateTime.UtcNow-File.GetLastWriteTimeUtc(attempt);
-                    if(!result.auto || result.accessMode=="off" || (age>=TimeSpan.Zero && age<TimeSpan.FromHours(24)))
-                        return json.Serialize(result);
-                    AtomicWrite(attempt,new byte[0]);
+                    if(!result.auto || result.accessMode=="off")return json.Serialize(result);
                 }
                 saveCheck=true;
                 result.checkedAt=DateTime.UtcNow.ToString("o");

@@ -12,10 +12,13 @@
 | `Jade-Palworld-Toolbox-Fast.exe` | 可选的快速启动器。放在与同一版本主程序相同的文件夹，保留两个文件的原名。 |
 | 独立 HTML | 用浏览器打开即可离线查询。仓库存在当前浏览器配置中。读取本机存档和安装桌面更新请使用桌面版。 |
 | `SHA256SUMS.txt` | 对照该版本资产的 SHA-256。Windows 可运行 `Get-FileHash .\Jade-Palworld-Toolbox.exe -Algorithm SHA256`。 |
+| `Jade-Delta-from-….jdp` | 工具箱自动选择的增量更新文件。首次安装请下载主程序。 |
 
 桌面版会优先复用本机已有的同版 Gecko。新电脑首次运行时会从 Mozilla 下载约 90.5 MB 并校验 SHA-512。离线安装时，把[简体中文 x64 官方安装包](https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe) 按原名 `Firefox Setup 153.6.0esr.exe` 放在主程序旁即可。引擎准备完毕后，配种、仓库、地图和图鉴均可离线使用。
 
 在「设置 → 公告与更新」查看公告和更新状态。桌面版可使用已登录的 GitHub CLI，或为这个私有仓库绑定仅具 Contents 读取权限的细粒度令牌。令牌由当前 Windows 用户凭据加密保存。
+
+从 v1.0.5 起，开启自动下载后，工具箱会在启动后检查新版。匹配到当前主程序的差分时只下载变化的部分；没有合适的差分时下载完整包。校验通过后可以立即安装并重启，也可以选「下次启动时安装」，继续使用当前窗口。
 
 ## 源码构建
 

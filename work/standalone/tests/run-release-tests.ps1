@@ -6,7 +6,7 @@ $null=[IO.Directory]::CreateDirectory($work)
 try {
     $testExe=Join-Path $work 'ReleaseTests.exe'
     $csc=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-    & $csc /nologo /target:exe /platform:x64 /codepage:65001 /reference:System.Security.dll /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/out:$testExe" (Join-Path $source 'UpdateService.cs') (Join-Path $source 'ReleaseAccess.cs') (Join-Path $PSScriptRoot 'ReleaseTests.cs')
+    & $csc /nologo /target:exe /platform:x64 /codepage:65001 /reference:System.Security.dll /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/out:$testExe" (Join-Path $source 'UpdateService.cs') (Join-Path $source 'ReleaseDelta.cs') (Join-Path $source 'ReleaseAccess.cs') (Join-Path $PSScriptRoot 'ReleaseTests.cs') (Join-Path $PSScriptRoot 'DeltaTests.cs')
     if($LASTEXITCODE){throw "Test compilation failed ($LASTEXITCODE)"}
     & $testExe $work
     if($LASTEXITCODE){throw "Release tests failed ($LASTEXITCODE)"}

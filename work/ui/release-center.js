@@ -1,3 +1,50 @@
+// The update controls are loaded on the first visit or after a download completes.
+function createUpdateInstaller(){
+  const byId=id=>document.getElementById(id),dialog=byId('install-update');
+  const now=byId('install-update-now'),later=byId('install-update-later'),close=byId('install-update-close');
+  const feedback=byId('install-update-status');
+  let displayed='',requested='',requestId='',message='',timer;
+  function render(){
+    now.disabled=later.disabled=close.disabled=Boolean(requestId);
+    feedback.textContent=displayed===requested?message:'';
+    feedback.hidden=!feedback.textContent;
+    document.dispatchEvent(new Event('jade-install-change'));
+  }
+  function restart(version){
+    if(!version||requestId)return;
+    requested=version;
+    requestId='restart-'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36));
+    message='正在准备重启并安装 v'+version+'…';
+    timer=setTimeout(()=>{
+      requestId='';message='工具箱仍在运行。可以重试，或选择下次启动时安装。';render();
+    },60000);
+    render();
+    document.dispatchEvent(new CustomEvent('pal-release-request',{bubbles:true,
+      detail:JSON.stringify({action:'restart',version,requestId})}));
+  }
+  document.addEventListener('jade-release-change',()=>{
+    const result=jadeReleases.snapshot;
+    if(!requestId||result.requestId!==requestId)return;
+    if(result.state==='restarting')message='正在关闭工具箱，随后将打开新版…';
+    else{
+      clearTimeout(timer);requestId='';
+      message=result.message||'未能重启工具箱。请重试，或选择下次启动时安装。';
+    }
+    render();
+  });
+  later.addEventListener('click',()=>dialog.close());
+  close.addEventListener('click',()=>dialog.close());
+  dialog.addEventListener('cancel',event=>{if(requestId)event.preventDefault();});
+  now.addEventListener('click',()=>restart(displayed));
+  jadeReleases.setInstallPrompt(version=>{
+    if(dialog.open)return false;
+    displayed=version;
+    byId('install-update-description').textContent='v'+version+' 已下载并通过校验。你可以立即安装，或继续使用，在下次打开工具箱时自动安装。';
+    render();dialog.showModal();return true;
+  });
+  return {restart,get busy(){return Boolean(requestId);},status:version=>requested===version?message:''};
+}
+const jadeInstaller=jadeReleases.desktop?createUpdateInstaller():null;
 let releaseCenterRefresh;
 function showReleaseCenter(){
   if(!releaseCenterRefresh)releaseCenterRefresh=initReleaseCenter();
@@ -8,7 +55,7 @@ function initReleaseCenter(){
   const list=byId('notice-list'), all=byId('notice-read-all');
   const popupSwitch=byId('notice-popup-enabled');
   const version=byId('release-version'), status=byId('release-status'), date=byId('release-date');
-  const auto=byId('release-auto'), check=byId('release-check'), download=byId('release-download');
+  const auto=byId('release-auto'), check=byId('release-check'), download=byId('release-download'),restart=byId('release-restart');
   const token=byId('release-token'), machine=byId('release-machine'), clear=byId('release-clear');
   const link=byId('release-link'),access=byId('release-access'),notes=byId('release-notes');
   let rows=null, controls=new Map(), pending=null, lastFailure='', localError='', lastState='';
@@ -85,11 +132,11 @@ function initReleaseCenter(){
   function render(){
     refreshNotices();
     const data=releases.snapshot,latest=data.latestVersion||'',ready=data.readyVersion||'';
-    const state=data.state,enabled=!pending;
+    const state=data.state,enabled=!pending&&!jadeInstaller.busy;
     version.textContent='当前版本 v'+(data.currentVersion||releases.currentVersion);
     const stateLabel={
       idle:'可以检查工具箱更新和最新公告。',current:'已是最新版本。',
-      available:latest?'可更新至 v'+latest+'。':'发现新版本。',ready:'',
+      available:latest?'可更新至 v'+latest+'。':'发现新版本。',ready:'',restarting:'正在重启工具箱…',
       unauthorized:'当前账号无法读取此私有仓库。请检查 GitHub 账号的仓库权限，或绑定访问令牌。',
       unconfigured:'此版本尚未配置更新来源。',busy:'后台正在处理更新，稍后可再次检查。',
       error:'检查更新失败，请稍后重试。'
@@ -98,9 +145,11 @@ function initReleaseCenter(){
       ?[stateLabel[state],data.message].filter(Boolean).join(' '):data.message||stateLabel[state]||'';
     let message=pending?actionLabel[pending.action]:localError||checkMessage;
     if(ready&&!pending){
-      const readyText='v'+ready+' 已就绪，关闭工具箱后再次打开即可应用。';
+      const kind={delta:'（增量下载）',full:'（完整下载）'}[data.downloadKind]||'';
+      const readyText='v'+ready+' 已就绪'+kind+'，可立即重启或在下次启动时安装。';
       message=[readyText,message].filter(Boolean).join(' ');
     }
+    if(jadeInstaller.status(ready))message=jadeInstaller.status(ready);
     status.textContent=message;
     const checked=Date.parse(data.checkedAt);
     date.hidden=!Number.isFinite(checked);
@@ -112,7 +161,8 @@ function initReleaseCenter(){
     const canDownload=(state==='available'||state==='error'||lastFailure==='download')&&isNewer(latest,ready||data.currentVersion);
     download.hidden=!canDownload;
     download.textContent=lastFailure==='download'?'重试下载':'下载更新';
-    for(const control of [auto,check,download,token,machine,clear])control.disabled=!enabled;
+    restart.hidden=!ready;
+    for(const control of [auto,check,download,restart,token,machine,clear])control.disabled=!enabled;
     machine.hidden=data.accessMode==='machine';
     clear.hidden=data.accessMode==='off';
     token.textContent=data.accessMode==='stored'?'更换访问令牌':'绑定访问令牌';
@@ -148,6 +198,8 @@ function initReleaseCenter(){
     }
     render();
   });
+  document.addEventListener('jade-install-change',render);
+  restart.addEventListener('click',()=>jadeInstaller.restart(releases.snapshot.readyVersion));
   check.addEventListener('click',()=>request('check'));
   download.addEventListener('click',()=>request('download'));
   auto.addEventListener('change',()=>request('setAuto',auto.checked));

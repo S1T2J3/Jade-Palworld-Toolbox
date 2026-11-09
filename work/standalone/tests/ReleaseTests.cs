@@ -76,6 +76,7 @@ internal static class ReleaseTests {
             !GithubReleaseApi.AssetLocation(new Uri("https://release-assets.githubusercontent.com.example.org/blob")) &&
             !GithubReleaseApi.AssetLocation(new Uri("http://release-assets.githubusercontent.com/blob")) &&
             !GithubReleaseApi.AssetLocation(new Uri("https://user@release-assets.githubusercontent.com/blob")),"redirect allowlist");
+        DeltaTests.Run(root);
         Console.WriteLine("Passed release discovery, offline notices, private access modes, asset validation and rollback selection.");
         return 0;
     }

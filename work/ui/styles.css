@@ -148,6 +148,14 @@ dialog::backdrop {background:#203b32a3}
 #notice-popup footer {display:flex;justify-content:flex-end;padding:12px 22px;border-top:1px solid var(--line)}
 #notice-popup-confirm {min-height:36px;padding:6px 16px;border-radius:7px;background:var(--skin-accent);color:var(--skin-on-accent);font-weight:650}
 #notice-popup-confirm:hover {background:var(--skin-deep)}
+#install-update h2 {margin:0;font-size:20px}
+.install-update-content {padding:14px 22px;line-height:1.65}
+.install-update-content p {margin:0;overflow-wrap:anywhere}
+#install-update-status {margin-top:6px;color:var(--soft)}
+#install-update footer {display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 22px;border-top:1px solid var(--line)}
+#install-update footer button {min-height:36px;border:1px solid var(--border);border-radius:7px;padding:6px 12px;background:var(--paper);color:var(--ink);font-weight:650}
+#install-update #install-update-now {border-color:var(--skin-accent);background:var(--skin-accent);color:var(--skin-on-accent)}
+#install-update #install-update-now:enabled:hover {background:var(--skin-deep)}
 .about-inner {padding:18px 22px 22px;font-size:14px;line-height:1.72;color:#4d6253}
 .about-inner h3 {font-size:15px;color:var(--ink);margin:15px 0 4px}
 .about-inner h3:first-child {margin-top:0}

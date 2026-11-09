@@ -13,11 +13,13 @@ using System.Windows.Forms;
 [assembly: AssemblyTitle("Jade · 幻兽帕鲁工具箱")]
 [assembly: AssemblyProduct("Jade · 幻兽帕鲁工具箱")]
 [assembly: AssemblyDescription("离线帕鲁图鉴、配种、世界地图与物品查询")]
-[assembly: AssemblyVersion("1.0.4.0")]
+[assembly: AssemblyVersion("1.0.5.0")]
 
 internal static class DesktopHost {
     const string Title="Jade · 幻兽帕鲁工具箱";
     const string CacheMarker=".pal-atlas-installed";
+    // The private Gecko shell uses this exit code only for a validated, user-requested update.
+    const int RestartForUpdate=78;
     const int WM_SETICON=0x80;
     [DllImport("kernel32.dll",CharSet=CharSet.Unicode)] static extern IntPtr GetModuleHandle(string module);
     [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr LoadIcon(IntPtr module,IntPtr resource);
@@ -220,10 +222,13 @@ internal static class DesktopHost {
                         initialized=true;
                         if(activate){if(IsIconic(w))ShowWindowAsync(w,9);SetForegroundWindow(w);activate=false;}
                     }
-                    return process.ExitCode;
+                    if(process.ExitCode!=RestartForUpdate || !File.Exists(Path.Combine(root,"updates","has-prepared"))) return process.ExitCode;
                 }
             } finally {if(!extractOnly)instance.ReleaseMutex();}
         }
+        // Gecko has flushed the profile, every browser window has closed and the
+        // instance mutex is now free. Use the ordinary activation and rollback path.
+        return Launch(root);
     }
     static int Launch(string root) {
         if(File.Exists(Path.Combine(root,"updates","has-prepared"))) {
@@ -246,6 +251,25 @@ internal static class DesktopHost {
             } catch { /* Keep the supplied launcher available if update files cannot be read. */ }
         }
         return Run(root,false);
+    }
+    static string VerifyRestart(UpdateService updater,string version) {
+        Version expected=UpdateService.Parse(version);
+        string folder;
+        string exe=updater.PreparedLauncher(out folder);
+        if(expected==null || exe==null || AssemblyName.GetAssemblyName(exe).Version!=expected)
+            return "{\"state\":\"error\",\"message\":\"待安装版本已变化或文件缺失，请重新检查更新。\"}";
+        // PreparedLauncher verifies the small launcher's release digest. Its embedded
+        // companion manifest authenticates the full package before closing the old GUI.
+        var companion=Assembly.ReflectionOnlyLoadFrom(exe);
+        using(var info=new StreamReader(companion.GetManifestResourceStream("pal.companion"),Encoding.UTF8))
+        using(var input=File.OpenRead(Path.Combine(Path.GetDirectoryName(exe),UpdateService.FullName)))
+        using(var sha=SHA256.Create()) {
+            if(!String.Equals(info.ReadLine(),Digest(sha.ComputeHash(input)),StringComparison.OrdinalIgnoreCase)) {
+                updater.RejectFolder(folder);
+                return "{\"state\":\"error\",\"message\":\"更新文件校验失败，请重新下载。\"}";
+            }
+        }
+        return "{\"state\":\"restarting\"}";
     }
     static int WriteReadResult(string[] args,int legacyLength,string json) {
         byte[] bytes=Encoding.UTF8.GetBytes(json);
@@ -280,7 +304,9 @@ internal static class DesktopHost {
                 string root=Path.GetFullPath(args[2]);
                 Guid request=Guid.Empty;
                 if(args.Length==4 && !Guid.TryParseExact(args[3],"N",out request))return 2;
-                string response=UpdateService.For(root).Execute(args[1]);
+                var updater=UpdateService.For(root);
+                string response=args[1].StartsWith("verify-restart:",StringComparison.Ordinal)
+                    ? VerifyRestart(updater,args[1].Substring("verify-restart:".Length)) : updater.Execute(args[1]);
                 byte[] bytes=Encoding.UTF8.GetBytes(response);
                 if(args.Length==4)UpdateService.AtomicWrite(Path.Combine(root,"updates","ipc",request.ToString("N")+".json"),bytes);
                 else using(Stream stdout=Console.OpenStandardOutput()) stdout.Write(bytes,0,bytes.Length);

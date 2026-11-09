@@ -414,6 +414,9 @@
     return itemImages.images[itemImages.ids[id]] || '';
   }
   const desktopTables=createAtlasDataLoader();
+  if(jadeReleases.desktop){
+    document.addEventListener('jade-load-install',()=>desktopTables.load('code-updates').catch(()=>{}));
+  }
   bindExternalFooter(desktopTables);
   function openAbout() {
     if(desktopTables.wait('about',openAbout,'about')) return;

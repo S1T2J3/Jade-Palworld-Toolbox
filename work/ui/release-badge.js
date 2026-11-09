@@ -10,6 +10,7 @@ const jadeReleases=(()=>{
   };
   const prefix='pal-atlas.releases.v1.',indexKey=prefix+'index',feedKey=prefix+'feed',readPrefix=prefix+'read.';
   const popupSettingKey=prefix+'popup.enabled',shownPrefix=prefix+'popup.shown.';
+  const installSignalKey=prefix+'install.ready',installShownPrefix=prefix+'install.shown.';
   const sessionReads=new Set();
   const safeGet=key=>{try{return localStorage.getItem(key);}catch{return null;}};
   const safeSet=(key,value)=>{try{localStorage.setItem(key,value);return true;}catch{return false;}};
@@ -22,6 +23,7 @@ const jadeReleases=(()=>{
   let snapshot={state:'idle',currentVersion,auto:true,accessMode:'machine'};
   let popupsEnabled=safeGet(popupSettingKey)!=='0',popupShown=false,waiting=false,scheduled=false;
   let popupId=null;
+  let installVersion='',shownInstall='',presentInstall=null;
   function isRead(id){return sessionReads.has(id)||safeGet(readPrefix+id)==='1';}
   function updateBadge(){
     const count=ids.filter(id=>!isRead(id)).length;
@@ -48,15 +50,34 @@ const jadeReleases=(()=>{
   }
   function entries(){return notices??=normalize(readArray(feedKey));}
   function pendingPopup(){return entries().find(row=>row.popup&&!isRead(row.id)&&safeGet(shownPrefix+row.id)!=='1');}
+  function pendingInstall(){
+    return installVersion && installVersion!==shownInstall && safeGet(installShownPrefix+installVersion)!=='1';
+  }
+  function queueInstall(version,broadcast){
+    if(!desktop||typeof version!=='string'||!/^\d+(?:\.\d+){2,3}$/.test(version)||version===currentVersion)return;
+    installVersion=version;
+    if(!pendingInstall())return;
+    if(broadcast)safeSet(installSignalKey,JSON.stringify({version,time:Date.now()}));
+    if(!presentInstall)document.dispatchEvent(new Event('jade-load-install'));
+    schedulePopup();
+  }
+  function setInstallPrompt(callback){presentInstall=callback;if(pendingInstall())schedulePopup();}
   function showPendingPopup(){
     waiting=false;
-    if(popupShown||!popupsEnabled)return;
-    const row=pendingPopup();
-    if(!row)return;
+    const install=pendingInstall();
+    const row=!install&&!popupShown&&popupsEnabled?pendingPopup():null;
+    if(!install&&!row)return;
     const focused=document.activeElement;
     if(document.hidden||!document.hasFocus()||document.querySelector('dialog[open]')||focused?.isContentEditable||
       focused?.matches('textarea,select,input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])')){
       waiting=true;return;
+    }
+    if(install){
+      if(presentInstall&&presentInstall(installVersion)){
+        shownInstall=installVersion;
+        safeSet(installShownPrefix+installVersion,'1');
+      }
+      return;
     }
     const dialog=document.getElementById('notice-popup');
     if(!dialog?.showModal)return;
@@ -77,11 +98,11 @@ const jadeReleases=(()=>{
     },{once:true});
   }
   function schedulePopup(){
-    if(scheduled||popupShown||!popupsEnabled||document.readyState!=='complete')return;
+    if(scheduled||document.readyState!=='complete'||(!pendingInstall()&&(popupShown||!popupsEnabled)))return;
     scheduled=true;
     const check=async()=>{
       try {
-        if(!pendingPopup())return;
+        if(!pendingInstall()&&!pendingPopup())return;
         // Serialize the read/show receipt across windows sharing the same profile.
         if(navigator.locks)await navigator.locks.request(prefix+'popup',showPendingPopup);
         else showPendingPopup();
@@ -111,10 +132,13 @@ const jadeReleases=(()=>{
   function receive(event){
     let data;
     try{data=JSON.parse(event.detail);}catch{return;}
-    if(!data||!['idle','current','available','ready','error','unauthorized','unconfigured','busy'].includes(data.state))return;
+    if(!data||!['idle','current','available','ready','restarting','error','unauthorized','unconfigured','busy'].includes(data.state))return;
     // A transport error may carry only state and message. Keep the last
     // confirmed preferences and versions until a full native reply arrives.
     snapshot=data.currentVersion?data:{...snapshot,...data};
+    if(data.state==='ready'&&(data.action==='download'||(data.action==='auto'&&data.auto===true))){
+      queueInstall(data.readyVersion,true);
+    }
     if(Array.isArray(data.announcements)){
       notices=normalize(data.announcements);
       ids=notices.map(row=>row.id);
@@ -125,6 +149,10 @@ const jadeReleases=(()=>{
   }
   if(desktop)document.addEventListener('pal-release-result',receive);
   window.addEventListener('storage',event=>{
+    if(event.key===installSignalKey&&event.newValue){
+      try{queueInstall(JSON.parse(event.newValue).version,false);}catch{}
+      return;
+    }
     if(event.key===popupSettingKey||event.key===null){popupsEnabled=safeGet(popupSettingKey)!=='0';preferenceChanged();}
     if(event.key===indexKey||event.key===feedKey||event.key===null){
       if(event.key===null)sessionReads.clear();
@@ -137,6 +165,6 @@ const jadeReleases=(()=>{
     }
   });
   updateBadge();
-  return {currentVersion,releaseUrl,desktop,entries,isRead,markRead,setPopupsEnabled,
+  return {currentVersion,releaseUrl,desktop,entries,isRead,markRead,setPopupsEnabled,setInstallPrompt,
     get popupsEnabled(){return popupsEnabled;},get snapshot(){return snapshot;}};
 })();

@@ -190,6 +190,20 @@
       <footer><button id="notice-popup-confirm">知道了</button></footer>
     </form>
   </dialog>
+  <dialog id="install-update" aria-labelledby="install-update-title" aria-describedby="install-update-description">
+    <header class="dialog-heading">
+      <h2 id="install-update-title">安装更新并重启？</h2>
+      <button class="close" id="install-update-close" type="button" aria-label="稍后安装并关闭"><i data-icon="close" aria-hidden="true"></i></button>
+    </header>
+    <div class="install-update-content">
+      <p id="install-update-description"></p>
+      <p id="install-update-status" role="status" hidden></p>
+    </div>
+    <footer>
+      <button id="install-update-later" type="button" autofocus>下次启动时安装</button>
+      <button id="install-update-now" type="button">立即安装并重启</button>
+    </footer>
+  </dialog>
   <!--__WORLD_MANAGER__-->
   <script id="db" type="application/json">__DATABASE__</script>
   <script id="portraits" type="application/json">__PORTRAITS__</script>

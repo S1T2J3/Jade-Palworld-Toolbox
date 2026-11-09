@@ -13,14 +13,16 @@ Object.assign(child,{document:doc,contentWindow:win,release(_doc,request){comman
 function request(action,extra={}) {
   child.handleEvent({type:"pal-release-request",target:doc,detail:JSON.stringify({requestId:"test",action,...extra})});
 }
-request("status");request("download");request("setAccess");
+request("status");request("download");request("setAccess");request("restart",{version:"1.0.6"});
 assert.deepEqual(commands,["status"]);
 win.navigator.userActivation.isActive=true;
 request("setAuto",{enabled:1});request("arbitrary");request("auto");request("download");request("setAuto",{enabled:false});
 assert.deepEqual(commands,["status","download","setAuto"]);
+request("restart",{version:"not-a-version"});request("restart",{version:"1.0.6"});
+assert.deepEqual(commands,["status","download","setAuto","restart"]);
 win.top={};request("status");win.top=win;
 doc.nodePrincipal.URI.scheme="https";request("download");
-assert.equal(commands.length,3);
+assert.equal(commands.length,4);
 
 // Evaluate the Gecko parent actor with platform dependencies stubbed. No native
 // process should be reached until every origin, principal and window check passes.

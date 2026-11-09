@@ -7,7 +7,7 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       if(typeof theme==="string" && theme.length<=10)this.sendAsyncMessage("PalAtlas:Theme",{theme});
       if (event.type==="DOMContentLoaded") win.setTimeout(()=>{
         if (this.document===doc) this.release(doc,{action:"auto"});
-      },20000);
+      },3000);
       return;
     }
     if (event.type==="keydown" && event.isTrusted) {
@@ -34,8 +34,9 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       let request;
       try {request=JSON.parse(event.detail);} catch {return;}
       if (typeof request?.requestId!=="string" || request.requestId.length>100 ||
-          !["status","check","download","setAuto","setAccess","useMachine","clearAccess"].includes(request.action) ||
+          !["status","check","download","restart","setAuto","setAccess","useMachine","clearAccess"].includes(request.action) ||
           (request.action!=="status" && !win.navigator.userActivation.isActive) ||
+          (request.action==="restart" && (typeof request.version!=="string" || !/^\d{1,5}(?:\.\d{1,5}){2,3}$/.test(request.version))) ||
           (request.action==="setAuto" && typeof request.enabled!=="boolean")) return;
       this.release(doc,request);
       return;
@@ -95,13 +96,15 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       if (current()) report({state:"error",message:"未能读取游戏存档。请重试。"});
     }
   }
-  async release(doc,{action,enabled,requestId}) {
+  async release(doc,{action,enabled,version,requestId}) {
     let result;
-    try {result=await this.sendQuery("PalAtlas:Release",{action,enabled});}
+    try {result=await this.sendQuery("PalAtlas:Release",{action,enabled,version});}
     catch {result={state:"error",message:"更新服务暂时不可用。"};}
     if (this.document!==doc) return;
     const event=doc.createEvent("CustomEvent");
-    event.initCustomEvent("pal-release-result",false,false,JSON.stringify({...result,requestId}));
+    event.initCustomEvent("pal-release-result",false,false,JSON.stringify({action,...result,requestId}));
     doc.dispatchEvent(event);
+    if(action==="setAuto" && enabled===true && result.auto===true && result.state!=="busy")
+      this.release(doc,{action:"auto"});
   }
 }

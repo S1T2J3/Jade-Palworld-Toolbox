@@ -16,7 +16,7 @@ $common=@('/nologo','/target:winexe','/platform:x64','/optimize+','/codepage:650
     '/reference:System.Security.dll',"/resource:$updateConfig,pal.update.repository",
     "/win32icon:$(Join-Path $PSScriptRoot '../desktop/atlas.ico')","/resource:$(Join-Path $dir 'hashes'),pal.package.hashes")
 $sources=@((Join-Path $PSScriptRoot 'DesktopHost.cs'),
-    (Join-Path $PSScriptRoot 'UpdateService.cs'),(Join-Path $PSScriptRoot 'ReleaseAccess.cs'),(Join-Path $PSScriptRoot 'RuntimeBootstrap.cs'),
+    (Join-Path $PSScriptRoot 'UpdateService.cs'),(Join-Path $PSScriptRoot 'ReleaseDelta.cs'),(Join-Path $PSScriptRoot 'ReleaseAccess.cs'),(Join-Path $PSScriptRoot 'RuntimeBootstrap.cs'),
     (Join-Path $PSScriptRoot '../migration/PalLegacyMigration.cs'),
     (Join-Path $PSScriptRoot '../game-saves/Discovery.cs'),(Join-Path $PSScriptRoot '../game-saves/XboxSaves.cs'),
     (Join-Path $PSScriptRoot '../game-saves/TerminalSources.cs'))

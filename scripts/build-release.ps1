@@ -1,6 +1,7 @@
 param(
     [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')]
-    [string]$Repository = 'S1T2J3/Jade-Palworld-Toolbox'
+    [string]$Repository = 'S1T2J3/Jade-Palworld-Toolbox',
+    [string[]]$DeltaBase = @()
 )
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -13,6 +14,18 @@ $null = [IO.Directory]::CreateDirectory($content)
 $html = Join-Path $dist 'Jade-Palworld-Toolbox.html'
 $desktop = Join-Path $dist 'Jade-Palworld-Toolbox.exe'
 $fast = Join-Path $dist 'Jade-Palworld-Toolbox-Fast.exe'
+# Capture an existing dist EXE before the compiler replaces it in place.
+$baselines = foreach ($path in $DeltaBase) {
+    $resolved = (Get-Item -LiteralPath $path -ErrorAction Stop).FullName
+    if ([IO.Directory]::Exists($resolved)) { $resolved = Join-Path $resolved 'Jade-Palworld-Toolbox.exe' }
+    $hash = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($resolved -eq $desktop) {
+        $saved = Join-Path $project ('build/base-' + $hash + '.exe')
+        [IO.File]::Copy($resolved,$saved,$true)
+        $resolved = $saved
+    }
+    [pscustomobject]@{Path=$resolved; Hash=$hash}
+}
 $previousRepository = $env:JADE_RELEASE_REPOSITORY
 try {
     $env:JADE_RELEASE_REPOSITORY = $Repository
@@ -44,7 +57,20 @@ foreach ($tag in @($versionTag,$repositoryTag)) {
         throw "Release metadata mismatch: $tag"
     }
 }
-$checksums = foreach ($asset in @($desktop, $fast, $html)) {
+$patches = @()
+foreach ($base in $baselines) {
+    $python = if ($env:JADE_PYTHON) { $env:JADE_PYTHON } else { (Get-Command python -ErrorAction Stop).Source }
+    & $python (Join-Path $source 'standalone/make_delta.py') $base.Path $dist
+    if ($LASTEXITCODE -ne 0) { throw 'Delta generation failed' }
+    $patch = Join-Path $dist ('Jade-Delta-from-' + $base.Hash + '.jdp')
+    if ([IO.File]::Exists($patch) -and $patch -notin $patches) { $patches += $patch }
+}
+foreach ($previous in (Get-ChildItem -LiteralPath $dist -File -Filter 'Jade-Delta-from-*.jdp')) {
+    if ($previous.Name -cmatch '^Jade-Delta-from-[a-f0-9]{64}\.jdp$' -and $previous.FullName -notin $patches) {
+        Remove-Item -LiteralPath $previous.FullName
+    }
+}
+$checksums = foreach ($asset in (@($desktop, $fast, $html) + $patches)) {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant(), [IO.Path]::GetFileName($asset)
 }
 [IO.File]::WriteAllLines((Join-Path $dist 'SHA256SUMS.txt'), [string[]]$checksums, [Text.Encoding]::ASCII)

@@ -18,10 +18,11 @@
         <div class="release-actions">
           <button type="button" id="release-check">检查更新</button>
           <button type="button" id="release-download" class="release-primary" hidden>下载更新</button>
+          <button type="button" id="release-restart" class="release-primary" hidden>立即安装并重启</button>
         </div>
         <div class="release-option">
-          <label><input id="release-auto" type="checkbox" aria-describedby="release-auto-info">自动更新</label>
-          <small id="release-auto-info">启动后在后台检查并下载，新版本会在下次启动时应用。</small>
+          <label><input id="release-auto" type="checkbox" aria-describedby="release-auto-info">自动下载更新</label>
+          <small id="release-auto-info">打开工具箱后会在后台检查更新，优先下载增量包，下载完成后询问是否立即重启。</small>
         </div>
         <details id="release-access">
           <summary>私有仓库访问</summary>
