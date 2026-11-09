@@ -67,6 +67,15 @@ function initReleaseCenter(){
     status:'正在读取更新设置…',check:'正在检查更新与公告…',download:'正在下载并校验更新包…',
     setAuto:'正在保存自动更新设置…',setAccess:'请在 Windows 凭据窗口中完成绑定。',useMachine:'正在切换到本机登录…',clearAccess:'正在清除授权…'
   };
+  function isNewer(candidate,baseline){
+    if(!candidate||!baseline)return false;
+    const target=candidate.split('.').map(Number),previous=baseline.split('.').map(Number);
+    for(let i=0;i<4;i++){
+      const difference=(target[i]||0)-(previous[i]||0);
+      if(difference)return difference>0;
+    }
+    return false;
+  }
   function render(){
     refreshNotices();
     const data=releases.snapshot,latest=data.latestVersion||'',ready=data.readyVersion||'';
@@ -79,10 +88,12 @@ function initReleaseCenter(){
       unconfigured:'此版本尚未配置更新来源。',busy:'后台正在处理更新，稍后可再次检查。',
       error:'检查更新失败，请稍后重试。'
     };
-    let message=pending?actionLabel[pending.action]:localError||data.message||stateLabel[state]||'';
+    const checkMessage=['current','available','ready'].includes(state)
+      ?[stateLabel[state],data.message].filter(Boolean).join(' '):data.message||stateLabel[state]||'';
+    let message=pending?actionLabel[pending.action]:localError||checkMessage;
     if(ready&&!pending){
       const readyText='v'+ready+' 已就绪，关闭工具箱后再次打开即可应用。';
-      message=['error','unauthorized'].includes(state)?message+' '+readyText:readyText;
+      message=[readyText,message].filter(Boolean).join(' ');
     }
     status.textContent=message;
     const checked=Date.parse(data.checkedAt);
@@ -92,8 +103,8 @@ function initReleaseCenter(){
     byId('release-notes-body').textContent=typeof data.releaseNotes==='string'?data.releaseNotes.slice(0,23000):'';
     auto.checked=pending?.action==='setAuto'?pending.enabled:data.auto!==false;
     check.textContent=lastFailure==='check'?'重试检查':'检查更新';
-    const canDownload=state==='available'||lastFailure==='download'||(state==='error'&&latest&&latest!==data.currentVersion);
-    download.hidden=!!ready||!canDownload;
+    const canDownload=(state==='available'||state==='error'||lastFailure==='download')&&isNewer(latest,ready||data.currentVersion);
+    download.hidden=!canDownload;
     download.textContent=lastFailure==='download'?'重试下载':'下载更新';
     for(const control of [auto,check,download,token,machine,clear])control.disabled=!enabled;
     machine.hidden=data.accessMode==='machine';

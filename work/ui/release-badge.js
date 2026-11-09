@@ -48,7 +48,9 @@ const jadeReleases=(()=>{
     let data;
     try{data=JSON.parse(event.detail);}catch{return;}
     if(!data||!['idle','current','available','ready','error','unauthorized','unconfigured','busy'].includes(data.state))return;
-    snapshot=data;
+    // A transport error may carry only state and message. Keep the last
+    // confirmed preferences and versions until a full native reply arrives.
+    snapshot=data.currentVersion?data:{...snapshot,...data};
     if(Array.isArray(data.announcements)){
       notices=normalize(data.announcements);
       ids=notices.map(row=>row.id);
