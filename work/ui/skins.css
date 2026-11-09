@@ -43,13 +43,18 @@
   --skin-rail:#343c48;--skin-accent:#465467;--bg:#f1f3f5;--skin-selected:#e1e7ed;--skin-secondary:#c8d5e4;
 }
 :root:not([data-theme]),:root[data-theme="moon"] {
-  --skin-rail-type:#29244c;
-  --skin-rail-secondary:#37315b;
-  --skin-rail-hover:rgb(255 255 255 / .55);
-  --skin-focus:#4633a3;
-  --skin-gold:#ffea89;
-  --skin-banner-start:#e3faff;--skin-banner-end:#e4d2ff;
-  --moon-ice:#98eaff;--moon-blue:#a4b7ff;--moon-violet:#ccb1ff;
+  --bg:#b4c0d6;
+  --paper:#d1d9e8;
+  --ink:#29283f;--soft:#3e425b;--muted:#42485f;
+  --skin-rail:#9dd5ec;--skin-secondary:#99c6dd;
+  --skin-accent:#524182;--skin-deep:#38305e;--skin-focus:#463377;
+  --skin-selected:#b9b9dc;--skin-tint:#bfc9dd;--skin-surface-soft:#c9d1e2;
+  --border:#9ca6bd;--line:#b4bed2;--skin-edge-strong:#80759e;
+  --skin-rail-type:#27263e;--skin-rail-secondary:#33334b;
+  --skin-rail-hover:rgb(228 232 246 / .30);
+  --skin-gold:#efdc8e;--skin-on-accent:#f3f1fa;
+  --skin-banner-start:#a7c6dc;--skin-banner-end:#b7a9d3;
+  --moon-ice:var(--skin-rail);--moon-blue:#97a8e7;--moon-violet:#bf91df;
   --moon-glint:polygon(50% 0,60% 39%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 39%);
 }
 
@@ -99,52 +104,54 @@
 .species-row.selected{border-color:var(--skin-edge-strong);background:var(--skin-selected)}
 .section-title .title-icon{color:var(--skin-accent)}
 
-/* Broad facets come from Selyne's crescent. Keep the bright surfaces in the
-   chrome so that portraits, elemental colours and dense data keep their contrast. */
+/* The navigation follows the crescent's cyan tip, violet centre and periwinkle rim.
+   Quieter versions of the same hues sit behind the text and portraits. */
 :root[data-theme="moon"] body{
   min-height:100vh;
-  background:radial-gradient(ellipse at 100% 0%,#ebe3ff 0,transparent 53%),
-             linear-gradient(121deg,#eafaff 0%,#f7faff 52%,#faf3ff 100%);
+  background:linear-gradient(118deg,#acbfd3 0%,var(--bg) 48%,#bdb6d1 100%);
 }
 :root[data-theme="moon"] .section-rail{
   background-color:var(--moon-ice);
-  background-image:linear-gradient(131deg,transparent 19%,#ffffff40 19.15%,transparent 27%),
-                   linear-gradient(145deg,transparent 57%,#ffffff3b 57.15%,transparent 73%),
-                   linear-gradient(158deg,#b6f6ff 0%,#87e4ff 21%,#9cb6ff 48%,#baa0ff 73%,#dfb4ff 100%);
-  box-shadow:inset -1px 0 #7769ba59;
-  scrollbar-color:#7163a9 transparent;
+  background-image:linear-gradient(131deg,transparent 19%,#e4eaf625 19.15%,transparent 27%),
+                   linear-gradient(145deg,transparent 57%,#e4eaf61c 57.15%,transparent 73%),
+                   linear-gradient(160deg,var(--moon-ice),#91c4e4 23%,var(--moon-blue) 46%,var(--moon-violet) 75%,#a69adf);
+  box-shadow:inset -1px 0 #6e729663;
+  scrollbar-color:#68658d transparent;
 }
 :root[data-theme="moon"] .section-rail .brand-type strong,
 :root[data-theme="moon"] .section-rail .rail-close{color:var(--skin-rail-type)}
-:root[data-theme="moon"] .section-rail .rail-heading{border-bottom-color:#ffffffbd}
+:root[data-theme="moon"] .section-rail .rail-heading{border-bottom-color:#63678270}
 :root[data-theme="moon"] .section-rail .brand-mark{position:relative}
 :root[data-theme="moon"] .section-rail .brand-mark::after{
   content:"";position:absolute;right:-7px;top:2px;width:11px;height:15px;
-  background:#fff9d6;clip-path:var(--moon-glint);pointer-events:none;
+  background:var(--skin-gold);clip-path:var(--moon-glint);pointer-events:none;
 }
 :root[data-theme="moon"] .section-rail .section-links a.section-active{
-  color:#382864;border-color:#8071bc;
-  background:linear-gradient(119deg,#fff 0%,#e9fbff 48%,#e8ddff 100%);
-  box-shadow:inset 0 1px 0 white,0 2px 5px #58398a24;
+  color:var(--skin-on-accent);border-color:#51557d;
+  background:linear-gradient(112deg,#4f6088,#634c81);
+  box-shadow:inset 3px 0 var(--skin-gold);
 }
 :root[data-theme="moon"] .section-rail .world-rail{
-  background:#ffffff42;border-color:#7763a7;
+  background:#d8d6ee30;border-color:#757092;
 }
-:root[data-theme="moon"] .section-rail .world-rail:hover{background:#ffffff86}
-:root[data-theme="moon"] .section-rail .status-dot{background:#216c61}
+:root[data-theme="moon"] .section-rail .world-rail:hover{background:var(--skin-rail-hover)}
+:root[data-theme="moon"] .section-rail .status-dot{background:#275f59}
 :root[data-theme="moon"] .section-rail :is(a,button):focus-visible{outline:2px solid var(--skin-focus);outline-offset:1px}
 :root[data-theme="moon"] .shell-pages .masthead{
-  background:linear-gradient(108deg,#effbff 0%,#ffffff 44%,#f4eaff 100%);
-  border-bottom-color:#cebfef;
+  background:linear-gradient(108deg,#bacfdf,var(--skin-surface-soft) 46%,#c2b9d7);
+  border-bottom-color:var(--border);
 }
 :root[data-theme="moon"] .header-inner nav a.current-nav::after{
-  background:linear-gradient(95deg,#3275bf 0%,#7753c9 58%,#a05db8 100%);
+  background:linear-gradient(95deg,#3d648d,#635588 58%,#805d88);
 }
 :root[data-theme="moon"] .mode[aria-pressed="true"]{
-  background:linear-gradient(106deg,#405dc2,#7342b7);color:white;
+  background:linear-gradient(106deg,#4d598d,#654884);color:var(--skin-on-accent);
 }
 :root[data-theme="moon"] .species-row.selected{
-  background:linear-gradient(110deg,#e3f7ff,#eee4ff);border-color:#8575bd;
+  background:linear-gradient(110deg,#b8cbde,var(--skin-selected));border-color:var(--skin-edge-strong);
+}
+:root[data-theme="moon"] .input-wrap:focus-within{
+  border-color:var(--skin-focus);box-shadow:0 0 0 2px var(--skin-focus);
 }
 @media(forced-colors:active){
   :root[data-theme="moon"] .section-rail .section-links a.section-active{outline:1px solid Highlight;outline-offset:-2px}

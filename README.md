@@ -8,13 +8,14 @@
 
 | 文件 | 用法 |
 | --- | --- |
+| `Jade-Palworld-Toolbox-Setup.exe` | 推荐首次安装。运行一个 Windows x64 安装向导即可添加工具箱和开始菜单入口，也可以创建桌面快捷方式。 |
 | `Jade-Palworld-Toolbox.exe` | Windows x64 桌面主程序。包含本地存档识别、帕鲁终端导入和桌面更新入口。 |
 | `Jade-Palworld-Toolbox-Fast.exe` | 可选的快速启动器。放在与同一版本主程序相同的文件夹，保留两个文件的原名。 |
 | 独立 HTML | 用浏览器打开即可离线查询。仓库存在当前浏览器配置中。读取本机存档和安装桌面更新请使用桌面版。 |
 | `SHA256SUMS.txt` | 对照该版本资产的 SHA-256。Windows 可运行 `Get-FileHash .\Jade-Palworld-Toolbox.exe -Algorithm SHA256`。 |
 | `Jade-Delta-from-….jdp` | 工具箱自动选择的增量更新文件。首次安装请下载主程序。 |
 
-桌面版会优先复用本机已有的同版 Gecko。新电脑首次运行时会从 Mozilla 下载约 90.5 MB 并校验 SHA-512。离线安装时，把[简体中文 x64 官方安装包](https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe) 按原名 `Firefox Setup 153.6.0esr.exe` 放在主程序旁即可。引擎准备完毕后，配种、仓库、地图和图鉴均可离线使用。
+安装版与便携版沿用当前 Windows 用户原有的世界档案、帕鲁仓库和设置。已有同版 Gecko 的电脑可以复用运行环境。新电脑首次运行时会从 Mozilla 下载约 90.5 MB 并校验 SHA-512。离线准备运行环境时，把[简体中文 x64 官方安装包](https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe) 按原名 `Firefox Setup 153.6.0esr.exe` 放在安装后的主程序旁。引擎准备完毕后，配种、仓库、地图和图鉴均可离线使用。
 
 在「设置 → 公告与更新」查看公告和更新状态。桌面版可使用已登录的 GitHub CLI，或为这个私有仓库绑定仅具 Contents 读取权限的细粒度令牌。令牌由当前 Windows 用户凭据加密保存。
 
@@ -33,7 +34,7 @@ node work/standalone/tests/release-bridge.mjs
 .\work\standalone\tests\run-release-tests.ps1
 ```
 
-Windows x64 桌面构建还需要 Python 3、Go 1.26.5 或更新版本，以及 Windows 自带的 .NET Framework 4.x 编译器。保持仓库目录结构，在 PowerShell 中运行：
+Windows x64 桌面构建使用 Python 3、Go 1.26.5 或更新版本，以及 Windows 自带的 .NET Framework 4.x 编译器。生成安装向导还需 Inno Setup 7，可通过 `JADE_ISCC` 指定 `ISCC.exe` 的完整路径。在仓库根目录执行以下命令。
 
 ```powershell
 .\scripts\build-release.ps1 -Repository 'S1T2J3/Jade-Palworld-Toolbox'

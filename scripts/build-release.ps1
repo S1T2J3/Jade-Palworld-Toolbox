@@ -70,7 +70,9 @@ foreach ($previous in (Get-ChildItem -LiteralPath $dist -File -Filter 'Jade-Delt
         Remove-Item -LiteralPath $previous.FullName
     }
 }
-$checksums = foreach ($asset in (@($desktop, $fast, $html) + $patches)) {
+& (Join-Path $PSScriptRoot 'build-installer.ps1') -Distribution $dist
+$setup=Join-Path $dist 'Jade-Palworld-Toolbox-Setup.exe'
+$checksums = foreach ($asset in (@($desktop, $fast, $html, $setup) + $patches)) {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant(), [IO.Path]::GetFileName($asset)
 }
 [IO.File]::WriteAllLines((Join-Path $dist 'SHA256SUMS.txt'), [string[]]$checksums, [Text.Encoding]::ASCII)

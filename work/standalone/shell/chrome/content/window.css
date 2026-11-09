@@ -1,18 +1,19 @@
 #palatlas-main {
-  --caption: #98eaff;
+  --caption: #9bbfd9;
   min-width: 320px;
   min-height: 240px;
   background: #f7f6fb;
 }
 #palatlas-main:is(:not([data-theme]),[data-theme="moon"]) {
+  background-color: #b4c0d6;
   --caption-art:
-    linear-gradient(118deg, transparent 24%, rgb(255 255 255 / .38) 31%, transparent 39%),
-    linear-gradient(105deg, #98eaff 0%, #b2edff 17%, #a4b7ff 53%, #ccb1ff 88%, #ecd0ff 100%);
-  --caption-ink: #29244c;
-  --caption-rule: #a996dc;
-  --caption-highlight: inset 0 1px rgb(255 255 255 / .72);
-  --caption-hover: rgb(255 255 255 / .48);
-  --caption-pressed: rgb(65 42 127 / .16);
+    linear-gradient(118deg, transparent 25%, rgb(220 236 249 / .14) 31%, transparent 39%),
+    linear-gradient(105deg, #9bbfd9 0%, #9badd8 46%, #b7a6d4 100%);
+  --caption-ink: #282642;
+  --caption-rule: #8993ae;
+  --caption-highlight: inset 0 1px rgb(225 233 255 / .32);
+  --caption-hover: rgb(235 239 255 / .30);
+  --caption-pressed: rgb(78 65 136 / .17);
 }
 #palatlas-main[data-theme="jade"] { --caption: #22483c; }
 #palatlas-main[data-theme="blue"] { --caption: #244660; }
