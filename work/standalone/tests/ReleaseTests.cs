@@ -29,11 +29,12 @@ internal static class ReleaseTests {
             assets=new[]{new UpdateService.Asset{name=UpdateService.FullName,size=exe.Length,id=10,digest=digest,state="uploaded"},
             new UpdateService.Asset{name=UpdateService.FastName,size=exe.Length,id=11,digest=digest,state="uploaded"}}};
         bool corrupt=false,badNotices=false;
+        string popupField="";
         int assetRequests=0;
         UpdateService.Fetch api=delegate(string path,string type,long limit,Stream output,bool asset) {
             byte[] data;
             if(path=="contents/announcements.json" && type=="application/vnd.github.raw+json")
-                data=Encoding.UTF8.GetBytes(badNotices?"{":"{\"announcements\":[{\"id\":\"hello\",\"title\":\"公告\",\"body\":\"line 1\\nline 2\",\"publishedAt\":\"2026-11-09\",\"url\":\"https://example.org/link\"}]}");
+                data=Encoding.UTF8.GetBytes(badNotices?"{":"{\"announcements\":[{\"id\":\"hello\",\"title\":\"公告\",\"body\":\"line 1\\nline 2\",\"publishedAt\":\"2026-11-09\",\"url\":\"https://example.org/link\""+popupField+"}]}");
             else if(path=="releases/latest") data=Encoding.UTF8.GetBytes(Json.Serialize(release));
             else if(asset && type=="application/octet-stream" && (path=="releases/assets/10" || path=="releases/assets/11")) {
                 assetRequests++;data=(byte[])exe.Clone();if(corrupt && path.EndsWith("10"))data[100]^=1;
@@ -44,10 +45,16 @@ internal static class ReleaseTests {
         updates.Refresh(view,api,false);
         Assert(view.state=="available" && view.latestVersion=="1.1.0" && view.releaseNotes=="说明" && assetRequests==0,"discovery");
         Assert(view.announcements.Length==1 && view.announcements[0].url==null,"sanitization");
+        Assert(Object.Equals(view.announcements[0].popup,false),"legacy notices should be quiet");
+        foreach(string value in new[]{"false","null","\"true\"","1","true"}) {
+            popupField=",\"popup\":"+value;
+            updates.Refresh(view,api,false);
+            Assert(Object.Equals(view.announcements[0].popup,value=="true"),"unexpected popup option: "+value);
+        }
         badNotices=true;corrupt=true;
         try {updates.Refresh(view,api,true);throw new Exception("corrupt accepted");} catch(InvalidDataException){}
         string folder;Assert(updates.PreparedLauncher(out folder)==null,"partial update became ready");
-        Assert(view.announcements.Length==1,"offline notices disappeared");
+        Assert(view.announcements.Length==1 && Object.Equals(view.announcements[0].popup,true),"offline popup notice disappeared");
         corrupt=false;updates.Refresh(view,api,true);
         string prepared=updates.PreparedLauncher(out folder);
         Assert(view.readyVersion=="1.1.0" && prepared!=null && File.Exists(prepared),"stage");

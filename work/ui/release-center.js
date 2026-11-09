@@ -6,6 +6,7 @@ function showReleaseCenter(){
 function initReleaseCenter(){
   const releases=jadeReleases, byId=id=>document.getElementById(id);
   const list=byId('notice-list'), all=byId('notice-read-all');
+  const popupSwitch=byId('notice-popup-enabled');
   const version=byId('release-version'), status=byId('release-status'), date=byId('release-date');
   const auto=byId('release-auto'), check=byId('release-check'), download=byId('release-download');
   const token=byId('release-token'), machine=byId('release-machine'), clear=byId('release-clear');
@@ -13,6 +14,11 @@ function initReleaseCenter(){
   let rows=null, controls=new Map(), pending=null, lastFailure='', localError='', lastState='';
   const dates=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'long',day:'numeric'});
   const times=new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'short'});
+
+  function refreshPopupSetting(){popupSwitch.checked=releases.popupsEnabled;}
+  refreshPopupSetting();
+  popupSwitch.addEventListener('change',()=>releases.setPopupsEnabled(popupSwitch.checked));
+  document.addEventListener('jade-popup-setting',refreshPopupSetting);
 
   function refreshRead(){
     let unread=0;

@@ -3,6 +3,10 @@
   <div class="release-layout">
     <section class="release-card" aria-labelledby="notices-heading">
       <div class="release-heading-row"><h2 id="notices-heading">公告</h2><button id="notice-read-all" type="button" class="release-text-button" hidden>全部标为已读</button></div>
+      <div class="release-option">
+        <label><input id="notice-popup-enabled" type="checkbox" aria-describedby="notice-popup-info">弹窗提醒重要公告</label>
+        <small id="notice-popup-info">关闭后，重要公告仍可在这里查看。</small>
+      </div>
       <div id="notice-list"></div>
     </section>
     <section class="release-card" aria-labelledby="updates-heading">

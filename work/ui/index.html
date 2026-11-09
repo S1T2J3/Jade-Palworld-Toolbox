@@ -176,6 +176,20 @@
     <div class="dialog-heading"><div class="section-title"><span class="title-icon"><i data-icon="book"></i></span><h2 id="about-title">数据说明</h2></div><button class="close" id="about-close" aria-label="关闭数据说明"><i data-icon="close"></i></button></div>
     <div class="about-inner" id="about-body"></div>
   </dialog>
+  <dialog id="notice-popup" aria-labelledby="notice-popup-title">
+    <form method="dialog">
+      <div class="notice-popup-content">
+        <header class="notice-popup-heading">
+          <span class="title-icon" aria-hidden="true"><i data-icon="bell"></i></span>
+          <h2 id="notice-popup-title" tabindex="-1" autofocus></h2>
+          <button class="close" id="notice-popup-close" aria-label="关闭公告"><i data-icon="close" aria-hidden="true"></i></button>
+        </header>
+        <time id="notice-popup-date" hidden></time>
+        <p id="notice-popup-body"></p>
+      </div>
+      <footer><button id="notice-popup-confirm">知道了</button></footer>
+    </form>
+  </dialog>
   <!--__WORLD_MANAGER__-->
   <script id="db" type="application/json">__DATABASE__</script>
   <script id="portraits" type="application/json">__PORTRAITS__</script>

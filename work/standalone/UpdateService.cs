@@ -17,7 +17,11 @@ internal sealed class UpdateService {
     internal delegate void Fetch(string path,string accept,long limit,Stream output,bool asset);
     // Field names mirror the JSON contracts read by JavaScriptSerializer.
 #pragma warning disable 0649
-    internal class Notice { public string id,title,body,publishedAt,url; }
+    internal class Notice {
+        public string id,title,body,publishedAt,url;
+        // Preserve JSON types so only the literal true opts a notice into a popup.
+        public object popup;
+    }
     internal class Notices { public Notice[] announcements; }
     internal class Asset {public string name,digest,state;public long id,size;}
     internal class Release {public string tag_name,body; public bool? prerelease,draft; public Asset[] assets;}
@@ -121,6 +125,7 @@ internal sealed class UpdateService {
                 n.publishedAt==null || n.publishedAt.Length>40 ||
                 !DateTimeOffset.TryParse(n.publishedAt,CultureInfo.InvariantCulture,DateTimeStyles.AssumeUniversal,out date)) throw new InvalidDataException();
             n.publishedAt=date.UtcDateTime.ToString("o");n.url=SafeUrl(n.url);
+            n.popup=Object.Equals(n.popup,true);
         }
         return parsed.announcements.OrderByDescending(n=>n.publishedAt,StringComparer.Ordinal).ToArray();
     }

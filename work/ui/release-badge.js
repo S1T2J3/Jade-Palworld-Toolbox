@@ -9,6 +9,7 @@ const jadeReleases=(()=>{
     body:'你可以离线查询配种组合、管理仓库、查看图鉴和探索地图。\n\n今后的公告会显示在这里。Windows 桌面版可在此检查和下载更新，已下载的版本会在下次启动时应用。'
   };
   const prefix='pal-atlas.releases.v1.',indexKey=prefix+'index',feedKey=prefix+'feed',readPrefix=prefix+'read.';
+  const popupSettingKey=prefix+'popup.enabled',shownPrefix=prefix+'popup.shown.';
   const sessionReads=new Set();
   const safeGet=key=>{try{return localStorage.getItem(key);}catch{return null;}};
   const safeSet=(key,value)=>{try{localStorage.setItem(key,value);return true;}catch{return false;}};
@@ -19,6 +20,8 @@ const jadeReleases=(()=>{
   function loadIndex(){return [...new Set([first.id,...readArray(indexKey).filter(validId).slice(0,50)])];}
   let ids=loadIndex(), notices=null;
   let snapshot={state:'idle',currentVersion,auto:true,accessMode:'machine'};
+  let popupsEnabled=safeGet(popupSettingKey)!=='0',popupShown=false,waiting=false,scheduled=false;
+  let popupId=null;
   function isRead(id){return sessionReads.has(id)||safeGet(readPrefix+id)==='1';}
   function updateBadge(){
     const count=ids.filter(id=>!isRead(id)).length;
@@ -38,12 +41,73 @@ const jadeReleases=(()=>{
     const byId=new Map([[first.id,first]]);
     for(const row of rows.slice(0,50)){
       if(!row||!validId(row.id)||typeof row.title!=='string'||!row.title.trim()||typeof row.body!=='string')continue;
-      byId.set(row.id,{id:row.id,title:row.title.slice(0,240),body:row.body.slice(0,12000),
+      byId.set(row.id,{id:row.id,title:row.title.slice(0,240),body:row.body.slice(0,12000),popup:row.popup===true,
         publishedAt:typeof row.publishedAt==='string'?row.publishedAt.slice(0,64):''});
     }
     return [...byId.values()].sort((a,b)=>(Date.parse(b.publishedAt)||0)-(Date.parse(a.publishedAt)||0));
   }
   function entries(){return notices??=normalize(readArray(feedKey));}
+  function pendingPopup(){return entries().find(row=>row.popup&&!isRead(row.id)&&safeGet(shownPrefix+row.id)!=='1');}
+  function showPendingPopup(){
+    waiting=false;
+    if(popupShown||!popupsEnabled)return;
+    const row=pendingPopup();
+    if(!row)return;
+    const focused=document.activeElement;
+    if(document.hidden||!document.hasFocus()||document.querySelector('dialog[open]')||focused?.isContentEditable||
+      focused?.matches('textarea,select,input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])')){
+      waiting=true;return;
+    }
+    const dialog=document.getElementById('notice-popup');
+    if(!dialog?.showModal)return;
+    document.getElementById('notice-popup-title').textContent=row.title;
+    document.getElementById('notice-popup-body').textContent=row.body;
+    const date=document.getElementById('notice-popup-date'), time=Date.parse(row.publishedAt);
+    date.hidden=!Number.isFinite(time);
+    if(!date.hidden){
+      date.dateTime=row.publishedAt;
+      date.textContent=new Date(time).toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+    }
+    dialog.showModal();
+    popupShown=true;popupId=row.id;
+    safeSet(shownPrefix+row.id,'1');
+    dialog.addEventListener('close',()=>{
+      popupId=null;
+      markRead([row.id]);
+    },{once:true});
+  }
+  function schedulePopup(){
+    if(scheduled||popupShown||!popupsEnabled||document.readyState!=='complete')return;
+    scheduled=true;
+    const check=async()=>{
+      try {
+        if(!pendingPopup())return;
+        // Serialize the read/show receipt across windows sharing the same profile.
+        if(navigator.locks)await navigator.locks.request(prefix+'popup',showPendingPopup);
+        else showPendingPopup();
+      } catch {showPendingPopup();}
+      finally {scheduled=false;}
+    };
+    if(window.requestIdleCallback)window.requestIdleCallback(check,{timeout:600});
+    else window.setTimeout(check,80);
+  }
+  function preferenceChanged(){
+    if(popupsEnabled)schedulePopup();
+    else if(popupId)document.getElementById('notice-popup').close();
+    document.dispatchEvent(new Event('jade-popup-setting'));
+  }
+  function setPopupsEnabled(value){
+    popupsEnabled=value===true;
+    safeSet(popupSettingKey,popupsEnabled?'1':'0');
+    preferenceChanged();
+  }
+  const retryIfWaiting=()=>{if(waiting)schedulePopup();};
+  document.addEventListener('close',retryIfWaiting,true);
+  document.addEventListener('focusout',retryIfWaiting);
+  document.addEventListener('visibilitychange',retryIfWaiting);
+  window.addEventListener('focus',retryIfWaiting);
+  window.addEventListener('load',schedulePopup,{once:true});
+  schedulePopup();
   function receive(event){
     let data;
     try{data=JSON.parse(event.detail);}catch{return;}
@@ -55,20 +119,24 @@ const jadeReleases=(()=>{
       notices=normalize(data.announcements);
       ids=notices.map(row=>row.id);
       safeSet(feedKey,JSON.stringify(notices));safeSet(indexKey,JSON.stringify(ids));updateBadge();
+      schedulePopup();
     }
     document.dispatchEvent(new Event('jade-release-change'));
   }
   if(desktop)document.addEventListener('pal-release-result',receive);
   window.addEventListener('storage',event=>{
+    if(event.key===popupSettingKey||event.key===null){popupsEnabled=safeGet(popupSettingKey)!=='0';preferenceChanged();}
     if(event.key===indexKey||event.key===feedKey||event.key===null){
       if(event.key===null)sessionReads.clear();
-      ids=loadIndex();notices=null;updateBadge();
+      ids=loadIndex();notices=null;updateBadge();schedulePopup();
       document.dispatchEvent(new Event('jade-release-change'));
     }else if(event.key.startsWith(readPrefix)){
       if(event.newValue!=='1')sessionReads.delete(event.key.slice(readPrefix.length));
+      else if(popupId===event.key.slice(readPrefix.length))document.getElementById('notice-popup').close();
       updateBadge();document.dispatchEvent(new Event('jade-notice-read'));
     }
   });
   updateBadge();
-  return {currentVersion,releaseUrl,desktop,entries,isRead,markRead,get snapshot(){return snapshot;}};
+  return {currentVersion,releaseUrl,desktop,entries,isRead,markRead,setPopupsEnabled,
+    get popupsEnabled(){return popupsEnabled;},get snapshot(){return snapshot;}};
 })();
