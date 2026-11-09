@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const releaseVersion = '1.0.8';
+const releaseVersion = '1.0.9';
 const releaseRepository = process.env.JADE_RELEASE_REPOSITORY || 'S1T2J3/Jade-Palworld-Toolbox';
 if (!/^[a-z\d][a-z\d-]{0,38}\/[a-z\d][a-z\d_.-]{0,99}$/i.test(releaseRepository)) {
   throw new Error('Invalid GitHub update repository');
@@ -36,7 +36,7 @@ const features={
 };
 const scripts=names=>names.map(name=>read('ui',name+'.js')).join('\n;\n');
 const bundledNotices=JSON.parse(read('..','announcements.json')).announcements.map(
-  ({id,title,body,publishedAt})=>({id,title,body,publishedAt})
+  ({id,title,body,publishedAt,popup})=>({id,title,body,publishedAt,popup:popup===true||id==='release-v'+releaseVersion})
 );
 const program=scripts([...core,...(desktop?[]:Object.values(features).flat()),'app'])
   .replace('__BUNDLED_NOTICES__',()=>JSON.stringify(bundledNotices).replace(/</g,'\\u003c'))

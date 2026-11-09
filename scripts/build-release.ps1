@@ -6,6 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $source = Join-Path $project 'work'
+& node (Join-Path $PSScriptRoot 'prepare-announcement.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Announcement preparation failed' }
 $dist = Join-Path $project 'dist'
 $content = Join-Path $project ('build/content-' + [Guid]::NewGuid().ToString('n'))
 $null = [IO.Directory]::CreateDirectory($dist)

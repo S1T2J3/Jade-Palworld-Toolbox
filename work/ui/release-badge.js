@@ -94,9 +94,9 @@ const jadeReleases=(()=>{
     dialog.showModal();
     popupShown=true;popupId=row.id;
     safeSet(shownPrefix+row.id,'1');
+    markRead([row.id]);
     dialog.addEventListener('close',()=>{
       popupId=null;
-      markRead([row.id]);
     },{once:true});
   }
   function schedulePopup(){
