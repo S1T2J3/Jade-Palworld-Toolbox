@@ -69,7 +69,10 @@ internal sealed class ReleaseAccess {
             start.EnvironmentVariables["GIT_TERMINAL_PROMPT"]="0";
             start.EnvironmentVariables["GCM_INTERACTIVE"]="Never";
             start.EnvironmentVariables["GH_PROMPT_DISABLED"]="1";
-            if(candidate!=null) start.EnvironmentVariables["JADE_SIGNER_CANDIDATE"]=candidate;
+            if(candidate!=null) {
+                start.EnvironmentVariables["JADE_SIGNER_CANDIDATE"]=candidate;
+                start.EnvironmentVariables["PSModulePath"]=Path.Combine(Environment.SystemDirectory,@"WindowsPowerShell\v1.0\Modules");
+            }
             using(var process=Process.Start(start)) {
                 Task<string> stdout=process.StandardOutput.ReadToEndAsync(),stderr=process.StandardError.ReadToEndAsync();
                 if(input!=null) process.StandardInput.Write(input);
@@ -98,7 +101,7 @@ internal sealed class ReleaseAccess {
         try {
             using(var locked=new FileStream(executable,FileMode.Open,FileAccess.Read,FileShare.Read)) {
                 string powershell=Path.Combine(Environment.SystemDirectory,@"WindowsPowerShell\v1.0\powershell.exe");
-                const string verify="-NoProfile -NonInteractive -Command \"$s=Get-AuthenticodeSignature -LiteralPath $env:JADE_SIGNER_CANDIDATE; if ($s.Status -eq 'Valid' -and $s.SignerCertificate.GetNameInfo('SimpleName',$false) -ceq 'GitHub, Inc.') { 'verified' }\"";
+                const string verify="-NoProfile -NonInteractive -Command \"$ErrorActionPreference='Stop'; Import-Module ($PSHOME+'\\Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1'); $s=Get-AuthenticodeSignature -LiteralPath $env:JADE_SIGNER_CANDIDATE; if ($s.Status -eq 'Valid' -and $s.SignerCertificate.GetNameInfo('SimpleName',$false) -ceq 'GitHub, Inc.') { 'verified' }\"";
                 string signer=Helper(powershell,verify,null,executable);
                 if(signer==null || signer.Trim()!="verified")return null;
                 string result=Helper(executable,"auth token --hostname github.com",null);
