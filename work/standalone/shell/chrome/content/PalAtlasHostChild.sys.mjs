@@ -62,9 +62,7 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       try {request=JSON.parse(event.detail);}catch{return;}
       if(!["auto","folder"].includes(request?.mode) ||
          !(Number.isSafeInteger(request.requestId) || (typeof request.requestId==="string" && request.requestId.length<=100))) return;
-      this.sendQuery("PalAtlas:ReadGameSaves",{mode:request.mode})
-        .then(result=>report("pal-game-saves-result",{...result,requestId:request.requestId}))
-        .catch(()=>report("pal-game-saves-result",{state:"error",message:"未能读取游戏存档。请重试。",requestId:request.requestId}));
+      this.readWorlds(doc,request,result=>report("pal-game-saves-result",{...result,requestId:request.requestId}));
       return;
     }
     if (event.type==="pal-new-window") this.sendAsyncMessage("PalAtlas:NewWindow");
@@ -79,6 +77,22 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       this.sendQuery("PalAtlas:Save",{name:payload.name,text:JSON.stringify(payload.backup,null,2)})
         .then(result=>report("pal-backup-result",result))
         .catch(()=>report("pal-backup-result",{state:"error",text:"备份未能保存。请重新打开世界档案后重试。"}));
+    }
+  }
+  async readWorlds(doc,{mode,requestId},report) {
+    const dialog=doc.getElementById("world-dialog");
+    const current=()=>this.document===doc && dialog.open && dialog.dataset.gameScanRequest===String(requestId);
+    try {
+      const result=await this.sendQuery("PalAtlas:ReadGameSaves",{mode});
+      if (!current()) return;
+      if (mode==="auto" && result.state==="ok" && result.saves.length===0 && result.defaultDirectoryExists) {
+        report({...result,pickingDefault:true});
+        if (!current()) return;
+        const picked=await this.sendQuery("PalAtlas:ReadGameSaves",{mode:"default-folder"});
+        if (current()) report(picked);
+      } else report(result);
+    } catch {
+      if (current()) report({state:"error",message:"未能读取游戏存档。请重试。"});
     }
   }
   async release(doc,{action,enabled,requestId}) {

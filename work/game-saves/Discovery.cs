@@ -140,10 +140,13 @@ internal static class PalGameSaveDiscovery
             SaveRoot(path);
         }
 
-        public string Json()
+        public string Json(string defaultDirectory)
         {
             if (joinedOnly) Warn("部分联机世界只有本机玩家数据，缺少世界名称。可在主机或服务器上选择含 LevelMeta.sav 的目录。");
-            return new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Serialize(new { saves = saves, pending = pending, warnings = warnings, roots = roots });
+            return new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Serialize(new {
+                saves = saves, pending = pending, warnings = warnings, roots = roots,
+                defaultDirectory = defaultDirectory, defaultDirectoryExists = Directory.Exists(defaultDirectory)
+            });
         }
     }
 
@@ -156,17 +159,23 @@ internal static class PalGameSaveDiscovery
     internal static string ScanFromLocations(string selectedDirectory, string appData, IEnumerable<string> libraries)
     {
         Scan scan = new Scan();
+        string defaultDirectory = String.IsNullOrEmpty(appData) ? null : Path.Combine(appData, "Pal", "Saved", "SaveGames");
         try
         {
             string xboxDirectory = selectedDirectory;
             if (String.IsNullOrEmpty(selectedDirectory))
             {
-                string steamRoot = Path.Combine(appData, "Pal", "Saved", "SaveGames");
-                scan.Root(steamRoot);
-                scan.SaveRoot(steamRoot);
+                if (defaultDirectory != null)
+                {
+                    scan.Root(defaultDirectory);
+                    scan.SaveRoot(defaultDirectory);
+                }
                 foreach (string library in libraries) scan.SaveRoot(Path.Combine(library, @"steamapps\common\PalServer\Pal\Saved\SaveGames"));
-                xboxDirectory = Path.Combine(appData, "Packages", XboxSaves.Package, "SystemAppData", "wgs");
-                scan.Root(xboxDirectory);
+                if (defaultDirectory != null)
+                {
+                    xboxDirectory = Path.Combine(appData, "Packages", XboxSaves.Package, "SystemAppData", "wgs");
+                    scan.Root(xboxDirectory);
+                }
             }
             else scan.Selected(selectedDirectory);
             XboxSaves.Scan(xboxDirectory, delegate(string world, string meta, string accountDir, DateTime modified)
@@ -175,7 +184,7 @@ internal static class PalGameSaveDiscovery
             }, scan.Warn);
         }
         catch (Exception ex) { if (!Expected(ex)) throw; scan.Warn("访问存档路径失败。请重新选择可读取的存档目录。"); }
-        return scan.Json();
+        return scan.Json(defaultDirectory);
     }
 
     private static IEnumerable<string> SteamLibraries()

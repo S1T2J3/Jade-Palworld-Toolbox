@@ -16,7 +16,7 @@
 #world-preview-list{display:grid;list-style:none;gap:6px;margin:8px 0;max-height:165px;overflow:auto;padding:0}
 #world-preview-list li{display:grid;border-top:1px solid #dde7d8;padding-top:5px}#world-preview-list strong{font-size:13px;overflow-wrap:anywhere}
 #world-feedback{margin:0;color:#315c42;border-left:3px solid #7b9e75;padding:3px 8px}#world-feedback[data-error=true]{border-color:#b77545;color:#854a28}
-#world-game-select{width:100%}#world-game-location,#world-game-bind-hint,#world-game-status{margin-top:5px;overflow-wrap:anywhere}
+#world-game-select,#world-game-directory{width:100%}#world-game-location,#world-game-bind-hint,#world-game-status{margin-top:5px;overflow-wrap:anywhere}
 #world-select,#world-game-select,#world-select option,#world-game-select option,.world-rail [data-world-name],.world-pill [data-world-name]{white-space:pre}
 #world-game-bind-hint,#world-game-status,#world-preview-list strong{white-space:pre-wrap}
 #world-game-diagnostics{margin-top:7px;color:#486552;font-size:12px}

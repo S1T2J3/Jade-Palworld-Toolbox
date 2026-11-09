@@ -34,15 +34,17 @@ export class PalAtlasHostParent extends JSWindowActorParent {
       browser.fullZoom=data.command==="reset"?1:Math.min(3,Math.max(0.5,Math.round((now+(data.command==="up"?0.1:-0.1))*10)/10));return;
     }
     if(name==="PalAtlas:ReadGameSaves") {
-      if(!["auto","folder"].includes(data?.mode)) throw new Error("Unknown scan mode");
+      if(!["auto","folder","default-folder"].includes(data?.mode)) throw new Error("Unknown scan mode");
       let result;
       if(data.mode==="auto") {
         if(!this.gameScan) this.gameScan=readGameSaves(win,browser,"auto").finally(()=>{this.gameScan=null;});
         result=await this.gameScan;
+        this.offerDefaultFolder=result.state==="ok" && result.defaultDirectoryExists && result.saves.length===0;
       } else {
-        if(this.gamePicker) return {state:"cancelled"};
+        if(this.gamePicker || (data.mode==="default-folder" && !this.offerDefaultFolder)) return {state:"cancelled"};
+        this.offerDefaultFolder=false;
         this.gamePicker=true;
-        try{result=await readGameSaves(win,browser,"folder");}finally{this.gamePicker=false;}
+        try{result=await readGameSaves(win,browser,data.mode);}finally{this.gamePicker=false;}
       }
       if(result.state==="ok") this.detectedWorlds=new Map(result.saves.map(world=>[world.id,world]));
       return result;

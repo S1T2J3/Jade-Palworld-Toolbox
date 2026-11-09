@@ -34,6 +34,11 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
     list.replaceChildren(...lines.map(text=>{const li=document.createElement('li');li.textContent=text;return li;}));
     el('game-diagnostics').hidden=!lines.length;
   }
+  function showGameDirectory(path='') {
+    const input=el('game-directory');
+    input.value=typeof path==='string'?path:'';
+    el('game-directory-row').hidden=!input.value;
+  }
   function namedOption(label,id,selected) {
     const option=new Option(label,id,false,selected);
     option.label=label;
@@ -158,6 +163,7 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
   function requestGameSaves(mode) {
     if(!desktop || !dialog.open || gameRequest) return;
     gameRequest=globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+    dialog.dataset.gameScanRequest=gameRequest;
     el('game-scan').disabled=true;el('game-folder').disabled=true;
     el('game-status').textContent=mode==='folder'?'请选择游戏存档目录…':'正在检测本机游戏存档…';
     document.dispatchEvent(new CustomEvent('pal-read-game-saves',{bubbles:true,detail:JSON.stringify({mode,requestId:gameRequest})}));
@@ -167,12 +173,23 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
     try {result=JSON.parse(event.detail);} catch{return;}
     if(!result || !dialog.open || !gameRequest || result.requestId!==gameRequest) return;
     const revision=gameRequest;
+    const strings=list=>Array.isArray(list)?list.filter(s=>typeof s==='string'&&s):[];
+    if(result.pickingDefault===true) {
+      gameSaves=[];renderGameList();showTerminal();
+      showGameDirectory(result.defaultDirectory);
+      gameDetails(strings(result.roots),strings(result.warnings));
+      el('game-status').textContent='未检测到世界。已填入默认存档目录，请在打开的窗口中选择存档文件夹。';
+      return;
+    }
     try {
-      if(result.state==='cancelled'){el('game-status').textContent='已取消选择目录。';return;}
-      const strings=list=>Array.isArray(list)?list.filter(s=>typeof s==='string'&&s):[];
+      if(result.state==='cancelled'){
+        if(!gameSaves.length && !el('game-directory').value) showGameDirectory(result.defaultDirectory);
+        el('game-status').textContent=el('game-directory').value?'已取消选择，仍可从下方目录重新查找。':'已取消选择目录。';return;
+      }
       const warnings=strings(result.warnings);
       gameDetails(strings(result.roots),warnings);
       if(result.state!=='ok') {
+        if(!gameSaves.length) showGameDirectory(result.selectedDirectory||result.defaultDirectory||el('game-directory').value);
         el('game-status').textContent=result.message||'未能读取本机存档。可以重新检测或选择目录。';return;
       }
       if(!Array.isArray(result.saves)) throw Error('存档识别结果无效。');
@@ -188,13 +205,22 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
       const previous=el('game-select').value;
       gameSaves=records;renderGameList(previous);
       showTerminal();
-      const status=records.length?'检测到 '+records.length+' 个游戏世界。':'未找到可读取世界名的存档。可以选择存档目录重试。';
+      showGameDirectory(result.selectedDirectory||(!records.length?result.defaultDirectory:''));
+      let status='未找到游戏世界，可以选择其他存档目录。';
+      if(records.length) status='检测到 '+records.length+' 个游戏世界。';
+      else if(result.selectedDirectory) status='所选目录中没有可读取的世界。可以选择其他存档目录。';
+      else if(result.defaultDirectory) status=result.defaultDirectoryExists===false
+        ?'本机未找到下面的默认存档目录。可以选择游戏实际保存的位置。'
+        :'已检查下面的默认存档目录，未找到可读取的世界。可以选择其他存档目录。';
       el('game-status').textContent=status+(warnings.length?' 有 '+warnings.length+' 条扫描提示。':'');
       requestTerminal(worlds.active());
     } catch(error) {
       if(revision===gameRequest) el('game-status').textContent='读取失败。'+error.message;
     } finally {
-      if(revision===gameRequest){gameRequest=null;el('game-scan').disabled=false;el('game-folder').disabled=false;}
+      if(revision===gameRequest){
+        gameRequest=null;delete dialog.dataset.gameScanRequest;
+        el('game-scan').disabled=false;el('game-folder').disabled=false;
+      }
     }
   });
   for(const [id,mode] of [['game-scan','auto'],['game-folder','folder']]) el(id).addEventListener('click',()=>requestGameSaves(mode));
@@ -259,6 +285,8 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
   dialog.addEventListener('close',()=>{
     resetForms();clearPreview();
     gameRequest=null;gameSaves=[];el('game-select').replaceChildren();el('game-choices').hidden=true;gameDetails();
+    delete dialog.dataset.gameScanRequest;
+    showGameDirectory();
     el('game-scan').disabled=false;el('game-folder').disabled=false;el('game-status').textContent='';
     if(opener) restoreFocus?.(opener);
     opener=null;

@@ -13,7 +13,7 @@ using System.Windows.Forms;
 [assembly: AssemblyTitle("Jade · 幻兽帕鲁工具箱")]
 [assembly: AssemblyProduct("Jade · 幻兽帕鲁工具箱")]
 [assembly: AssemblyDescription("离线帕鲁图鉴、配种、世界地图与物品查询")]
-[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
 
 internal static class DesktopHost {
     const string Title="Jade · 幻兽帕鲁工具箱";
@@ -247,6 +247,32 @@ internal static class DesktopHost {
         }
         return Run(root,false);
     }
+    static int WriteReadResult(string[] args,int legacyLength,string json) {
+        byte[] bytes=Encoding.UTF8.GetBytes(json);
+        if(args.Length==legacyLength) {
+            using(Stream output=Console.OpenStandardOutput()) output.Write(bytes,0,bytes.Length);
+            return 0;
+        }
+        Guid request;
+        if(args.Length!=legacyLength+2 || !Path.IsPathRooted(args[legacyLength]) ||
+            !Guid.TryParseExact(args[legacyLength+1],"N",out request)) return 2;
+        string dir=Path.Combine(Path.GetFullPath(args[legacyLength]),"ipc");
+        Directory.CreateDirectory(dir);
+        // If the window was terminated between the child's exit and consumption,
+        // discard abandoned responses on a later scan; active reads have a 45s timeout.
+        foreach(string file in Directory.EnumerateFiles(dir,"read-*.json")) {
+            string name=Path.GetFileNameWithoutExtension(file);
+            Guid stale;
+            if(!Guid.TryParseExact(name.Substring(5),"N",out stale))continue;
+            try {if(File.GetLastWriteTimeUtc(file)<DateTime.UtcNow.AddHours(-1))File.Delete(file);}
+            catch(IOException){} catch(UnauthorizedAccessException){}
+        }
+        // The parent reads only after a successful process exit. CreateNew also
+        // prevents a pre-existing result from being overwritten.
+        using(var file=new FileStream(Path.Combine(dir,"read-"+request.ToString("N")+".json"),
+            FileMode.CreateNew,FileAccess.Write,FileShare.None)) file.Write(bytes,0,bytes.Length);
+        return 0;
+    }
     [STAThread] static int Main(string[] args) {
         if((args.Length==3 || args.Length==4) && args[0]=="--release") {
             try {
@@ -269,22 +295,18 @@ internal static class DesktopHost {
                     return Run(Path.GetFullPath(args[1]),false,ready);
             } catch {return 1;}
         }
-        // A redirected pipe is the only output for these read-only helper modes.
-        if(args.Length==4 && args[0]=="--terminal-sources") {
+        if((args.Length==4 || args.Length==6) && args[0]=="--terminal-sources") {
             try {
                 if(args[1]!="wgs" && args[1]!="folder") return 2;
-                byte[] json=new UTF8Encoding(false).GetBytes(TerminalSources.Json(args[3],args[2],args[1]=="wgs"));
-                using(Stream output=Console.OpenStandardOutput()) output.Write(json,0,json.Length);
-                return 0;
+                return WriteReadResult(args,4,TerminalSources.Json(args[3],args[2],args[1]=="wgs"));
             } catch {return 1;}
         }
-        if((args.Length==1 && args[0]=="--scan-game-saves") || (args.Length==2 && args[0]=="--scan-game-folder")) {
+        if(((args.Length==1 || args.Length==3) && args[0]=="--scan-game-saves") ||
+            ((args.Length==2 || args.Length==4) && args[0]=="--scan-game-folder")) {
             try {
-                string directory=args.Length==2?args[1]:null;
+                string directory=args[0]=="--scan-game-folder"?args[1]:null;
                 if(directory!=null && !Path.IsPathRooted(directory)) return 2;
-                byte[] json=new UTF8Encoding(false).GetBytes(PalGameSaveDiscovery.ScanJson(directory));
-                using(Stream output=Console.OpenStandardOutput()) output.Write(json,0,json.Length);
-                return 0;
+                return WriteReadResult(args,directory==null?1:2,PalGameSaveDiscovery.ScanJson(directory));
             } catch {return 1;}
         }
         try {

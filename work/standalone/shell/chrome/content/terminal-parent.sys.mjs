@@ -1,5 +1,6 @@
 import { Subprocess } from "resource://gre/modules/Subprocess.sys.mjs";
 import { setTimeout, clearTimeout } from "resource://gre/modules/Timer.sys.mjs";
+import { readDesktopResult } from "chrome://palatlas/content/read-result.sys.mjs";
 
 // Level files never cross IPC. Only the native reader opens them and only
 // the compact terminal records are sent back to the handbook.
@@ -29,9 +30,11 @@ async function runJSON(command,args,input,timeout) {
   } finally {clearTimeout(timer);proc.kill(0).catch(()=>{});}
 }
 
-function sources(world) {
-  return runJSON(Services.env.get("PAL_ATLAS_LAUNCHER"),
-    ["--terminal-sources",world.platform==="Xbox / Game Pass"?"wgs":"folder",world.id,world.path],null,30000);
+async function sources(world) {
+  const args=["--terminal-sources",world.platform==="Xbox / Game Pass"?"wgs":"folder",world.id,world.path];
+  const result=await readDesktopResult(args,32*1024*1024,30000);
+  if(result?.error) throw Error(result.error);
+  return result;
 }
 
 let lastRead=null;
