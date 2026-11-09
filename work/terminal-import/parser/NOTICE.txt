@@ -12,3 +12,6 @@ wrappers, terminal-only character selection, player identifiers, input manifests
 and a narrow JSON output protocol. The matching Go sources and build command
 are included in terminal-reader-source.zip. No proprietary Oodle DLL is used.
 The Go standard library/runtime terms are in LICENSES/Go-BSD.txt.
+
+On 9 November 2026 the Jade toolbox added a temporary-file interface for
+Windows desktop launches. The original standard-stream interface remains available.

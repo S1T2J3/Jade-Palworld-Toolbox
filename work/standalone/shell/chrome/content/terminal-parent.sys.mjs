@@ -4,30 +4,35 @@ import { readDesktopResult } from "chrome://palatlas/content/read-result.sys.mjs
 
 // Level files never cross IPC. Only the native reader opens them and only
 // the compact terminal records are sent back to the handbook.
-async function runJSON(command,args,input,timeout) {
-  const proc=await Subprocess.call({command,arguments:args});
-  let expired=false;
-  const timer=setTimeout(()=>{expired=true;proc.kill(0).catch(()=>{});},timeout);
+async function runReader(command,input) {
+  const root=Services.env.get("PAL_ATLAS_DATA")||PathUtils.profileDir;
+  const ipc=PathUtils.join(root,"ipc");
+  const uid=()=>Services.uuid.generateUUID().toString().replace(/[-{}]/g,"");
+  const inputId=uid(),outputId=uid();
+  const request=PathUtils.join(ipc,"read-"+inputId+".json");
+  const response=PathUtils.join(ipc,"read-"+outputId+".json");
+  const manifest=new TextEncoder().encode(JSON.stringify(input));
+  if(manifest.length>2*1024*1024) throw Error("存档文件清单过大。");
+  let expired=false,timer,proc;
+  await IOUtils.makeDirectory(ipc,{ignoreExisting:true});
   try {
-    if(input) await proc.stdin.write(JSON.stringify(input));
-    await proc.stdin.close();
-    const chunks=[];
-    let length=0;
-    for(;;) {
-      const next=await proc.stdout.readString();
-      if(!next) break;
-      length+=next.length;
-      if(length>64*1024*1024) throw Error("终端数据量超出本次读取范围。");
-      chunks.push(next);
-    }
+    await IOUtils.write(request,manifest,{mode:"create"});
+    proc=await Subprocess.call({command,arguments:["--terminal-ipc",root,inputId,outputId]});
+    timer=setTimeout(()=>{expired=true;proc.kill(0).catch(()=>{});},240000);
     const {exitCode}=await proc.wait();
     if(expired) throw Error("读取帕鲁终端超时，请待游戏保存完成后重试。");
+    if(!await IOUtils.exists(response)) throw Error("终端读取程序未能完成，请重新检测。");
+    if((await IOUtils.stat(response)).size>64*1024*1024) throw Error("终端数据量超出本次读取范围。");
     let result;
-    try {result=JSON.parse(chunks.join(""));}catch{throw Error("终端读取程序未能完成。请检查存档是否完整，再重新检测。");}
+    try {result=await IOUtils.readJSON(response);}catch{throw Error("终端读取程序未能完成。请检查存档是否完整，再重新检测。");}
     if(typeof result?.error==="string" && result.error) throw Error(result.error);
     if(exitCode!==0) throw Error("此终端存档未能完整解析，请重新检测。");
     return result;
-  } finally {clearTimeout(timer);proc.kill(0).catch(()=>{});}
+  } finally {
+    if(timer) clearTimeout(timer);
+    if(proc) await proc.kill(0).catch(()=>{});
+    await Promise.all([request,response].map(path=>IOUtils.remove(path,{ignoreAbsent:true}).catch(()=>{})));
+  }
 }
 
 async function sources(world) {
@@ -45,7 +50,7 @@ async function readWorld(world) {
   if(lastRead?.snapshot===manifest.snapshot && lastRead.game===world.id) return lastRead.result;
   const shell=Services.env.get("PAL_ATLAS_SHELL");
   const reader=PathUtils.join(shell,"tools","pal-terminal-reader.exe");
-  const parsed=await runJSON(reader,[],{level:manifest.level,players:manifest.players},240000);
+  const parsed=await runReader(reader,{level:manifest.level,players:manifest.players});
   if(!Array.isArray(parsed.records) || !Array.isArray(parsed.owners)) throw Error("终端读取程序返回了不完整的数据。");
   if((await sources(world)).snapshot!==manifest.snapshot)
     throw Error("游戏刚刚写入了新存档。请重新检测以读取同一次保存的数据。");

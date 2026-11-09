@@ -14,3 +14,8 @@ CGO_ENABLED=0. Read one UTF-8 JSON manifest on stdin containing absolute
 world-file paths in level[] and player file descriptors {id,path} in players[].
 The reader emits only owner identifiers, character names, terminal records and
 diagnostics as JSON. The host locates the related files and selects a player.
+
+The Windows desktop host can also use --terminal-ipc with an app data
+directory, a request ID and a response ID. In this mode the same JSON is
+transferred using one-time files in the app's ipc directory. The host removes
+the files after reading the result.
