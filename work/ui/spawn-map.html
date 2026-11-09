@@ -1,0 +1,39 @@
+<section id="spawns-view" aria-labelledby="sm-title" hidden>
+  <header class="sm-heading">
+    <div><h1 id="sm-title">帕鲁刷新位置</h1><p id="sm-summary"></p></div>
+    <label class="wm-world-label">地图区域 <select id="sm-region"></select></label>
+  </header>
+  <div class="sm-toolbar">
+    <div class="sm-picker">
+      <label for="sm-search">查找帕鲁</label>
+      <div class="input-wrap"><i data-icon="search"></i><input id="sm-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sm-species" placeholder="中文名、英文名或图鉴编号" autocomplete="off" spellcheck="false"></div>
+      <div id="sm-species" role="listbox" aria-label="选择帕鲁" hidden></div>
+    </div>
+    <div class="sm-filters">
+      <label>出现时段 <select id="sm-time"><option value="all">全部时段</option><option value="day">白天可遇</option><option value="night">夜间可遇</option><option value="nightOnly">仅夜间出现</option></select></label>
+      <label>刷新类型 <select id="sm-kind"><option value="all">全部类型</option><option value="wild">野外</option><option value="alpha">头目</option></select></label>
+    </div>
+  </div>
+  <div class="sm-board">
+    <section id="sm-viewport" tabindex="0" role="region" aria-label="帕鲁刷新地图，方向键平移，加减键缩放，Home 查看全图">
+      <div class="map-camera-scene"><img id="sm-sheet" alt="" draggable="false"><div id="sm-markers"></div></div>
+      <div class="wm-map-tools" data-sm-ui>
+        <button type="button" id="sm-zoom-in" title="放大" aria-label="放大刷新地图">＋</button>
+        <button type="button" id="sm-zoom-out" title="缩小" aria-label="缩小刷新地图">−</button>
+        <button type="button" id="sm-fit" title="查看全图" aria-label="查看刷新全图"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 9V4h5.2m6.6 0h5.2v5m0 6v5h-5.2m-6.6 0H3.5v-5"/></svg></button>
+      </div>
+      <div class="wm-readout" aria-hidden="true"><b id="sm-zoom-level"></b><span class="wm-desktop-help">悬停查看等级 · 滚轮缩放</span><span class="wm-touch-help">点按查看等级 · 双指缩放</span></div>
+      <div id="sm-hover" role="tooltip" hidden></div>
+      <section id="sm-detail" data-sm-ui aria-label="刷新位置详情" aria-live="polite" hidden>
+        <button type="button" id="sm-close-detail" aria-label="关闭刷新详情"><i data-icon="close"></i></button>
+        <div id="sm-detail-content"></div>
+      </section>
+    </section>
+    <aside class="sm-sidebar panel" aria-label="帕鲁资料与刷新位置">
+      <div class="sm-profile" id="sm-profile"></div>
+      <div class="sm-list-heading"><h2>刷新位置</h2><span id="sm-count" aria-live="polite"></span></div>
+      <div id="sm-list" aria-label="刷新位置列表"></div>
+    </aside>
+  </div>
+  <div class="wm-source" id="sm-source"></div>
+</section>

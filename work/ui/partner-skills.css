@@ -1,0 +1,30 @@
+#partner-skills-view{padding:24px 0 18px;color:var(--ink)}
+.pk-heading h1,#combat-guide-view h1{margin:0;font-size:clamp(24px,3vw,34px);color:#204c3a}
+.pk-heading p,.cg-heading p{margin:6px 0 14px;color:var(--soft);font-size:14px}
+.pk-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.pk-controls label,.pk-level,.cg-picks label{display:grid;gap:4px;font-size:13px;font-weight:650}
+.pk-controls label:first-child{flex:1;min-width:min(240px,100%)}
+.pk-controls :is(input,select),.pk-level select,.cg-picks select{height:36px;min-width:0;border:1px solid #c6d4ca;border-radius:7px;padding:5px 8px;background:#fff;color:var(--ink);font:inherit}
+.pk-controls button,.pk-filters button,.cg-status-groups button{min-height:30px;border:1px solid #c6d4ca;border-radius:7px;padding:5px 9px;background:var(--paper);color:var(--green);font-size:13px}
+.pk-filters{margin:13px 0;padding:0;border:0}.pk-filters legend{font-size:12px;color:var(--soft);margin-bottom:5px}
+#pk-types,.cg-status-groups{display:flex;gap:5px;flex-wrap:wrap}
+.pk-filters [aria-pressed=true],.cg-status-groups [aria-pressed=true]{background:#285e49;color:#fff}
+.pk-layout{display:grid;grid-template-columns:minmax(280px,1.4fr) minmax(280px,1fr);gap:14px;align-items:start}
+.pk-catalog,#pk-detail,.cg-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.pk-catalog h2{font-size:14px;margin:0 0 8px}
+#pk-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:4px;align-content:start;max-height:min(58vh,610px);overflow:auto;padding:2px}
+#pk-list a{display:flex;align-items:center;gap:6px;border-radius:6px;padding:5px 4px;border:1px solid transparent;text-decoration:none;color:var(--ink);min-width:0}
+#pk-list a:hover,#pk-list a[aria-current]{background:#edf5e7;border-color:#b7cdb9}
+#pk-list small,.pk-hero small,#pk-detail>small{color:var(--soft);font-size:11px}
+#pk-list .avatar{width:36px;height:36px;border-radius:8px}
+.pk-row-copy{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.pk-pal-name{display:flex;align-items:baseline;gap:2px 5px;flex-wrap:wrap}
+.pk-pal-name b{font-size:14px}.pk-pal-name small{white-space:nowrap;font-variant-numeric:tabular-nums}
+.pk-skill-name{font-size:12px;color:#52655a}
+.pk-effect a{color:var(--green);text-underline-offset:3px}
+.pk-hero{display:flex;align-items:center;gap:10px}.pk-hero .avatar{width:50px;height:50px}.pk-hero h2{margin:2px 0;font-size:22px}
+.pk-badges,.pk-links{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.pk-badges span{border-radius:5px;background:#eef2e6;color:#476040;padding:3px 7px;font-size:12px}
+.pk-level{display:flex;align-items:center;gap:8px}.pk-effect{line-height:1.75}.pk-numbers{margin:12px 0}.pk-numbers div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:5px 0;font-size:13px}.pk-numbers dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.pk-links a,.pk-gear a,.pk-foot a,.cg-foot a{color:#2a634c;text-underline-offset:2px}.pk-links a{padding:4px 7px;background:#eff5e9;border-radius:5px;font-size:13px}.pk-gear,.pk-foot,.cg-foot{font-size:12px;color:var(--soft)}
+.pk-foot,.cg-foot{margin:12px 0}.pk-layout>*{min-width:0}
+@media(max-width:760px){.pk-layout{grid-template-columns:1fr}#pk-list{max-height:28vh}.pk-controls{gap:6px}.pk-controls label:first-child{min-width:135px}.pk-heading h1,#combat-guide-view h1{font-size:25px}}

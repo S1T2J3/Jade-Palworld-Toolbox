@@ -1,0 +1,86 @@
+<section id="planner-view" class="tp-workspace" aria-label="目标配种规划" hidden>
+  <div class="tp-controls">
+    <section class="panel tp-card" aria-labelledby="tp-goal-title">
+      <div class="section-title"><span class="title-icon"><i data-icon="egg"></i></span><h2 id="tp-goal-title">设定目标</h2></div>
+      <div class="tp-field">
+        <div class="tp-target-heading"><label for="tp-target">目标帕鲁</label><a id="tp-target-spawns" class="habitat-shortcut" href="#spawns" hidden><i data-icon="pin"></i>查看刷新位置</a></div>
+        <div class="tp-picker">
+          <div class="input-wrap"><i data-icon="search"></i><input type="search" autocomplete="off" spellcheck="false" id="tp-target" placeholder="输入名称或图鉴编号"></div>
+          <div class="tp-options" id="tp-target-options" hidden></div>
+        </div>
+      </div>
+      <div class="tp-field">
+        <label for="tp-trait">目标词条 <span id="tp-goal-slots">0 / 4</span></label>
+        <div class="tp-picker">
+          <div class="tp-trait-entry"><div class="input-wrap"><i data-icon="search"></i><input type="search" autocomplete="off" spellcheck="false" id="tp-trait" placeholder="输入被动词条" aria-describedby="tp-goal-hint"></div><button type="button" class="tp-browse" id="tp-goal-browse" aria-haspopup="dialog" aria-controls="tp-trait-library">全部词条</button></div>
+          <div class="tp-options" id="tp-trait-options" hidden></div>
+        </div>
+        <div class="tp-tags" id="tp-goal-tags"></div>
+        <p class="tp-hint" id="tp-goal-hint">最多选 4 个，留空可只规划物种。目标子代需同时具有选中的词条。</p>
+      </div>
+      <label class="tp-random"><input type="checkbox" id="tp-allow-random">允许靠随机孵化补词条</label>
+      <div class="tp-surgery-option"><label class="tp-random"><input type="checkbox" id="tp-use-surgery">使用手术台已获得的词条</label><a class="tp-text-link" href="#details/surgery">管理词条</a></div>
+      <p id="tp-surgery-hint" class="tp-hint" hidden></p>
+      <button type="button" id="tp-calculate" class="tp-primary"><i data-icon="branch"></i>计算配种路线</button>
+      <p id="tp-notice" class="tp-notice" role="status"></p>
+    </section>
+    <section class="panel tp-card" aria-labelledby="tp-stock-title">
+      <div class="section-title"><span class="title-icon"><i data-icon="warehouse"></i></span><h2 id="tp-stock-title">仓库亲代</h2><span class="count" id="tp-stock-count"></span><button type="button" class="world-pill" data-world-open><span data-world-name>默认世界</span> ▾</button></div>
+      <p class="tp-hint tp-stock-intro" id="tp-inventory-info"></p>
+      <a class="tp-text-link" href="#warehouse">打开配种仓库 <i data-icon="right"></i></a>
+    </section>
+  </div>
+  <div class="tp-plan-column">
+    <section class="panel tp-card" id="tp-plans-panel" aria-labelledby="tp-plans-title" hidden>
+      <div class="section-title"><span class="title-icon"><i data-icon="book"></i></span><h2 id="tp-plans-title">我的配种计划</h2></div>
+      <div class="tp-plan-toolbar">
+        <label class="tp-field tp-plan-picker">当前计划<select id="tp-plan-select"><option value="">未保存的目标</option></select></label>
+        <div class="tp-plan-actions"><button type="button" id="tp-plan-save" class="tp-secondary">保存为计划</button><button type="button" id="tp-plan-new" class="tp-secondary">新建计划</button><button type="button" id="tp-plan-delete" class="tp-text-link" hidden>删除计划</button></div>
+      </div>
+      <div id="tp-delete-panel" class="world-inset" hidden>
+        <p id="tp-delete-note"></p>
+        <div class="world-buttons"><button type="button" id="tp-delete-confirm" class="world-danger">确认删除计划</button><button type="button" id="tp-delete-cancel" class="world-secondary">取消</button></div>
+      </div>
+      <div id="tp-plan-progress"></div>
+      <p id="tp-plan-message" class="tp-notice" role="status"></p>
+    </section>
+    <section class="panel tp-output" aria-labelledby="tp-output-title">
+      <div class="tp-output-header"><div class="section-title"><span class="title-icon"><i data-icon="branch"></i></span><h2 id="tp-output-title">配种路线</h2></div></div>
+      <div id="tp-result" aria-busy="false"></div>
+    </section>
+  </div>
+</section>
+  <dialog id="tp-profile-dialog" class="tp-editor" aria-labelledby="tp-dialog-title">
+    <div class="dialog-heading"><div class="section-title"><span class="title-icon"><i data-icon="warehouse"></i></span><h2 id="tp-dialog-title">添加帕鲁</h2></div><button type="button" class="close" id="tp-dialog-close" aria-label="关闭个体记录"><i data-icon="close"></i></button></div>
+    <div class="tp-dialog-content">
+      <div id="tp-profile-species" class="tp-profile-species"></div>
+      <p id="tp-profile-expected" class="tp-hint" hidden></p>
+      <div class="tp-edit-form">
+        <div class="tp-form-row">
+          <div class="tp-field"><label for="tp-name">个体名称</label><input type="text" id="tp-name" maxlength="48" autocomplete="off" placeholder="留空自动编号"></div>
+          <div class="tp-field"><label for="tp-sex">性别</label><select id="tp-sex"><option value="unknown">未记录</option><option value="M">雄性</option><option value="F">雌性</option></select></div>
+        </div>
+        <div class="tp-field">
+          <label for="tp-profile-trait">这只帕鲁实际携带的词条 <span id="tp-profile-slots">0 / 4</span></label>
+          <div class="tp-picker">
+            <div class="tp-trait-entry"><div class="input-wrap"><i data-icon="search"></i><input type="search" autocomplete="off" spellcheck="false" id="tp-profile-trait" placeholder="输入词条并选择"></div><button type="button" class="tp-browse" id="tp-profile-browse" aria-haspopup="dialog" aria-controls="tp-trait-library">全部词条</button></div>
+            <div class="tp-options" id="tp-profile-options" hidden></div>
+          </div>
+          <div class="tp-tags" id="tp-profile-tags"></div>
+        </div>
+        <div class="tp-dialog-actions"><button type="button" id="tp-cancel-profile" class="tp-secondary">取消</button><button type="button" id="tp-save-profile" class="tp-primary">保存</button></div>
+        <p id="tp-profile-message" class="tp-notice" role="status"></p>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="tp-trait-library" class="tp-library" aria-labelledby="tp-library-title" aria-describedby="tp-library-limit">
+    <div class="tp-library-header">
+      <div class="tp-library-heading"><h2 id="tp-library-title" tabindex="-1">选择被动词条</h2><span id="tp-library-count"></span></div>
+      <div class="tp-library-tools">
+        <label class="input-wrap"><i data-icon="search"></i><input type="search" autocomplete="off" spellcheck="false" id="tp-library-search" placeholder="搜索中文名或英文名" aria-label="搜索全部词条"><button id="tp-library-clear" type="button" aria-label="清除词条搜索" title="清除搜索" hidden><i data-icon="close"></i></button></label>
+        <button id="tp-library-done" type="button">完成</button>
+      </div>
+    </div>
+    <div class="tp-library-selection"><strong id="tp-library-limit" aria-live="polite"></strong><div id="tp-library-selected" aria-label="已选词条"></div></div>
+    <div id="tp-library-grid" aria-label="词条列表"></div>
+  </dialog>

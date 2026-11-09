@@ -1,0 +1,85 @@
+#palatlas-main {
+  --caption: #98eaff;
+  min-width: 320px;
+  min-height: 240px;
+  background: #f7f6fb;
+}
+#palatlas-main:is(:not([data-theme]),[data-theme="moon"]) {
+  --caption-art:
+    linear-gradient(118deg, transparent 24%, rgb(255 255 255 / .38) 31%, transparent 39%),
+    linear-gradient(105deg, #98eaff 0%, #b2edff 17%, #a4b7ff 53%, #ccb1ff 88%, #ecd0ff 100%);
+  --caption-ink: #29244c;
+  --caption-rule: #a996dc;
+  --caption-highlight: inset 0 1px rgb(255 255 255 / .72);
+  --caption-hover: rgb(255 255 255 / .48);
+  --caption-pressed: rgb(65 42 127 / .16);
+}
+#palatlas-main[data-theme="jade"] { --caption: #22483c; }
+#palatlas-main[data-theme="blue"] { --caption: #244660; }
+#palatlas-main[data-theme="rose"] { --caption: #613746; }
+#palatlas-main[data-theme="amber"] { --caption: #57412b; }
+#palatlas-main[data-theme="slate"] { --caption: #343c48; }
+#window-bar {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 35px;
+  height: 35px;
+  align-items: stretch;
+  justify-content: space-between;
+  background-color: var(--caption);
+  background-image: var(--caption-art, none);
+  color: var(--caption-ink, white);
+  border-block-end: 1px solid var(--caption-rule, rgb(255 255 255 / 0.12));
+  box-shadow: var(--caption-highlight, none);
+  user-select: none;
+  -moz-window-dragging: drag;
+}
+#window-caption {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-inline: 13px;
+  min-width: 0;
+  font: 600 12px/1.3 "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  letter-spacing: 0.02em;
+}
+#window-caption span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#window-icon { flex: none; object-fit: contain; }
+#window-actions { display: flex; }
+#window-actions button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  flex: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  -moz-window-dragging: no-drag;
+}
+#window-minimize { -moz-default-appearance: -moz-window-button-minimize; }
+#window-maximize { -moz-default-appearance: -moz-window-button-maximize; }
+#palatlas-main[sizemode="maximized"] #window-maximize { -moz-default-appearance: -moz-window-button-restore; }
+#window-close { -moz-default-appearance: -moz-window-button-close; }
+#window-actions button::before {
+  font: 10px/1 "Segoe MDL2 Assets";
+  pointer-events: none;
+}
+#window-minimize::before { content: "\e921"; }
+#window-maximize::before { content: "\e922"; }
+#palatlas-main[sizemode="maximized"] #window-maximize::before { content: "\e923"; }
+#window-close::before { content: "\e8bb"; }
+#window-actions button:hover { background: var(--caption-hover, rgb(255 255 255 / 0.15)); }
+#window-actions button:active { background: var(--caption-pressed, rgb(255 255 255 / 0.23)); }
+#window-actions #window-close:hover { background: #c42b39; color: white; }
+#window-actions #window-close:active { background: #a82230; color: white; }
+#window-actions button:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
+#palatlas-main[sizemode="fullscreen"] #window-bar { display: none; }
+@media (forced-colors: active) {
+  #window-bar { background: Canvas; color: CanvasText; border-color: CanvasText; box-shadow: none; }
+  #window-actions button:is(:hover,:active), #window-actions #window-close:is(:hover,:active) { background: Highlight; color: HighlightText; }
+}

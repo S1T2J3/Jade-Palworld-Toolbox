@@ -1,0 +1,14 @@
+<section id="expeditions-view" aria-labelledby="ex-heading" hidden>
+  <header class="ex-heading"><h1 id="ex-heading">远征所</h1><p id="ex-summary"></p></header>
+  <div class="ex-layout">
+    <section class="ex-browser" aria-label="远征目的地">
+      <label>查找目的地或奖励<input type="search" id="ex-search" placeholder="名称、地区或物品" autocomplete="off"></label>
+      <div class="ex-filters"><label>远征难度<select id="ex-tier"><option value="">全部难度</option><option value="normal">普通</option><option value="hard">高难</option></select></label>
+        <label>需求属性<select id="ex-element"><option value="">全部属性</option><option value="any">无属性限制</option></select></label></div>
+      <div class="ex-list" id="ex-list"></div>
+    </section>
+    <article class="ex-detail" id="ex-detail" aria-label="远征要求和奖励" tabindex="-1"></article>
+  </div>
+  <footer class="ex-sources">游戏数据 v1.0.5 · <a href="https://paldb.cc/cn/Pal_Expedition_Station" target="_blank" rel="noopener noreferrer">远征任务与掉落表</a></footer>
+  <script id="expedition-data" type="application/json">__EXPEDITION_DATA__</script>
+</section>

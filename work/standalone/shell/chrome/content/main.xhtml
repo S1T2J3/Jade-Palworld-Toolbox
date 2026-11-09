@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://palatlas/content/window.css" type="text/css"?>
+<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
+        id="palatlas-main" windowtype="palatlas:main" lightweightthemes="true"
+        customtitlebar="true" data-theme="moon" title="Jade · 幻兽帕鲁工具箱"
+        width="1380" height="900" persist="screenX screenY width height sizemode">
+  <html:header id="window-bar" aria-label="窗口标题栏">
+    <html:div id="window-caption">
+      <html:img id="window-icon" width="20" height="20" alt="" draggable="false"/>
+      <html:span>Jade · 幻兽帕鲁工具箱</html:span>
+    </html:div>
+    <html:div id="window-actions" role="group" aria-label="窗口控制">
+      <html:button id="window-minimize" type="button" title="最小化" aria-label="最小化" />
+      <html:button id="window-maximize" type="button" title="最大化" aria-label="最大化" />
+      <html:button id="window-close" type="button" title="关闭窗口" aria-label="关闭窗口" />
+    </html:div>
+  </html:header>
+  <browser id="atlas" type="content" flex="1" primary="true" remote="true" remoteType="file"
+           messagemanagergroup="palatlas" style="min-width:0;min-height:0"/>
+  <script src="chrome://palatlas/content/main.js"/>
+</window>

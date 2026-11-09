@@ -1,0 +1,8 @@
+.bg-guide{margin-top:12px;padding:14px;border:1px solid #d2ddcc;border-radius:9px;background:#f7faf2;color:#2a4634}
+.bg-guide h4{margin:0 0 7px;font-size:15px}.bg-guide a{color:#34684b;text-underline-offset:2px}
+.bg-sources{margin:6px 0 9px;padding-left:18px;line-height:1.65;font-size:12px}
+.bg-results{display:grid;gap:7px;font-size:13px}.bg-option{border:1px solid #d9e4d1;background:#fffef9;border-radius:7px;padding:9px 11px}
+.bg-option header,.bg-members li{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 10px}.bg-option header span{font-size:12px;color:#497250}
+.bg-members{list-style:none;padding:0;margin:5px 0}.bg-members li+li{margin-top:3px}.bg-members li span{color:#536955;font-size:12px}
+.bg-option summary{cursor:pointer;color:#3c6749;font-size:12px}.bg-option ol{padding-left:21px;margin:5px 0 0;font-size:12px}
+.bg-option p,.bg-foot{margin:5px 0;color:#5c6e5f;font-size:12px}

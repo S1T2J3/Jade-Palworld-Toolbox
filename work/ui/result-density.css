@@ -1,0 +1,76 @@
+.result-page-size {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  flex:none;
+  white-space:nowrap;
+  font-size:12px;
+  font-weight:600;
+  color:var(--soft);
+}
+.result-page-size select {min-width:66px;font-variant-numeric:tabular-nums}
+#lookup-view .filters {flex-wrap:wrap}
+#offspring-view .wh-filter-row {flex-wrap:wrap;justify-content:flex-start}
+#offspring-view .wh-only {margin-left:auto}
+#offspring-view .wh-filter-row .input-wrap {min-width:min(145px,100%);}
+#lookup-view .pair-table td {padding-top:3px;padding-bottom:3px}
+#lookup-view .member .avatar,#offspring-view .wh-result .member .avatar {width:30px;height:30px;border-radius:7px}
+#lookup-view .member strong,#offspring-view .wh-result .member strong {font-size:13px;line-height:1.35}
+#lookup-view .member-id,#offspring-view .wh-result .member-id {font-size:10.5px;line-height:1.15;margin-top:1px}
+#offspring-view .wh-result {min-height:40px;padding-top:3px;padding-bottom:3px}
+.hero:is([data-page="lookup"],[data-page="offspring"]) {
+  margin-top:14px;
+  margin-bottom:14px;
+}
+.hero:is([data-page="lookup"],[data-page="offspring"]) .hero-content {
+  min-height:96px;
+  padding:11px 25px;
+}
+.hero:is([data-page="lookup"],[data-page="offspring"]) h1 {font-size:28px}
+.hero:is([data-page="lookup"],[data-page="offspring"]) .hero-art::before {background-position:50% 37%}
+.hero:is([data-page="lookup"],[data-page="offspring"]) p {margin-top:2px;font-size:13px}
+.hero[data-page="lookup"] .hero-meta {margin-top:4px}
+.hero[data-page="lookup"] .hero-meta b {font-size:12px}
+#lookup-view .mode-bar {padding:6px 16px}
+#lookup-view .mode {padding:6px 12px}
+#lookup-view .selection {gap:11px;padding:8px 18px}
+#lookup-view .specimen .avatar {width:45px;height:45px;border-radius:10px}
+#lookup-view .selected-name {margin:1px 0}
+#lookup-view .selected-name h2 {font-size:20px;line-height:1.2}
+#lookup-view .spec-id {font-size:11px}
+#lookup-view .result-tools {padding:8px 17px}
+#lookup-view .pair-table th {padding-top:5px;padding-bottom:5px}
+#offspring-view .wh-result-head {padding-top:11px;padding-bottom:8px}
+#offspring-view .wh-explanation {padding:5px 9px;margin-bottom:8px}
+#offspring-view .wh-filter-row {padding-bottom:9px}
+#offspring-view .wh-table-header {padding-top:5px;padding-bottom:5px}
+@media(min-width:761px){
+  #lookup-view .catalog-controls {padding:14px 14px 7px}
+  #lookup-view .catalog-controls .input-wrap {margin-top:8px;height:33px}
+  #lookup-view .species-row {min-height:39px;padding:2px 7px;gap:8px;margin:1px 0}
+  #lookup-view .species-row .avatar {width:31px;height:31px;border-radius:8px}
+  #lookup-view .species-info {gap:0}
+  #lookup-view .species-info strong {font-size:13px}
+  #lookup-view .species-list {max-height:clamp(260px,calc(100dvh - 326px),640px)}
+  #lookup-view .catalog-footer {padding:6px 14px;margin-top:5px}
+}
+@media(max-width:760px){
+  .hero:is([data-page="lookup"],[data-page="offspring"]) {margin:9px 0}
+  .hero:is([data-page="lookup"],[data-page="offspring"]) .hero-content {min-height:76px;padding:7px 16px}
+  .hero:is([data-page="lookup"],[data-page="offspring"]) h1 {font-size:23px}
+  .hero:is([data-page="lookup"],[data-page="offspring"]) p {font-size:12px;line-height:1.35}
+}
+@media(max-width:520px){
+  #lookup-view .selection {padding:6px 12px}
+  #lookup-view .result-tools {padding:7px 12px;gap:5px}
+  #lookup-view .result-title h3 {font-size:15px}
+  #lookup-view .result-filter {min-width:65px;padding-left:7px;padding-right:5px;gap:4px}
+  #lookup-view .filters {gap:4px}
+  #lookup-view .result-page-size {gap:3px;font-size:11px}
+  #lookup-view .result-page-size select {padding:5px 16px 5px 4px;min-width:56px}
+  #lookup-view #element {padding-left:5px;padding-right:18px}
+  #offspring-view .wh-filter-row {gap:5px}
+  #offspring-view .wh-filter-row .input-wrap {min-width:75px}
+  #offspring-view .wh-result {min-height:43px}
+  #offspring-view .wh-only,.result-page-size {font-size:11px}
+}

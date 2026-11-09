@@ -1,0 +1,38 @@
+<section id="pal-capture-calc" aria-label="捕捉概率计算器" hidden>
+  <section class="cc-form" aria-labelledby="cc-input-title">
+    <h2 id="cc-input-title">捕捉条件</h2>
+    <div class="cc-fields">
+      <label>遭遇类型<select id="cc-encounter"><option value="wild">普通野生帕鲁</option><option value="alpha">野生头目</option><option value="blocked">禁止捕捉的战斗</option></select></label>
+      <label>目标等级<input id="cc-level" type="number" min="1" max="80" step="1" value="10" required></label>
+      <label>剩余生命（%）<input id="cc-hp" type="number" min="0" max="100" step="any" value="25" required></label>
+      <label>世界捕捉倍率<input id="cc-world" type="number" min="0" max="100" step="any" value="1" required></label>
+    </div>
+    <h3>捕捉装备</h3>
+    <div class="cc-fields">
+      <label>帕鲁球<select id="cc-sphere"></select></label>
+      <label>力量石像等级<input id="cc-effigy" type="number" min="0" max="15" step="1" value="0" required></label>
+      <label>帕鲁球模块<select id="cc-module"><option value="">未装备</option></select></label>
+      <label>计划投球数<input id="cc-throws" type="number" min="1" max="999" step="1" value="5" required></label>
+    </div>
+    <details class="cc-extra"><summary>异常状态与额外加成</summary>
+      <div class="cc-fields">
+        <label>主要异常状态<select id="cc-status">
+          <option value="0">无</option><option value="burn">燃烧</option><option value="wet">浸湿</option><option value="freeze">冻结</option><option value="shock">感电</option><option value="mud">泥泞</option><option value="ivy">缠绕</option><option value="blind">黑暗</option>
+        </select></label>
+        <label>已生效的伙伴捕获力加成<input id="cc-partner" type="number" min="0" max="25" step="1" value="0" required></label>
+      </div>
+      <div class="cc-checks"><label><input id="cc-poison" type="checkbox">中毒</label><label><input id="cc-trap" type="checkbox">被捕兽夹困住</label><label><input id="cc-critical" type="checkbox">帕鲁球命中弱点</label></div>
+      <a class="atlas-related-link" id="cc-status-reference" href="#guide/status">查看异常状态效果 →</a>
+      <p>念影喵（背击）、雪绵啾（冻结）和蒲蒲飞芽（缠绕）的伙伴技能可在条件满足时增加捕获力。按实际生效的加成填写，每只为 +1～+5。</p>
+    </details>
+    <p class="cc-foot">按常规世界估算。闪光帕鲁的有效捕捉等级可能与显示等级不同。</p>
+  </section>
+  <section class="cc-results" aria-labelledby="cc-title">
+    <h2 id="cc-title">捕捉结果</h2>
+    <div id="cc-output" aria-live="polite"></div>
+    <h3>各等级帕鲁球</h3>
+    <div class="cc-columns" aria-hidden="true"><span>帕鲁球</span><span>准星预估</span><span>单球成功率</span></div>
+    <div id="cc-compare" role="group" aria-label="帕鲁球概率比较"></div>
+  </section>
+  <footer class="cc-sources">游戏版本 1.0.5 · <a href="https://palworldinteractivemap.com/zh-Hans/capture-rate/" target="_blank" rel="noopener noreferrer">捕获力与实际捕获概率</a> · <a href="https://paldb.cc/cn/Capture_Rate" target="_blank" rel="noopener noreferrer">PalDB 捕捉对照</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/Character/DT_PalMonsterParameter_Common.json" target="_blank" rel="noopener noreferrer">物种系数</a></footer>
+</section>

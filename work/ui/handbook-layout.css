@@ -1,0 +1,29 @@
+/* Subsections share a tab strip and title line. Tables, maps and calculators
+   retain the space their controls and records require. */
+.shell-pages main > :is(#pal-details-view,#partner-skills-view,#work-efficiency-view,#facilities-view,#ranch-view,#relic-view,#expeditions-view,#combat-guide-view,#journals-view,#items-view,#paldex-view){
+  padding-block-start:24px;
+}
+.shell-pages main :is(#pal-details-view,#partner-skills-view,#work-efficiency-view,#facilities-view,#ranch-view,#relic-view,#expeditions-view,#combat-guide-view,#journals-view,#items-view,#paldex-view) h1 {
+  font-size:clamp(26px,2.65vw,36px);
+  line-height:1.18;letter-spacing:.015em;color:var(--ink);
+}
+.header-inner nav a:focus-visible{outline-offset:-3px}
+.header-inner nav a.current-nav::after{bottom:0}
+.header-controls{display:flex;align-items:center;flex:none;gap:9px}
+.shell-pages .masthead .header-inner{column-gap:20px}
+#atlas-back{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:33px;padding:4px 10px;border:1px solid #c6d6c7;border-radius:7px;color:#28553f;background:#f8faf3;font-size:13px;font-weight:650;white-space:nowrap}
+#atlas-back span{font-size:18px;line-height:1}
+#atlas-back:enabled:hover{background:#e3eedf}
+#atlas-back:disabled{color:#778477;background:transparent;border-color:#e0e5db;cursor:default}
+#atlas-news{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:33px;padding:4px 8px;border:1px solid var(--border);border-radius:7px;background:var(--skin-surface-soft);color:var(--skin-accent);font-size:13px;font-weight:650;white-space:nowrap;text-decoration:none}
+#atlas-news:hover{background:var(--skin-selected)}
+#atlas-news i{display:inline-flex}
+#atlas-news i svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#atlas-news-count{min-width:16px;padding:1px 4px;border-radius:12px;background:var(--skin-accent);color:var(--skin-on-accent);text-align:center;font:700 11px/15px system-ui}
+@media(max-width:860px){#atlas-news{margin-inline-start:auto}.header-controls .mobile-section{flex:1}}
+@media(max-width:600px){#atlas-news span{display:none}#atlas-news{gap:3px;padding-inline:6px}}
+@media(max-width:860px){.header-controls{width:100%;justify-content:space-between;flex-direction:row-reverse}.header-controls .mobile-section{min-width:0}}
+.atlas-related-link{display:inline-block;margin-block:6px;font-size:13px;font-weight:650;color:var(--green);text-underline-offset:3px}
+@media(max-width:760px){
+  .shell-pages main > :is(#pal-details-view,#partner-skills-view,#work-efficiency-view,#facilities-view,#ranch-view,#relic-view,#expeditions-view,#combat-guide-view,#journals-view,#items-view,#paldex-view){padding-block-start:16px}
+}

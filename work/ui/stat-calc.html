@@ -1,0 +1,43 @@
+<section id="pal-stat-calc" aria-labelledby="sc-title" hidden>
+  <header class="sc-title-row">
+    <h2 id="sc-title">培养参数</h2>
+    <div class="sc-presets">
+      <button type="button" id="sc-max" title="等级 80、浓缩 4 星、信赖 10，个体值和帕鲁之魂升满">满练参数</button>
+      <button type="button" id="sc-reset">重置</button>
+    </div>
+  </header>
+  <div class="sc-setup">
+    <label for="sc-level">帕鲁等级<input type="number" id="sc-level" min="1" max="80" value="1" step="1" required></label>
+    <label for="sc-stars">浓缩星级<select id="sc-stars"></select></label>
+    <label for="sc-trust">信赖等级<select id="sc-trust"></select></label>
+    <div class="sc-toggles">
+      <label><input id="sc-alpha" type="checkbox">头目／稀有个体</label>
+      <label><input id="sc-awaken" type="checkbox">已觉醒</label>
+    </div>
+  </div>
+  <section class="sc-grid-wrap" aria-label="个体值、强化和属性结果">
+    <table class="sc-grid">
+      <thead><tr><th scope="col">属性</th><th scope="col">个体值<small>0–100</small></th><th scope="col">魂强化<small>0–20 级</small></th><th scope="col">面板值</th><th scope="col">远征值</th></tr></thead>
+      <tbody id="sc-rows"></tbody>
+    </table>
+  </section>
+  <div class="sc-power" aria-live="polite">
+    <span><strong>单只远征战力</strong><small id="sc-power-detail"></small></span>
+    <output id="sc-power-value">—</output>
+  </div>
+  <p id="sc-status" role="status" hidden></p>
+  <a class="atlas-related-link" href="#work/expeditions">查看远征要求与奖励 →</a>
+  <section class="sc-traits" aria-labelledby="sc-trait-heading">
+    <h3 id="sc-trait-heading">面板被动词条</h3>
+    <p>可选最多 4 个会改变面板数值的词条。远征计算使用剔除被动加成的生命、攻击和防御。</p>
+    <div class="sc-trait-grid" id="sc-passives"></div>
+    <p id="sc-conditional" hidden>「特殊体质」的防御加成按帕鲁在队伍中时计算。</p>
+  </section>
+  <details class="sc-notes">
+    <summary>计算口径与数据来源</summary>
+    <p>个体值每点为对应属性的等级成长提供 0.3% 加成。每级帕鲁之魂增加该属性 3%，每星浓缩提高生命、攻击、防御各 5%，并为基础工作速度增加 7。</p>
+    <p>觉醒使物种成长系数提高 10%，信赖根据物种和形态增加成长系数。头目或天然稀有个体使用头目系数；仅继承「稀有」词条的个体按其实际形态选择。</p>
+    <p>战斗属性在基础成长与最终加成后分别向下取整。面板值按队伍常态推算，不计食物、装备、其他帕鲁的伙伴技能和世界设置。远征战力为（远征生命 ÷ 5 向下取整 ＋ 远征攻击 ＋ 远征防御）×（浓缩星级 ＋ 1）²。</p>
+    <p class="sc-source"><a href="https://paldb.cc/cn/Pal_Calc" target="_blank" rel="noopener noreferrer">物种与形态参数</a> · <a href="https://github.com/FruityShuffles/pal-analyzer/blob/main/docs/FORMULAS.md" target="_blank" rel="noopener noreferrer">属性取整公式</a> · <a href="https://paldb.cc/cn/Pal_Expedition_Station" target="_blank" rel="noopener noreferrer">远征战力</a> · <a href="https://www.gamersky.com/handbook/202607/2173364.shtml" target="_blank" rel="noopener noreferrer">首领帕鲁远征战力实测</a></p>
+  </details>
+</section>

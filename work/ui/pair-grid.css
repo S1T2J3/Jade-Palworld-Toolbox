@@ -1,0 +1,41 @@
+@media (min-width:761px) {
+  #lookup-view {grid-template-columns:clamp(214px,20vw,265px) minmax(0,1fr);gap:18px}
+}
+.pair-results {container-type:inline-size;outline-offset:-2px}
+.pair-results:focus-visible {outline:2px solid #719680}
+.pair-key {display:flex;align-items:center;gap:7px;padding:5px 12px;color:#516552;background:#edf2e8;border-block:1px solid #dce5d8;font-size:12px;line-height:1.3;font-weight:650}
+.pair-key .inline-icon {color:#60816b;font-size:15px}
+.pair-key>span:last-child:not(.inline-icon) {border-left:1px solid #bfcdbf;padding-left:9px;font-size:11px;font-weight:500}
+.pair-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,262px),1fr));list-style:none;padding:0;margin:0;background:var(--paper)}
+.pair-recipe {display:grid;grid-template-columns:minmax(0,.94fr) 13px minmax(0,1.12fr);align-content:center;align-items:center;gap:2px 5px;min-width:0;padding:5px 8px;border-right:1px solid #d2dece;border-bottom:1px solid #e3e9df}
+.pair-recipe:hover {background:#f5f8ee}
+@media screen and (min-width:1100px) {
+  .pair-grid.long-list>.pair-recipe{content-visibility:auto;contain-intrinsic-block-size:auto 32px}
+}
+.pair-member {min-width:0;display:flex;align-items:center;gap:5px}
+.pair-member .avatar {width:27px;height:27px;flex:none;border-radius:7px}
+.pair-details {min-width:0}
+.pair-title,.pair-meta,.pair-elements {display:flex;align-items:center;flex-wrap:wrap}
+.pair-title {gap:1px 4px}
+.pair-name {font-size:13px;line-height:1.35;font-weight:650;color:#243f33;overflow-wrap:anywhere}
+.pair-meta {gap:1px 4px;margin-top:1px}
+.pair-dex {color:#65756a;font-size:10px;line-height:1.25;letter-spacing:.02em;overflow-wrap:anywhere}
+.pair-elements {gap:2px}
+.pair-elements .type-badge {font-size:10px;padding:0 3px;border-radius:4px;gap:1px;line-height:1.25}
+.pair-elements .type-badge .inline-icon {font-size:9px}
+.pair-operator {display:grid;place-items:center;color:#72917b;font-size:14px}
+.pair-sex {font-size:10px;line-height:1.3;font-weight:600;white-space:nowrap;color:#795522;background:#faf1dd;border-radius:3px;padding:0 3px}
+.pair-sex-rule {grid-column:1/-1;font-size:11px;line-height:1.4;color:#755522;padding-left:2px}
+@container (min-width:336px) and (max-width:523px) {
+  .pair-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@container (min-width:336px) and (max-width:449px) {
+  .pair-recipe {grid-template-columns:minmax(0,.95fr) 12px minmax(0,1.12fr);align-items:start;gap:2px;padding:5px}
+  .pair-member {flex-direction:column;align-items:center;gap:2px;text-align:center}
+  .pair-member .avatar {width:24px;height:24px}
+  .pair-title,.pair-meta,.pair-elements {justify-content:center}
+  .pair-name {font-size:12px}
+  .pair-meta {gap:1px 2px}
+  .pair-operator {margin-top:6px;font-size:12px}
+  .pair-sex-rule {text-align:center;padding:0}
+}

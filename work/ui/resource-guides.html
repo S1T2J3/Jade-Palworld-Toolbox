@@ -1,0 +1,23 @@
+<section id="gathering-view" class="rg-view" aria-labelledby="rg-gathering-title" hidden>
+  <header class="rg-heading"><h1 id="rg-gathering-title">野外采集</h1><p>选择材料，查看采集方法和地图位置。</p></header>
+  <div class="rg-columns">
+    <section class="rg-browser" aria-label="采集物目录">
+      <div class="rg-controls"><label>查找采集物<input type="search" data-rg-query placeholder="物品名、地区或编号" autocomplete="off"></label><label>类型<select data-rg-filter><option value="">全部类型</option></select></label></div>
+      <p class="rg-count" data-rg-count aria-live="polite"></p>
+      <div class="rg-list" data-rg-list></div>
+    </section>
+    <article class="rg-detail" data-rg-detail aria-label="采集方法与位置" tabindex="-1"></article>
+  </div>
+</section>
+<section id="production-view" class="rg-view" aria-labelledby="rg-production-title" hidden>
+  <header class="rg-heading"><h1 id="rg-production-title">据点生产</h1><p>按设施或产物查询作业条件、基础工作量和自动生产周期。</p></header>
+  <div class="rg-columns">
+    <section class="rg-browser" aria-label="生产设施目录">
+      <div class="rg-controls"><label>查找生产设施<input type="search" data-rg-query placeholder="设施名、产物或编号" autocomplete="off"></label><label>方式<select data-rg-filter><option value="">全部方式</option></select></label></div>
+      <p class="rg-count" data-rg-count aria-live="polite"></p>
+      <div class="rg-list" data-rg-list></div>
+    </section>
+    <article class="rg-detail" data-rg-detail aria-label="生产资料与关联物品" tabindex="-1"></article>
+  </div>
+</section>
+<script id="resource-guides-data" type="application/json">__RESOURCE_GUIDES_DATA__</script>

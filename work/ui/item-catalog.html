@@ -1,0 +1,25 @@
+<section id="items-view" aria-labelledby="ic-title" hidden>
+  <header class="ic-heading"><div><h1 id="ic-title">物品图鉴</h1><p data-ic="summary"></p></div></header>
+  <div class="ic-layout">
+    <section class="ic-browser" aria-label="筛选物品">
+      <div class="ic-filters">
+        <label class="ic-search"><span>查找物品</span><input data-ic="search" type="search" placeholder="名称、英文名或物品 ID" autocomplete="off"></label>
+        <div class="ic-selects">
+          <label>类别<select data-ic="category" aria-label="物品类别"><option value="">全部类别</option></select></label>
+          <label>获取方式<select data-ic="method" aria-label="获取方式"><option value="">全部途径</option></select></label>
+        </div>
+      </div>
+      <div class="ic-count" data-ic="count" aria-live="polite"></div>
+      <div class="ic-scroll" data-ic="scroll"><div class="ic-grid" data-ic="list"></div>
+        <button type="button" data-ic="more" class="ic-more" hidden>显示更多物品</button>
+      </div>
+    </section>
+    <section class="ic-detail" data-ic="detail" tabindex="-1" aria-label="物品详情"></section>
+  </div>
+  <footer class="ic-sources">游戏数据 v1.0.5 ·
+    <a href="https://paldb.cc/cn/Items" target="_blank" rel="noopener noreferrer">PalDB 中文物品表</a> ·
+    <a href="https://palsphere.app/items" target="_blank" rel="noopener noreferrer">PalSphere 物品与配方目录</a> ·
+    <a href="https://github.com/Awy64/palworld-atlas-data" target="_blank" rel="noopener noreferrer">Palworld Atlas</a> ·
+    <a href="https://github.com/Dhampyru/Palworld-Extracted" target="_blank" rel="noopener noreferrer">游戏掉落及商店数据</a>
+  </footer>
+</section>

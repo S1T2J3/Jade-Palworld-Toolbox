@@ -1,0 +1,14 @@
+Pal Atlas terminal reader for Windows
+
+This separate read-only helper includes code from palworld-save-reader v0.3.0,
+Copyright (C) 2026 Luke Holland. It is distributed under GPL-3.0-or-later,
+without warranty. The original upstream NOTICE credits Palhelm, Powzix and
+other contributors. See LICENSE, NOTICE and LICENSES in terminal-reader-source.zip.
+
+Project: https://github.com/LukeHollandDev/palworld-save-reader/tree/v0.3.0
+
+Pal Atlas modifications (8 November 2026) add legacy zlib save formats, CNK
+wrappers, terminal-only character selection, player identifiers, input manifests
+and a narrow JSON output protocol. The matching Go sources and build command
+are included in terminal-reader-source.zip. No proprietary Oodle DLL is used.
+The Go standard library/runtime terms are in LICENSES/Go-BSD.txt.

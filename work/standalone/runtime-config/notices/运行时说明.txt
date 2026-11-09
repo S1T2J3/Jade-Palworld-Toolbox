@@ -1,0 +1,17 @@
+Jade 幻兽帕鲁工具箱使用 Mozilla Firefox ESR 的 Gecko 引擎运行本地界面。
+版本为 153.6.0esr，Windows x64 简体中文，构建 20261022211647。
+
+首次启动优先核对并复用此前已安装的同版引擎。也可以把 Mozilla 的官方
+Firefox Setup 153.6.0esr.exe 放在工具箱可执行文件旁。没有本地副本时，
+工具箱会从 Mozilla 下载原版安装程序，校验 SHA-512 后使用官方仅解压模式。
+游戏资料、配置和桌面界面由工具箱提供。
+
+官方文件与校验清单
+https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/
+
+该版本的对应源码
+https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/source/
+https://hg.mozilla.org/releases/mozilla-esr153/rev/d63de7b9609253a860fbb0050f678700f4cdc492
+
+Mozilla 商标属于其权利人。MPL 2.0 全文位于同目录 MPL-2.0.txt。
+其余引擎组件的许可记录在官方 omni.ja 中的 chrome/toolkit/content/global/license.html。

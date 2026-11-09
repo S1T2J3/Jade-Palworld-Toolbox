@@ -1,0 +1,21 @@
+Pal Atlas offline save metadata decoder
+
+ooz-wasm 2.0.0 by Alexander Drozdov, based on ooz by Powzix.
+Distributed under GNU GPL version 3 or any later version, without warranty.
+The complete license is in LICENSE-ooz.txt.
+
+ooz-bytes.mjs contains the unmodified WebAssembly bytecode extracted from
+package/build/ooz.js in the upstream ooz-wasm 2.0.0 release. Pal Atlas uses
+its own bounded loader in save-meta.mjs. No proprietary game DLL is bundled.
+
+Module SHA-256 (decoded WebAssembly):
+be3ceea0fc7b4a9ea24715781ea55de9645964a8f2347a1b06c0c859a2eb4bcd
+
+The adjacent ooz-wasm-source.zip contains the corresponding C++ sources,
+license, Emscripten/CMake build scripts and README at upstream revision
+ebed828. The archive is unmodified. Its SHA-256 is:
+2562724b3642dad4d22995ab1148eede96067141a8016f639fa15b76abaf8ed4
+
+Project and build instructions: https://github.com/SnosMe/ooz-wasm/tree/ebed828
+Release: https://registry.npmjs.org/ooz-wasm/-/ooz-wasm-2.0.0.tgz
+Original decompressor: https://github.com/powzix/ooz

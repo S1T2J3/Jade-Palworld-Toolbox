@@ -1,0 +1,53 @@
+#settings-view{max-width:1090px;padding:24px 0 32px;color:var(--ink)}
+#sk-title{margin:0 0 24px;font-size:clamp(26px,2.65vw,36px);line-height:1.18;letter-spacing:.015em}
+.sk-settings{min-width:0;margin:0;padding:0;border:0}
+.sk-settings legend{padding:0;margin-bottom:14px;font-size:18px;font-weight:700}
+.sk-layout{display:grid;grid-template-columns:minmax(205px,0.85fr) minmax(0,2fr);gap:clamp(16px,2.3vw,28px);align-items:start}
+.sk-card{display:block;min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);cursor:pointer}
+.sk-card:has(input:checked){border-color:var(--skin-accent,var(--green));box-shadow:inset 0 0 0 1px var(--skin-accent,var(--green))}
+.sk-card:hover{border-color:var(--skin-accent,var(--green))}
+.sk-card:has(input:focus-visible){outline:3px solid var(--skin-focus,var(--green));outline-offset:3px}
+.sk-card input{width:17px;height:17px;flex:none;margin:0;accent-color:var(--skin-accent,var(--green));cursor:pointer}
+.sk-card input:focus-visible{outline:none}
+.sk-caption{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;padding:7px 12px}
+.sk-caption strong{font-size:14px}
+.sk-feature-art{
+  position:relative;display:grid;place-items:center;overflow:hidden;height:174px;margin:4px 4px 0;border-radius:6px;
+  background:radial-gradient(ellipse at 49% 49%,#fffbe4 0,#fffffbcc 24%,transparent 65%),
+             linear-gradient(128deg,transparent 13%,#ffffffa1 13.4%,#ffffff10 21%,transparent 21.4%),
+             linear-gradient(146deg,transparent 57%,#ffffff70 57.4%,transparent 74%),
+             linear-gradient(135deg,#90eaff 0%,#a8c7ff 38%,#ccabff 72%,#ecc3ff 100%);
+  box-shadow:inset 0 0 0 1px #ffffff94;
+}
+.sk-feature-art::before,.sk-feature-art::after{
+  content:"";position:absolute;pointer-events:none;
+  clip-path:polygon(50% 0,59% 40%,100% 50%,59% 60%,50% 100%,41% 60%,0 50%,41% 40%);
+}
+.sk-feature-art::before{left:14%;top:19%;width:16px;height:24px;background:#fff}
+.sk-feature-art::after{right:13%;bottom:17%;width:12px;height:18px;background:#fff5ba}
+.sk-feature-art img{position:absolute;inset:0;margin:auto;display:block;height:94%;width:94%;object-fit:contain}
+.sk-feature .sk-caption{min-height:56px;padding:8px 14px}
+.sk-feature .sk-caption>span{display:grid;gap:3px}
+.sk-feature .sk-caption strong{font-size:17px}
+.sk-feature .sk-caption small{font-size:12px;color:var(--soft)}
+.sk-basics h2{font-size:14px;font-weight:650;color:var(--soft);margin:0 0 9px}
+.sk-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sk-preview{display:block;height:48px;position:relative;overflow:hidden;margin:4px 4px 0;border-radius:5px;background:var(--sample-bg);border:1px solid var(--sample-selected)}
+.sk-preview::before{content:"";position:absolute;inset:0 auto 0 0;width:17%;background:var(--sample-rail)}
+.sk-preview::after{content:"";position:absolute;left:3.4%;top:11px;width:10%;height:6px;border-radius:2px;background:var(--sample-selected)}
+.sk-preview i{position:absolute;left:23%;top:11px;width:32%;height:4px;border-radius:3px;background:var(--sample-accent)}
+.sk-preview b{position:absolute;left:23%;right:7%;top:22px;height:16px;border:1px solid var(--sample-selected);border-radius:3px;background:linear-gradient(to right,var(--sample-selected) 0 40%,#fff 40%)}
+.sk-jade{--sample-rail:#22483c;--sample-accent:#27634d;--sample-bg:#f2f5ef;--sample-selected:#deecdf}
+.sk-blue{--sample-rail:#244660;--sample-accent:#286389;--sample-bg:#f0f5f9;--sample-selected:#dbeaf7}
+.sk-rose{--sample-rail:#613746;--sample-accent:#94445e;--sample-bg:#f9f2f5;--sample-selected:#f5e0e8}
+.sk-amber{--sample-rail:#57412b;--sample-accent:#80591d;--sample-bg:#f8f4ed;--sample-selected:#f4e6c9}
+.sk-slate{--sample-rail:#343c48;--sample-accent:#465467;--sample-bg:#f1f3f5;--sample-selected:#e1e7ed}
+.sk-storage-note{font-size:13px;margin:14px 0 0;color:var(--soft)}
+@media(max-width:700px){
+  .sk-layout{grid-template-columns:1fr}
+  .sk-feature{display:grid;grid-template-columns:minmax(105px,32%) 1fr;align-items:center}
+  .sk-feature-art{height:106px;margin:4px}
+  .sk-feature .sk-caption{padding:10px 15px 10px 9px}
+  #settings-view{padding-top:16px}#sk-title{margin-bottom:17px}
+}
+@media(max-width:450px){.sk-options{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -1,0 +1,25 @@
+<section id="pal-details-view" aria-labelledby="pd-title" hidden>
+  <header class="pd-heading">
+    <div><h1 id="pd-title">帕鲁详情</h1><p id="pd-intro"></p></div>
+    <div id="pd-picker">
+      <label for="pd-pal-search">按帕鲁查看</label>
+      <input id="pd-pal-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pd-pal-options" placeholder="中文名、英文名或图鉴编号" spellcheck="false" autocomplete="off">
+      <div id="pd-pal-options" role="listbox" aria-label="匹配的帕鲁" hidden></div>
+    </div>
+  </header>
+  <div id="pd-context" hidden></div>
+  <section id="pd-list-page" class="pd-page" aria-labelledby="pd-subtitle">
+    <div class="pd-pagebar">
+      <div><h2 id="pd-subtitle"></h2><span id="pd-count" aria-live="polite"></span></div>
+      <div class="pd-filters">
+        <input type="search" id="pd-filter" autocomplete="off" spellcheck="false" aria-label="筛选当前列表">
+        <select id="pd-scope" aria-label="筛选条件"></select>
+      </div>
+    </div>
+    <div id="pd-work-tabs" aria-label="工作种类" hidden></div>
+    <div id="pd-results"></div>
+  </section>
+  <!--__STAT_UI__-->
+  <!--__CAPTURE_UI__-->
+  <footer id="pd-sources"></footer>
+</section>

@@ -1,0 +1,27 @@
+<section id="combat-guide-view" aria-labelledby="cg-title" hidden>
+  <header class="cg-heading"><h1 id="cg-title">属性克制图</h1><p id="cg-description"></p></header>
+  <div id="cg-elements">
+    <div class="cg-overview">
+    <figure class="cg-flow">
+      <div id="cg-chains" class="cg-diagram">
+        <img id="cg-diagram" width="1200" height="675" decoding="async" alt="水克火，火克草，草克地，地克雷，雷克水。火也克冰，冰克龙，龙克暗，暗克无。">
+      </div>
+      <figcaption><span>箭头指向被克制的属性</span><a href="https://paldb.cc/cn/Elements" target="_blank" rel="noopener noreferrer">游戏生存指南 ↗</a></figcaption>
+    </figure>
+    <section class="cg-card cg-match" aria-labelledby="cg-query-title">
+      <h2 id="cg-query-title">属性对战查询</h2>
+      <div class="cg-picks"><label>攻击技能属性<select id="cg-attack"></select></label><label>防守主属性<select id="cg-defend"></select></label><label>防守副属性<select id="cg-second"><option value="">单属性</option></select></label></div>
+      <p id="cg-current" role="status"></p>
+      <dl id="cg-affinities" aria-label="所选攻击属性的优势与弱点"></dl>
+    </section>
+    </div>
+    <div class="cg-card cg-grid-wrap"><table id="cg-matrix"><caption>行是攻击属性，列是防守属性。↑ 克制　↓ 被抵抗　· 通常　？待核实</caption></table></div>
+    <p class="cg-foot">图中显示克制方向。各来源对同属性抵抗、无属性攻击暗属性以及具体倍率的记录存在分歧，相应格子以「？」标出。<a href="https://paldb.cc/cn/Elements" target="_blank" rel="noopener noreferrer">游戏生存指南</a> · <a href="https://palsphere.app/types" target="_blank" rel="noopener noreferrer">关系表与差异说明</a></p>
+  </div>
+  <div id="cg-status" hidden>
+    <div id="cg-groups" class="cg-status-groups" aria-label="状态类别"></div>
+    <div id="cg-status-layout"><div id="cg-states" aria-label="状态列表"></div><article id="cg-state" class="cg-card" aria-label="状态详情"></article></div>
+    <p class="cg-foot">v1.0.5 · <a href="https://paldb.cc/cn/Status_Effects" target="_blank" rel="noopener noreferrer">游戏生存指南</a> · <a href="https://paldb.cc/cn/Active_Skills" target="_blank" rel="noopener noreferrer">主动技能积蓄表</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/BaseCamp/DT_BaseCampWorkerSickDataTable.json" target="_blank" rel="noopener noreferrer">据点疾病表</a></p>
+  </div>
+  <script id="combat-guide-data" type="application/json">__COMBAT_GUIDE_DATA__</script>
+</section>

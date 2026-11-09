@@ -1,0 +1,20 @@
+.passive-emblem{display:inline-flex;align-items:center;justify-content:center;vertical-align:-.19em;flex:0 0 auto;width:1.13rem;height:1.13rem;margin-inline-end:.23em;border-radius:3px;background:#333b4b}
+.passive-emblem img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.passive-emblem[data-passive-rank="2"] img,.passive-emblem[data-passive-rank="3"] img{filter:sepia(1) saturate(10000%)}
+.passive-emblem[data-passive-rank="4"] img,.passive-emblem[data-passive-rank="5"] img{filter:brightness(0) saturate(100%) invert(92%) sepia(71%) saturate(6307%) hue-rotate(99deg) brightness(108%) contrast(101%)}
+.passive-emblem[data-passive-rank^="-"] img{filter:brightness(0) saturate(100%) invert(69%) sepia(57%) saturate(1762%) hue-rotate(318deg);transform:scaleY(-1)}
+.tp-trait-choice .passive-emblem,.tp-tag .passive-emblem,#tp-library-selected .passive-emblem{margin:0}
+.tp-trait-choice .passive-emblem{width:15px;height:15px}
+.tp-trait-choice{gap:3px;padding-inline:3px}
+.tp-trait-choice[aria-pressed="true"]{outline:1px solid var(--skin-accent);outline-offset:-2px}
+.sc-trait-control{display:flex;align-items:center}
+.sc-trait-control .passive-emblem{margin-inline-end:4px}
+#sc-trait-picker{padding:16px;width:min(760px,calc(100% - 24px));max-height:calc(100dvh - 32px);overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--border);border-radius:12px}
+#sc-trait-picker::backdrop{background:#18232d66}
+.sc-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.sc-picker-heading h3{margin:0}.sc-picker-heading button{font:inherit;color:var(--ink);border:1px solid var(--border);border-radius:5px;padding:4px 10px;background:var(--skin-surface-soft)}
+.sc-picker-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,130px),1fr));gap:5px}
+.sc-picker-choices button{display:flex;align-items:center;gap:3px;min-height:32px;text-align:start;font:inherit;font-size:13px;border:1px solid var(--border);border-radius:5px;padding:4px 6px;background:var(--paper);color:var(--ink)}
+.sc-picker-choices button:is(:hover,:focus-visible),.sc-picker-choices [aria-pressed="true"]{background:var(--skin-tint);border-color:var(--skin-accent)}
+.sc-picker-choices button:disabled{opacity:.5}
+@media(forced-colors:active){.passive-emblem{forced-color-adjust:none}}

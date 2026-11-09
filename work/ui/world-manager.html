@@ -1,0 +1,79 @@
+<dialog id="world-dialog" aria-labelledby="world-title">
+  <header class="dialog-heading">
+    <div class="section-title"><span class="title-icon"><i data-icon="layers"></i></span><h2 id="world-title">世界档案</h2></div>
+    <button type="button" class="close" id="world-close" aria-label="关闭世界档案"><i data-icon="close"></i></button>
+  </header>
+  <div class="world-body">
+    <section aria-labelledby="world-current-title">
+      <h3 id="world-current-title">当前世界</h3>
+      <div class="world-switch-row"><select id="world-select" aria-label="切换世界"></select><button type="button" id="world-new" class="world-primary">新建世界</button><button id="world-open-window" class="world-secondary" type="button" title="打开另一个手册窗口（Ctrl+N）" hidden>打开新窗口</button></div>
+      <div class="world-meta-row"><p id="world-counts"></p><div><button type="button" id="world-rename" class="world-text">重命名</button><button type="button" id="world-remove" class="world-text">删除</button></div></div>
+      <div id="world-game-bound" class="world-meta-row" hidden><p id="world-game-bound-name"></p><button type="button" id="world-game-unlink" class="world-text">解除游戏关联</button></div>
+      <form id="world-edit" class="world-inset" hidden>
+        <label for="world-name" id="world-name-label">世界名称</label>
+        <div class="world-switch-row"><input id="world-name" required maxlength="64" autocomplete="off"><button class="world-primary" id="world-save" type="submit">保存</button><button id="world-cancel" class="world-secondary" type="button">取消</button></div>
+      </form>
+      <div id="world-delete-confirm" class="world-inset" hidden><p id="world-delete-note"></p><div class="world-buttons"><button type="button" id="world-delete-yes" class="world-danger">确认删除</button><button type="button" id="world-delete-no" class="world-secondary">取消</button></div></div>
+    </section>
+    <section aria-labelledby="world-game-title">
+      <h3 id="world-game-title">从游戏存档读取</h3>
+      <p id="world-game-help">关联世界后，读档会把你终端里的帕鲁导入仓库，已有个体会按游戏内资料更新。</p>
+      <div class="world-buttons">
+        <button type="button" id="world-game-scan" class="world-secondary">重新检测</button>
+        <button type="button" id="world-game-folder" class="world-secondary">选择存档目录…</button>
+      </div>
+      <p id="world-game-status" role="status" aria-live="polite"></p>
+      <div id="world-terminal" class="world-inset" hidden>
+        <h4>我的帕鲁终端</h4>
+        <p id="world-terminal-status" role="status" aria-live="polite"></p>
+        <div id="world-terminal-owner-form" hidden>
+          <label for="world-terminal-owner">我的游戏角色</label>
+          <div class="world-switch-row"><select id="world-terminal-owner"></select><button type="button" id="world-terminal-confirm" class="world-primary">导入这名玩家的终端</button></div>
+        </div>
+        <button type="button" id="world-terminal-change" class="world-text" hidden>重新选择我的角色</button>
+        <ul id="world-terminal-notes" hidden></ul>
+      </div>
+      <div id="world-game-choices" class="world-inset" hidden>
+        <label for="world-game-select">游戏中的世界</label>
+        <select id="world-game-select"></select>
+        <p id="world-game-location"></p>
+        <div class="world-buttons">
+          <button id="world-game-open" type="button" class="world-primary">新建同名档案</button>
+          <button id="world-game-bind" type="button" class="world-secondary">关联当前手册档案</button>
+        </div>
+        <p id="world-game-bind-hint"></p>
+      </div>
+      <details id="world-game-diagnostics" hidden><summary>扫描位置与提示</summary><ul id="world-game-details"></ul></details>
+    </section>
+    <section aria-labelledby="world-backup-title">
+      <h3 id="world-backup-title">备份与恢复</h3>
+      <p>备份包含仓库个体、归档、手术台标记、配种计划、已完成的地图点位和自定义点位。导入会创建独立副本，游戏存档可在本机重新关联。</p>
+      <div class="world-backup-row">
+        <select id="world-export-scope" aria-label="备份范围"><option value="all">全部世界</option><option value="current">当前世界</option></select>
+        <button type="button" id="world-export" class="world-secondary">导出备份</button>
+        <button type="button" id="world-import" class="world-secondary">导入备份…</button>
+        <input type="file" id="world-file" accept=".json,application/json" hidden>
+      </div>
+      <details id="world-legacy" hidden>
+        <summary>从旧 Windows 版或浏览器版迁移</summary>
+        <ol>
+          <li>打开原来使用的手册，进入「世界档案」，选择「全部世界」并导出 JSON 备份。</li>
+          <li>回到独立版选择备份，核对个体、手术标记与计划数量，点击「导入为新世界」。</li>
+        </ol>
+        <div class="world-buttons">
+          <button type="button" id="world-legacy-open" class="world-secondary">打开旧版迁移窗口</button>
+          <button type="button" id="world-legacy-import" class="world-primary">选择旧版备份…</button>
+        </div>
+        <details class="world-legacy-help"><summary>旧窗口里的仓库为空？</summary>
+          <p>请切换到原先使用的浏览器和个人资料。旧 Windows 版页面位于 <code>%LOCALAPPDATA%\PalBreedingAtlas\index.html</code>。使用 HTML 版时，请在原浏览器中打开原路径下的 HTML 文件。</p>
+        </details>
+      </details>
+      <div id="world-preview" class="world-inset" hidden>
+        <h4>导入预览</h4><p id="world-preview-summary"></p>
+        <ul id="world-preview-list"></ul>
+        <div class="world-buttons"><button id="world-restore" type="button" class="world-primary">导入为新世界</button><button id="world-discard" type="button" class="world-secondary">取消</button></div>
+      </div>
+    </section>
+    <p id="world-feedback" role="status" aria-live="polite" hidden></p>
+  </div>
+</dialog>

@@ -1,0 +1,58 @@
+<section id="map-view" aria-labelledby="wm-title" hidden>
+  <div class="wm-heading">
+    <div><div class="wm-title-line"><h1 id="wm-title">世界地图</h1><a id="wm-item-back" href="#items" hidden><i data-icon="left"></i><span id="wm-origin-label">返回物品</span></a></div><p id="wm-summary"></p></div>
+    <div class="wm-heading-actions">
+      <button type="button" class="world-pill" data-world-open aria-haspopup="dialog">档案 · <span data-world-name>默认世界</span> ▾</button>
+      <label class="wm-world-label" for="wm-map-select">地图区域 <select id="wm-map-select"></select></label>
+      <button type="button" id="wm-new-pin" class="wm-note-primary">＋ 添加点位</button>
+    </div>
+  </div>
+  <div class="wm-board">
+    <section class="wm-map-panel" aria-label="交互地图">
+      <div id="wm-viewport" tabindex="0" role="region" aria-label="地图，可拖动平移、滚轮缩放；也可使用方向键、加减号及 Home 键">
+          <div class="map-camera-scene"><img id="wm-sheet" alt="" draggable="false"><div id="wm-markers"></div></div>
+        <div id="wm-hover" role="tooltip" hidden></div>
+        <div id="wm-place" data-wm-ui hidden><span>点击地图选择位置</span><button id="wm-type-position" type="button">输入坐标</button><button id="wm-stop-place" type="button">取消</button></div>
+        <div class="wm-map-tools" data-wm-ui>
+          <button type="button" id="wm-zoom-in" title="放大" aria-label="放大地图">＋</button>
+          <button type="button" id="wm-zoom-out" title="缩小" aria-label="缩小地图">−</button>
+          <button type="button" id="wm-fit" title="查看全图" aria-label="查看全图">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 9V4h5.2m6.6 0h5.2v5m0 6v5h-5.2m-6.6 0H3.5v-5"/></svg>
+          </button>
+        </div>
+        <div class="wm-readout" aria-hidden="true"><span id="wm-zoom-level"></span><span class="wm-desktop-help">拖动平移 · 滚轮缩放</span><span class="wm-touch-help">拖动平移 · 双指缩放</span></div>
+        <section id="wm-detail" data-wm-ui aria-label="点位详情" aria-live="polite" hidden>
+          <button type="button" id="wm-detail-close" aria-label="关闭点位详情" title="关闭">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12m0-12L6 18"/></svg>
+          </button>
+          <div id="wm-detail-body"></div>
+        </section>
+      </div>
+    </section>
+    <aside class="wm-sidebar panel" aria-label="点位筛选和搜索">
+      <div class="wm-side-head">
+        <div class="wm-section-title"><h2>点位筛选</h2><div class="wm-filter-actions"><button type="button" id="wm-all">全选</button><button type="button" id="wm-none">清空</button></div></div>
+        <div id="wm-categories" role="group" aria-label="筛选点位类别"></div>
+        <button type="button" id="wm-category-expand" aria-controls="wm-categories" aria-expanded="false" hidden></button>
+        <label class="input-wrap wm-search-wrap"><i data-icon="search" aria-hidden="true"></i><input id="wm-search" type="search" autocomplete="off" spellcheck="false" placeholder="搜索点位名称或类别" aria-label="搜索点位"></label>
+      </div>
+      <div class="wm-list-head"><h3>点位列表</h3><span id="wm-count" aria-live="polite"></span>
+        <select id="wm-completion-filter" aria-label="按完成状态筛选"><option value="all">全部状态</option><option value="pending">未完成</option><option value="done">已完成</option></select>
+      </div>
+      <div id="wm-list" role="group" aria-label="符合条件的点位"></div>
+    </aside>
+  </div>
+  <div class="wm-source" id="wm-source"></div>
+  <p id="wm-note-message" role="status" aria-live="polite" hidden></p>
+  <dialog id="wm-pin-dialog" aria-labelledby="wm-pin-title">
+    <form id="wm-pin-form">
+      <div class="wm-edit-heading"><h2 id="wm-pin-title">添加点位</h2><button id="wm-pin-cancel" type="button" aria-label="关闭点位编辑">×</button></div>
+      <label>名称<input id="wm-pin-name" required maxlength="80" autocomplete="off" autofocus></label>
+      <div class="wm-edit-coords"><label>横坐标 X<input id="wm-pin-x" type="number" step="any" required></label><label>纵坐标 Y<input id="wm-pin-y" type="number" step="any" required></label></div>
+      <small id="wm-pin-map-label"></small>
+      <label>备注<textarea id="wm-pin-note" maxlength="600" rows="3" placeholder="可选"></textarea></label>
+      <p id="wm-pin-error" role="alert" hidden></p>
+      <div class="wm-edit-actions"><button id="wm-pick-again" type="button">在地图上选位置</button><button type="submit" class="wm-note-primary" id="wm-pin-save">保存点位</button></div>
+    </form>
+  </dialog>
+</section>

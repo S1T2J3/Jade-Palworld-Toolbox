@@ -1,0 +1,24 @@
+<section id="ranch-view" aria-labelledby="rn-title" hidden>
+  <header class="rn-heading">
+    <h1 id="rn-title">牧场产物</h1>
+    <p id="rn-summary"></p>
+  </header>
+  <div class="rn-layout">
+    <section class="rn-browser" aria-label="查询牧场帕鲁和材料">
+      <nav class="rn-modes" aria-label="查询方向"><a id="rn-pal-mode" href="#work/ranch">按帕鲁查</a><a id="rn-item-mode" href="#work/ranch/item/Egg">按材料查</a></nav>
+      <label class="rn-search"><span id="rn-search-label">查找帕鲁</span><input id="rn-search" type="search" autocomplete="off" spellcheck="false" placeholder="输入名称或图鉴编号"></label>
+      <div id="rn-count" class="rn-count" aria-live="polite"></div>
+      <div id="rn-list" class="rn-list" aria-label="查询列表"></div>
+    </section>
+    <section class="rn-panel" id="rn-panel" aria-label="放牧产出详情">
+      <div id="rn-profile"></div>
+      <div class="rn-detailbar">
+        <h2 id="rn-table-title">放牧产物</h2>
+        <label>牧场工作适应性<select id="rn-level"></select></label>
+      </div>
+      <div id="rn-results"></div>
+      <p id="rn-hint" class="rn-hint"></p>
+      <p class="rn-source" id="rn-source"></p>
+    </section>
+  </div>
+</section>

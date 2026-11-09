@@ -1,0 +1,16 @@
+Pal Atlas terminal reader
+
+The upstream by Luke Holland is palworld-save-reader v0.3.0:
+https://github.com/LukeHollandDev/palworld-save-reader/tree/v0.3.0
+Retain the upstream NOTICE and LICENSES when redistributing.
+
+Use the Go compiler listed below or Go 1.26.5 or higher. No external modules
+or native toolchain are required. From the root of these sources, build with:
+
+    go build -trimpath -buildvcs=false -ldflags="-s -w" -o pal-terminal-reader.exe ./cmd/pal-terminal-reader
+
+The shipped binary was built with Go 1.27.3, GOOS=windows, GOARCH=amd64 and
+CGO_ENABLED=0. Read one UTF-8 JSON manifest on stdin containing absolute
+world-file paths in level[] and player file descriptors {id,path} in players[].
+The reader emits only owner identifiers, character names, terminal records and
+diagnostics as JSON. The host locates the related files and selects a player.

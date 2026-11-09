@@ -1,0 +1,35 @@
+<section id="work-efficiency-view" aria-labelledby="we-title" hidden>
+  <header class="we-heading"><h1 id="we-title">工作效率计算</h1><p>按工作适应性等级和帕鲁自身的被动词条计算。</p></header>
+  <div class="we-layout">
+    <section class="we-panel" aria-label="工作条件">
+      <label class="we-field">帕鲁来源<select id="we-origin"><option value="manual">按等级试算</option><option value="dex">从图鉴选择物种</option><option value="warehouse">从当前世界的仓库选择</option></select></label>
+      <div id="we-picker" hidden>
+        <label class="we-field">查找帕鲁<input type="search" id="we-pal-query" placeholder="中文名、昵称或编号" autocomplete="off"></label>
+        <label class="we-field"><span id="we-pal-label">物种</span><select id="we-pal"></select></label>
+      </div>
+      <div class="we-fields">
+        <label class="we-field">工作种类<select id="we-job"></select></label>
+        <label class="we-field">词条加成前的等级<select id="we-level"></select></label>
+      </div>
+      <p class="we-note" id="we-level-note"></p>
+      <div class="we-trait-head"><h2>被动词条</h2><span id="we-used">0 / 4</span></div>
+      <div class="we-picked" id="we-picked" aria-label="已选择的词条"></div>
+      <label class="we-field">查找或输入词条<input id="we-query" type="search" placeholder="输入词条名，按回车添加；多个用顿号隔开" autocomplete="off"></label>
+      <div class="we-switch" aria-label="词条范围"><button type="button" id="we-relevant" aria-pressed="true">与本项相关</button><button type="button" id="we-all" aria-pressed="false">全部词条</button></div>
+      <div id="we-options" class="we-options" aria-label="可选词条"></div>
+      <p class="we-note" id="we-feedback" role="status"></p>
+    </section>
+    <section class="we-panel we-result" aria-label="计算结果">
+      <p id="we-result-title">标准工作量</p>
+      <output id="we-value" aria-live="polite">50</output>
+      <p id="we-formula"></p>
+      <dl class="we-breakdown"><div><dt>有效工作等级</dt><dd id="we-rank"></dd></div><div><dt>等级基础值</dt><dd id="we-base"></dd></div><div><dt id="we-mod-label">自身工作速度词条</dt><dd id="we-mod"></dd></div></dl>
+      <p class="we-note" id="we-scope"></p>
+      <a class="atlas-related-link" href="#details/partner/work">查看工作类伙伴技能 →</a>
+      <a id="we-ranch-link" href="#work/ranch" hidden>查看牧场产物和每次放牧的掉落数量 →</a>
+      <h2>各等级基础值</h2><div class="we-scale" id="we-scale"></div>
+    </section>
+  </div>
+  <footer class="we-sources">游戏数据 v1.0.5 · <a href="https://github.com/GGarnize/palworld-knowledge/blob/d0af39099d45cfed64e0c1ef03731e6aae332cf0/data/game-settings.json" target="_blank" rel="noopener noreferrer">游戏工作等级表</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/PassiveSkill/DT_PassiveSkill_Main.json" target="_blank" rel="noopener noreferrer">被动词条效果表</a></footer>
+  <script id="work-efficiency-data" type="application/json">__WORK_EFFICIENCY_DATA__</script>
+</section>

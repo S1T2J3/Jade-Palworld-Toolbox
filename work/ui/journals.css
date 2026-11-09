@@ -1,0 +1,16 @@
+#journals-view{padding:24px 0 16px;color:var(--ink)}
+.jn-heading,.jn-meta,.jn-reader-nav,.jn-text-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.jn-heading{margin-bottom:16px}.jn-heading h1{margin:0;font-size:clamp(25px,3vw,36px)}
+.jn-heading span,.jn-meta,.jn-foot,.jn-text-head a{color:var(--soft);font-size:12px}
+.jn-filters{display:grid;grid-template-columns:minmax(180px,2fr) repeat(2,minmax(130px,1fr));gap:12px;margin-bottom:14px}
+.jn-filters label{display:grid;gap:4px;font-size:13px;font-weight:650}.jn-filters :is(input,select){height:36px;min-width:0;padding:5px 9px;border:1px solid #c3d1c4;background:#fff;border-radius:6px;color:var(--ink)}
+.jn-group{margin:18px 0}.jn-group h2{margin:0 0 6px;font-size:15px;color:#355841}.jn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:6px}
+.jn-card{display:grid;align-content:center;gap:2px;min-height:49px;padding:7px 10px;border:1px solid #d7e0d1;border-radius:7px;background:var(--paper);color:var(--ink);text-decoration:none}
+.jn-card:hover,.jn-card:focus-visible{background:#edf4e6;border-color:#99b29c}.jn-card strong{font-size:14px;overflow-wrap:anywhere}.jn-card small{font-size:11px;color:var(--soft)}
+.jn-reader-nav{justify-content:space-between;max-width:860px;margin-bottom:12px}.jn-reader-nav span{display:flex;gap:12px}
+.jn-reader-nav a,.jn-meta a,.jn-text-head a,.jn-foot a{color:#2b6249;text-underline-offset:3px}
+.jn-page{max-width:860px;padding:clamp(16px,3vw,30px);border:1px solid #d6e1d1;border-radius:12px;background:var(--paper)}
+.jn-meta{justify-content:space-between}.jn-page h2{font-size:clamp(21px,2.6vw,31px);line-height:1.3;margin:9px 0}
+#jn-summary{margin:0 0 16px;color:#4f6557;line-height:1.65}.jn-text-head{border-top:1px solid #dce3d6;padding-top:14px;justify-content:space-between}.jn-text-head h3{margin:0;font-size:16px}
+#jn-text{line-height:1.9;overflow-wrap:anywhere}#jn-text p{margin:.8em 0;white-space:pre-line}.jn-foot{margin-top:15px;line-height:1.65}
+@media(max-width:650px){.jn-filters{grid-template-columns:1fr 1fr;gap:8px}.jn-filters label:first-child{grid-column:1/-1}.jn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.jn-page{padding:14px}}

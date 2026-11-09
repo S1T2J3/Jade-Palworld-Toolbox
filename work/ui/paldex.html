@@ -1,0 +1,18 @@
+<section id="paldex-view" aria-labelledby="dx-title" hidden>
+  <div id="dx-index">
+    <header class="dx-heading"><h1 id="dx-title">帕鲁图鉴</h1><span id="dx-count" aria-live="polite"></span></header>
+    <div class="dx-filters">
+      <label class="dx-search"><span>查找帕鲁</span><input type="search" id="dx-search" placeholder="中文名、英文名或图鉴编号" autocomplete="off" spellcheck="false"></label>
+      <label>属性<select id="dx-type"><option value="">全部属性</option></select></label>
+      <label>工作适应性<select id="dx-work"><option value="">全部工作</option></select></label>
+      <label>排序<select id="dx-order"><option value="dex">图鉴顺序</option><option value="hp">生命从高到低</option><option value="attack">攻击从高到低</option><option value="defense">防御从高到低</option></select></label>
+    </div>
+    <div id="dx-list" class="dx-grid" aria-label="符合条件的帕鲁"></div>
+    <div id="dx-empty" class="dx-empty" hidden><p>没有符合条件的帕鲁。</p><button type="button" id="dx-reset">清除筛选</button></div>
+  </div>
+  <div id="dx-detail" hidden>
+    <nav class="dx-breadcrumb" aria-label="图鉴浏览"><a id="dx-back" href="#paldex">← 返回图鉴</a><div><a id="dx-prev">← 上一只</a><a id="dx-next">下一只 →</a></div></nav>
+    <article id="dx-record"></article>
+  </div>
+  <footer class="dx-sources">游戏数据 v1.0.5 · <a href="https://paldb.cc/cn/Partner_Skill" target="_blank" rel="noopener noreferrer">伙伴技能</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/Character/DT_PalDropItem_Common.json" target="_blank" rel="noopener noreferrer">物品掉落表</a></footer>
+</section>

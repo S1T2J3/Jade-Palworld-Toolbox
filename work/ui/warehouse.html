@@ -1,0 +1,22 @@
+<section id="offspring-view" class="offspring-page" aria-label="可配出的帕鲁" hidden>
+  <section class="wh-discover panel" aria-labelledby="wh-result-title">
+    <div class="wh-result-head">
+      <div class="section-title"><span class="title-icon"><i data-icon="egg"></i></span><h2 id="wh-result-title">繁育结果</h2><span class="count" id="wh-count" aria-live="polite">0</span></div>
+      <label class="wh-limit-label" for="wh-limit">步数上限 <span class="type-filter"><select id="wh-limit"></select><i data-icon="down"></i></span></label>
+    </div>
+    <div class="wh-explanation"><i data-icon="warehouse"></i><p id="wh-members"></p><a href="#warehouse">查看仓库 <i data-icon="right"></i></a></div>
+    <p id="wh-uncertain" class="of-uncertain" hidden></p>
+    <div class="wh-filter-row">
+      <div class="input-wrap"><i data-icon="search"></i><input id="wh-result-search" type="search" autocomplete="off" spellcheck="false" placeholder="筛选目标子代" aria-label="按名称或编号筛选可配出的子代"></div>
+      <label class="wh-only"><input type="checkbox" id="wh-new-only" checked>仅看未拥有</label>
+      <label class="result-page-size" for="wh-page-size">每页 <span class="type-filter"><select id="wh-page-size" aria-label="可配子代每页显示数量"></select><i data-icon="down"></i></span></label>
+    </div>
+    <div class="wh-table-header" id="wh-table-header" aria-hidden="true"><span>最后一组亲代</span><i data-icon="arrow"></i><span>子代</span><small>点选组合查看路线</small></div>
+    <div id="wh-results" tabindex="-1" role="region" aria-label="可配子代结果"></div>
+    <div id="wh-pages" class="pages" hidden></div>
+  </section>
+  <dialog id="wh-route-dialog" aria-labelledby="wh-route-title">
+    <div class="dialog-heading"><div class="section-title"><span class="title-icon"><i data-icon="branch"></i></span><h2 id="wh-route-title">配种路线</h2></div><button class="close" type="button" id="wh-route-close" aria-label="关闭配种路线"><i data-icon="close"></i></button></div>
+    <div id="wh-route-body"></div>
+  </dialog>
+</section>

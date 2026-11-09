@@ -1,0 +1,17 @@
+<section id="enemies-view" aria-labelledby="enemy-heading" hidden>
+  <header class="enemy-heading"><h1 id="enemy-heading">单位图鉴</h1><p id="enemy-summary"></p></header>
+  <div class="enemy-layout">
+    <section class="enemy-browser" aria-label="单位列表">
+      <div class="enemy-filters">
+        <label><span id="enemy-search-label">查找单位</span><input id="enemy-search" type="search" autocomplete="off"></label>
+        <div><label>单位分类<select id="enemy-group"><option value="">全部分类</option></select></label>
+          <label>收录资料<select id="enemy-filter"><option value="">全部资料</option><option value="loot">有掉落记录</option><option value="map">可在地图定位</option></select></label></div>
+      </div>
+      <p id="enemy-count" aria-live="polite"></p>
+      <div id="enemy-list"></div>
+    </section>
+    <article id="enemy-detail" class="enemy-record" aria-label="单位资料" tabindex="-1"></article>
+  </div>
+  <footer class="enemy-sources" id="enemy-sources"></footer>
+  <script id="enemy-data" type="application/json">__ENEMY_DATA__</script>
+</section>

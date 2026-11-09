@@ -1,0 +1,15 @@
+<section id="partner-skills-view" aria-labelledby="pk-title" hidden>
+  <header class="pk-heading"><h1 id="pk-title">伙伴技能</h1><p>按帕鲁图鉴编号排列，选择帕鲁可查看技能效果与等级变化。</p></header>
+  <div class="pk-controls">
+    <label>查找帕鲁或技能<input id="pk-query" type="search" placeholder="名称、图鉴编号或技能效果" autocomplete="off"></label>
+    <label>帕鲁属性<select id="pk-element"><option value="">全部属性</option></select></label>
+    <button id="pk-reset" type="button">清除筛选</button>
+  </div>
+  <fieldset class="pk-filters"><legend>技能类型（多选显示任一匹配）</legend><div id="pk-types"></div></fieldset>
+  <div class="pk-layout">
+    <section class="pk-catalog"><h2 id="pk-count" aria-live="polite">帕鲁列表</h2><div id="pk-list" aria-labelledby="pk-count"></div></section>
+    <article id="pk-detail" aria-label="伙伴技能详情"></article>
+  </div>
+  <footer class="pk-foot">v1.0.5 · <a href="https://paldb.cc/cn/Partner_Skill" target="_blank" rel="noopener noreferrer">伙伴技能图鉴</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/PassiveSkill/DT_PartnerSkillParameter.json" target="_blank" rel="noopener noreferrer">游戏等级参数</a></footer>
+  <script id="partner-skills-data" type="application/json">__PARTNER_SKILLS_DATA__</script>
+</section>

@@ -1,0 +1,36 @@
+<section id="updates-view" aria-labelledby="release-heading" hidden>
+  <h1 id="release-heading">公告与更新</h1>
+  <div class="release-layout">
+    <section class="release-card" aria-labelledby="notices-heading">
+      <div class="release-heading-row"><h2 id="notices-heading">公告</h2><button id="notice-read-all" type="button" class="release-text-button" hidden>全部标为已读</button></div>
+      <div id="notice-list"></div>
+    </section>
+    <section class="release-card" aria-labelledby="updates-heading">
+      <div class="release-heading-row"><h2 id="updates-heading">软件更新</h2><span id="release-version"></span></div>
+      <p id="release-status" role="status"></p>
+      <p id="release-date" class="release-muted" hidden></p>
+      <details id="release-notes" hidden><summary>版本说明</summary><p id="release-notes-body"></p></details>
+      <div id="release-desktop" hidden>
+        <div class="release-actions">
+          <button type="button" id="release-check">检查更新</button>
+          <button type="button" id="release-download" class="release-primary" hidden>下载更新</button>
+        </div>
+        <div class="release-option">
+          <label><input id="release-auto" type="checkbox" aria-describedby="release-auto-info">自动更新</label>
+          <small id="release-auto-info">启动后在后台检查并下载，新版本会在下次启动时应用。</small>
+        </div>
+        <details id="release-access">
+          <summary>私有仓库访问</summary>
+          <p id="release-access-info"></p>
+          <p class="release-muted">请使用有该仓库读取权限的 GitHub 账号。绑定令牌时，请为此仓库授予 Contents 只读权限。</p>
+          <div class="release-actions">
+            <button id="release-token" type="button">绑定访问令牌</button>
+            <button id="release-machine" type="button">使用本机 GitHub 登录</button>
+            <button id="release-clear" type="button">清除授权</button>
+          </div>
+        </details>
+      </div>
+      <a id="release-link" class="release-link" target="_blank" rel="noopener noreferrer" hidden>查看 GitHub 发布页 ↗</a>
+    </section>
+  </div>
+</section>

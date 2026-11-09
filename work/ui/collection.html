@@ -1,0 +1,30 @@
+<section id="warehouse-view" class="cl-collection" aria-labelledby="cl-title" hidden>
+  <div class="cl-toolbar">
+    <div class="cl-heading"><h2 id="cl-title">仓库成员</h2><span id="cl-count"></span></div>
+    <div class="cl-actions">
+      <button type="button" class="world-pill" data-world-open aria-haspopup="dialog"><span data-world-name>默认世界</span> ▾</button>
+      <a href="#offspring" class="cl-offspring">可配出的帕鲁 <i data-icon="right"></i></a>
+      <button type="button" id="cl-add" class="cl-primary" aria-haspopup="dialog"><i data-icon="plus"></i>添加帕鲁</button>
+    </div>
+  </div>
+  <div class="cl-searchbar">
+    <div class="input-wrap cl-search"><i data-icon="search"></i><input type="search" id="cl-search" aria-label="搜索仓库中的个体" placeholder="搜索物种、个体名或词条" autocomplete="off" spellcheck="false"></div>
+    <div class="cl-storage"><span id="cl-save"></span><button id="cl-archive-open" type="button" hidden></button></div>
+  </div>
+  <div id="cl-cards" class="cl-cards"></div>
+  <div id="cl-pages" class="cl-pages" hidden></div>
+  <p id="cl-status" class="sr-only" role="status"></p>
+  <dialog id="cl-picker" class="cl-dialog" aria-labelledby="cl-picker-title">
+    <div class="dialog-heading"><div class="section-title"><span class="title-icon"><i data-icon="warehouse"></i></span><h2 id="cl-picker-title">添加帕鲁</h2></div><button id="cl-picker-close" class="close" type="button" aria-label="关闭添加帕鲁"><i data-icon="close"></i></button></div>
+    <div id="cl-pick-main">
+      <div class="cl-dialog-input">
+        <label for="cl-add-search">帕鲁物种</label>
+        <textarea rows="2" id="cl-add-search" placeholder="输入中文名、英文名或图鉴编号" spellcheck="false" aria-describedby="cl-pick-hint"></textarea>
+        <p id="cl-pick-hint">批量录入可用顿号、逗号或换行分隔。重复输入同一种帕鲁，会分别建卡。</p>
+      </div>
+      <div id="cl-choices" class="cl-choices" role="group" aria-label="选择帕鲁物种"></div>
+      <div class="cl-dialog-footer"><p id="cl-add-feedback" role="status"></p><button id="cl-confirm" type="button" class="cl-primary">登记个体</button></div>
+    </div>
+    <div id="cl-archive-panel" hidden><div id="cl-archives" class="cl-archives" role="group" aria-label="可恢复的旧个体"></div></div>
+  </dialog>
+</section>

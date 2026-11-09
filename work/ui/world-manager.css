@@ -1,0 +1,34 @@
+.world-rail{display:grid;justify-items:center;width:100%;padding:7px 2px;gap:2px;color:#edf6e6;line-height:1.3;border:1px solid #ffffff38;border-radius:7px}
+.world-rail:hover{background:#315c4d}.world-rail small{font-size:10px;color:#d1dfcf}.world-rail strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.world-pill{display:inline-flex;gap:4px;align-items:center;max-width:170px;padding:4px 8px;border:1px solid #cad8c6;border-radius:6px;background:#eff5ea;color:#345e45;font-size:12px;font-weight:650;white-space:nowrap}
+.world-pill span{overflow:hidden;text-overflow:ellipsis}.world-pill:hover{background:#e0ecd9}.mobile-section .world-pill{max-width:115px;margin-left:4px}
+#world-dialog{width:min(565px,calc(100% - 26px));max-height:min(90dvh,800px);overflow:auto}
+.world-body{display:grid;gap:19px;padding:17px 22px 21px}.world-body section+section{border-top:1px solid #dce5d8;padding-top:16px}.world-body h3{font-size:17px;color:#263f32;margin-bottom:8px}
+.world-body h4,.world-inset label{font-size:14px;font-weight:700;color:#345642}.world-body p,.world-preview-detail{font-size:13px;line-height:1.55;color:#52685a}
+.world-switch-row,.world-backup-row,.world-meta-row,.world-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.world-meta-row{justify-content:space-between;margin-top:5px}.world-meta-row>div{display:flex;gap:12px}.world-backup-row,.world-buttons{margin-top:9px}
+.world-body select,.world-body input:not([type=file]){min-width:0;border:1px solid #c4d3c0;background:#fffefb;color:#244332;border-radius:6px;padding:7px 9px;font:inherit;font-size:14px}
+.world-switch-row select,.world-switch-row input{flex:1 1 135px;max-width:100%}.world-body button{font-size:13px;font-weight:620}
+.world-primary,.world-secondary,.world-danger{padding:7px 12px;border-radius:6px;border:1px solid #bfd0bd}.world-primary{background:#285e45;color:white;border-color:#285e45}.world-secondary{background:#fffefb;color:#335941}.world-text{color:#476949;padding:4px 0;text-decoration:underline;text-underline-offset:2px}
+.world-danger{background:#fff2e9;color:#8d422b;border-color:#d9b6a5}.world-body button:disabled{opacity:.52;cursor:not-allowed}
+.world-inset{margin-top:10px;border:1px solid #d4dfce;border-radius:7px;background:#f3f7ef;padding:10px 12px}
+.world-inset label{display:block;margin-bottom:5px}
+#world-preview-list{display:grid;list-style:none;gap:6px;margin:8px 0;max-height:165px;overflow:auto;padding:0}
+#world-preview-list li{display:grid;border-top:1px solid #dde7d8;padding-top:5px}#world-preview-list strong{font-size:13px;overflow-wrap:anywhere}
+#world-feedback{margin:0;color:#315c42;border-left:3px solid #7b9e75;padding:3px 8px}#world-feedback[data-error=true]{border-color:#b77545;color:#854a28}
+#world-game-select{width:100%}#world-game-location,#world-game-bind-hint,#world-game-status{margin-top:5px;overflow-wrap:anywhere}
+#world-select,#world-game-select,#world-select option,#world-game-select option,.world-rail [data-world-name],.world-pill [data-world-name]{white-space:pre}
+#world-game-bind-hint,#world-game-status,#world-preview-list strong{white-space:pre-wrap}
+#world-game-diagnostics{margin-top:7px;color:#486552;font-size:12px}
+#world-game-diagnostics summary{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+#world-game-details{margin:5px 0 0;padding-left:1.4em;line-height:1.45;overflow-wrap:anywhere}
+#world-terminal-status,#world-terminal-notes{overflow-wrap:anywhere}
+#world-terminal-owner-form,#world-terminal-change{margin-top:7px}
+#world-terminal-owner{flex:1;min-width:100px;max-width:100%}
+#world-terminal-notes{padding-left:1.4em;margin-top:5px;font-size:12px;color:#52685a}
+#world-legacy{margin-top:12px;border-top:1px solid #dce5d8;padding-top:9px}
+#world-legacy summary{cursor:pointer;color:#345c43;font-weight:650;font-size:13px}
+#world-legacy ol{margin:6px 0;padding-left:1.5em;font-size:13px;color:#4a5f51;line-height:1.55}
+#world-legacy li+li{margin-top:3px}.world-legacy-help{margin-top:10px}.world-legacy-help p{padding:5px 0 0}
+.world-legacy-help code{overflow-wrap:anywhere;font-size:12px}
+@media(max-width:520px){.world-body{padding:13px}.world-switch-row,.world-backup-row{gap:5px}.world-body button{font-size:12px}.world-primary,.world-secondary,.world-danger{padding:7px 8px}.cl-actions .world-pill{max-width:120px}}

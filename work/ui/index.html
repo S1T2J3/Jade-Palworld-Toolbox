@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#98eaff">
+  <meta name="application-name" content="Jade · 幻兽帕鲁工具箱">
+  <meta name="pal-release-version" content="__RELEASE_VERSION__">
+  <meta name="pal-release-repository" content="__RELEASE_REPO__">
+  <title>配种查询 · Jade · 幻兽帕鲁工具箱</title>
+  <link rel="icon" href="__FAVICON__">
+  <script>/*__SKIN_BOOT__*/</script>
+  <style>/*__CSS__*/</style>
+</head>
+<body>
+  <aside class="section-rail" id="section-rail" aria-label="手册分区">
+    <div class="rail-heading">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="__JADE_SYMBOL__" alt="" width="52" height="52" draggable="false">
+        </span>
+        <span class="brand-type"><strong>Jade</strong><small>幻兽帕鲁工具箱</small></span>
+      </div>
+      <button type="button" id="rail-close" class="rail-close" aria-label="关闭导航"><i data-icon="close"></i></button>
+    </div>
+    <nav class="section-links" aria-label="主导航">
+      <a id="section-breeding" href="#lookup" class="section-active" aria-current="true"><i data-icon="egg"></i><span>配种手册</span></a>
+      <a id="section-map" href="#map" aria-controls="map-view spawns-view"><i data-icon="worldmap"></i><span>世界地图</span></a>
+      <a id="section-paldex" href="#paldex" aria-controls="paldex-view"><i data-icon="paldex"></i><span>帕鲁图鉴</span></a>
+      <a id="section-enemies" href="#enemies" aria-controls="enemies-view"><i data-icon="enemy"></i><span>单位图鉴</span></a>
+      <a id="section-details" href="#details/active" aria-controls="pal-details-view partner-skills-view"><i data-icon="book"></i><span>帕鲁详情</span></a>
+      <a id="section-work" href="#work/suitability" aria-controls="pal-details-view facilities-view production-view work-efficiency-view ranch-view relic-view expeditions-view"><i data-icon="ranch"></i><span>帕鲁工作</span></a>
+      <a id="section-items" href="#items" aria-controls="items-view"><i data-icon="items"></i><span>物品图鉴</span></a>
+      <a id="section-guide" href="#guide/elements" aria-controls="combat-guide-view gathering-view adventure-view journals-view"><i data-icon="compass"></i><span>冒险指南</span></a>
+      <a id="section-settings" href="#settings/skins" aria-controls="settings-view updates-view"><i data-icon="settings"></i><span>设置</span></a>
+    </nav>
+    <div class="rail-foot">
+      <button type="button" id="world-rail" class="world-rail" data-world-open aria-haspopup="dialog" aria-controls="world-dialog"><small>世界档案</small><strong data-world-name>默认世界</strong></button>
+      <button class="nav-about" id="about-button" type="button" aria-label="数据说明" title="数据说明"><i data-icon="info"></i><span>数据说明</span></button>
+      <div class="offline"><span class="status-dot"></span>离线可用</div>
+    </div>
+  </aside>
+  <div class="rail-shade" id="rail-shade" hidden></div>
+  <div id="atlas-load-status" role="status" hidden><span></span><button type="button" hidden>重试</button></div>
+  <div class="shell-pages" id="shell-pages">
+  <header class="masthead">
+    <div class="wrap header-inner">
+      <div class="header-controls">
+      <button type="button" id="atlas-back" aria-label="返回上一页" title="返回上一页（Alt + ←）" disabled><span aria-hidden="true">←</span> 返回</button>
+      <a id="atlas-news" href="#settings/updates" aria-controls="updates-view" aria-label="公告与更新" title="公告与更新"><i data-icon="bell"></i><span>公告</span><b id="atlas-news-count" aria-hidden="true" hidden></b></a>
+      <div class="mobile-section"><button type="button" id="rail-open" aria-controls="section-rail" aria-expanded="false" aria-label="打开功能导航"><i data-icon="menu"></i></button><span id="mobile-section-title">配种手册</span><button type="button" class="world-pill" data-world-open aria-haspopup="dialog"><span data-world-name>默认世界</span> ▾</button></div>
+      </div>
+      <nav id="breeding-tabs" aria-label="配种手册页面">
+        <a id="nav-lookup" href="#lookup" aria-controls="lookup-view" class="current-nav" aria-current="page"><i data-icon="branch"></i>配种查询</a>
+        <a id="nav-warehouse" href="#warehouse" aria-controls="warehouse-view"><i data-icon="warehouse"></i>配种仓库</a>
+        <a id="nav-offspring" href="#offspring" aria-controls="offspring-view"><i data-icon="egg"></i>可配子代</a>
+        <a id="nav-planner" href="#planner" aria-controls="planner-view"><i data-icon="target"></i>目标配种</a>
+      </nav>
+      <nav id="map-tabs" aria-label="世界地图页面" hidden>
+        <a id="nav-map" href="#map" aria-controls="map-view"><i data-icon="worldmap"></i>地图点位</a>
+        <a id="nav-spawns" href="#spawns" aria-controls="spawns-view"><i data-icon="pin"></i>帕鲁刷新位置</a>
+      </nav>
+      <nav id="item-tabs" aria-label="物品图鉴页面" hidden>
+        <a id="nav-items" href="#items" aria-controls="items-view"><i data-icon="items"></i>物品查询</a>
+      </nav>
+      <nav id="dex-tabs" aria-label="帕鲁图鉴页面" hidden>
+        <a id="nav-paldex" href="#paldex" aria-controls="paldex-view">帕鲁图鉴</a>
+      </nav>
+      <nav id="enemy-tabs" aria-label="单位图鉴分类" hidden>
+        <a id="nav-enemies" href="#enemies" aria-controls="enemies-view">敌人图鉴</a>
+        <a id="nav-merchants" href="#merchants" aria-controls="enemies-view">商人图鉴</a>
+        <a id="nav-neutrals" href="#neutrals" aria-controls="enemies-view">其他中立单位</a>
+      </nav>
+      <nav id="pd-tabs" aria-label="帕鲁详情分类" hidden>
+        <a id="nav-active" href="#details/active" aria-controls="pal-details-view">主动技能</a>
+        <a id="nav-passive" href="#details/passive" aria-controls="pal-details-view">被动技能</a>
+        <a id="nav-partner" href="#details/partner" aria-controls="partner-skills-view">伙伴技能</a>
+        <a id="nav-fruits" href="#details/fruits" aria-controls="pal-details-view">技能果实</a>
+        <a id="nav-surgery" href="#details/surgery" aria-controls="pal-details-view">帕鲁手术台</a>
+        <a id="nav-stats" href="#details/stats" aria-controls="pal-details-view">属性值计算</a>
+        <a id="nav-capture" href="#details/capture" aria-controls="pal-details-view">捕捉概率</a>
+      </nav>
+      <nav id="work-tabs" aria-label="帕鲁工作页面" hidden>
+        <a id="nav-suitability" href="#work/suitability" aria-controls="pal-details-view">工作适应性</a>
+        <a id="nav-facilities" href="#work/facilities" aria-controls="facilities-view">设施</a>
+        <a id="nav-production" href="#work/production" aria-controls="production-view">据点生产</a>
+        <a id="nav-efficiency" href="#work/efficiency" aria-controls="work-efficiency-view">工作效率</a>
+        <a id="nav-ranch" href="#work/ranch" aria-controls="ranch-view">牧场产物</a>
+        <a id="nav-relic" href="#work/relic" aria-controls="relic-view">遗物转换</a>
+        <a id="nav-expeditions" href="#work/expeditions" aria-controls="expeditions-view">远征所</a>
+      </nav>
+      <nav id="guide-tabs" aria-label="冒险指南页面" hidden>
+        <a id="nav-elements" href="#guide/elements" aria-controls="combat-guide-view">属性克制</a>
+        <a id="nav-status" href="#guide/status" aria-controls="combat-guide-view">异常状态</a>
+        <a id="nav-gathering" href="#guide/gathering" aria-controls="gathering-view">野外采集</a>
+        <a id="nav-loot" href="#guide/loot" aria-controls="adventure-view">探索奖励表</a>
+        <a id="nav-quests" href="#guide/quests" aria-controls="adventure-view">任务详情</a>
+        <a id="nav-journals" href="#guide/journals" aria-controls="journals-view">探索手记</a>
+      </nav>
+      <nav id="settings-tabs" aria-label="设置页面" hidden>
+        <a id="nav-skins" href="#settings/skins" aria-controls="settings-view">皮肤</a>
+        <a id="nav-updates" href="#settings/updates" aria-controls="updates-view">公告与更新</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-art" aria-hidden="true"></div>
+      <div class="hero-content">
+        <h1 id="page-title">帕鲁配种查询</h1>
+        <p id="page-description">选一只帕鲁，查找配种伙伴，或反查它的双亲。</p>
+        <div class="hero-meta"><span><i data-icon="book"></i><b id="species-count">—</b> 个图鉴条目</span><em></em><span><i data-icon="egg"></i><b id="recipe-count">—</b> 条配方</span></div>
+      </div>
+    </section>
+    <noscript><p>请使用启用了 JavaScript 的浏览器打开配种手册。</p></noscript>
+    <div class="workspace" id="lookup-view">
+      <aside class="catalog panel" aria-label="选择帕鲁">
+        <div class="catalog-controls">
+          <div class="section-title"><span class="title-icon"><i data-icon="list"></i></span><h2>选择帕鲁</h2></div>
+          <div class="input-wrap"><i data-icon="search"></i><input id="pal-search" type="search" autocomplete="off" spellcheck="false" placeholder="输入中文名、英文名或编号" aria-label="搜索帕鲁名称或图鉴编号"></div>
+        </div>
+        <div class="species-list" role="group" aria-label="帕鲁列表" id="species-list"></div>
+        <div class="catalog-footer"><span id="catalog-count"></span><span class="key-hint"><kbd>↵</kbd> 选择</span></div>
+      </aside>
+      <section class="results panel" aria-label="配种结果">
+        <div class="mode-bar" aria-label="查询方式" role="group">
+          <button class="mode active" id="forward" aria-pressed="true"><i data-icon="branch"></i>查配种伙伴</button>
+          <button class="mode" id="reverse" aria-pressed="false"><i data-icon="parents"></i>反查双亲</button>
+        </div>
+        <div class="selection">
+          <div class="specimen" id="specimen" aria-hidden="true"></div>
+          <div class="selection-detail"><div class="selection-label" id="selection-label">当前亲代</div><div class="selected-name"><h2 id="selection-name"></h2><div id="selected-types" class="type-set"></div></div><div class="spec-subline"><span id="selection-id" class="spec-id"></span><a id="lookup-spawns" class="habitat-shortcut" href="#spawns"><i data-icon="pin"></i>查看刷新位置</a><a id="lookup-paldex" class="habitat-shortcut" href="#paldex"><i data-icon="paldex"></i>图鉴资料</a></div></div>
+          <button type="button" class="stock-toggle" id="lookup-warehouse-toggle"></button>
+        </div>
+        <div class="result-tools">
+          <div class="result-title"><h3 id="result-title">配种组合</h3><span id="result-count" class="count" aria-live="polite"></span></div>
+          <div class="filters">
+            <div class="input-wrap result-filter"><i data-icon="search"></i><input type="search" autocomplete="off" spellcheck="false" id="filter" aria-label="筛选配种结果" placeholder="筛选伙伴或子代"></div>
+            <div class="type-filter"><select id="element" aria-label="筛选子代属性"><option value="">全部属性</option></select><i data-icon="down"></i></div>
+            <label class="result-page-size" for="lookup-page-size">每页 <span class="type-filter"><select id="lookup-page-size" aria-label="配种组合每页显示数量"></select><i data-icon="down"></i></span></label>
+          </div>
+        </div>
+        <div id="pair-list-start" class="pair-results" tabindex="-1" aria-labelledby="result-title" role="region">
+          <div id="pair-key" class="pair-key"></div>
+          <ul id="pair-rows" class="pair-grid" aria-labelledby="result-title" aria-describedby="pair-key" role="list"></ul>
+        </div>
+        <div id="empty" hidden></div>
+        <div class="pages" id="pages"></div>
+      </section>
+    </div>
+    <!--__WAREHOUSE__-->
+    <!--__COLLECTION__-->
+    <!--__TRAIT_UI__-->
+    <!--__MAP_UI__-->
+    <!--__SPAWN_UI__-->
+    <!--__PAL_DETAILS_UI__-->
+    <!--__ITEM_UI__-->
+    <!--__PALDEX_UI__-->
+    <!--__ENEMIES_UI__-->
+    <!--__RELIC_UI__-->
+    <!--__RANCH_UI__-->
+    <!--__FACILITIES_UI__-->
+    <!--__WORK_EFFICIENCY_UI__-->
+    <!--__PARTNER_SKILLS_UI__-->
+    <!--__COMBAT_GUIDE_UI__-->
+    <!--__JOURNALS_UI__-->
+    <!--__EXPEDITIONS_UI__-->
+    <!--__ADVENTURE_UI__-->
+    <!--__RESOURCE_GUIDES_UI__-->
+    <!--__SETTINGS_UI__-->
+    <!--__RELEASE_CENTER_UI__-->
+    <!--__EXTERNAL_LINKS__-->
+  </main>
+  </div>
+  <dialog id="about" aria-labelledby="about-title">
+    <div class="dialog-heading"><div class="section-title"><span class="title-icon"><i data-icon="book"></i></span><h2 id="about-title">数据说明</h2></div><button class="close" id="about-close" aria-label="关闭数据说明"><i data-icon="close"></i></button></div>
+    <div class="about-inner" id="about-body"></div>
+  </dialog>
+  <!--__WORLD_MANAGER__-->
+  <script id="db" type="application/json">__DATABASE__</script>
+  <script id="portraits" type="application/json">__PORTRAITS__</script>
+  <script id="trait-data" type="application/json">__TRAITS__</script>
+  <script id="map-data" type="application/json">__MAP_DATA__</script>
+  <script id="spawn-data" type="application/json">__SPAWN_DATA__</script>
+  <script id="pal-details-data" type="application/json">__PAL_DETAILS_DATA__</script>
+  <script id="stat-data" type="application/json">__STAT_DATA__</script>
+  <script id="capture-data" type="application/json">__CAPTURE_DATA__</script>
+  <script id="item-catalog-data" type="application/json">__ITEM_DATA__</script>
+  <script id="paldex-data" type="application/json">__PALDEX_DATA__</script>
+  <script id="paldex-index-data" type="application/json">__PALDEX_INDEX__</script>
+  <script id="relic-data" type="application/json">__RELIC_DATA__</script>
+  <script id="ranch-data" type="application/json">__RANCH_DATA__</script>
+  <script id="facilities-data" type="application/json">__FACILITIES_DATA__</script>
+  <script id="item-icons" type="application/json">__ITEM_ICONS__</script>
+  <script id="map-images" type="application/json">__MAP_IMAGES__</script>
+  <script id="trait-solver-code">/*__TRAIT_SOLVER__*/</script>
+  <script id="warehouse-solver-code">/*__WAREHOUSE_SOLVER__*/</script>
+  <script id="offspring-solver-code">/*__OFFSPRING_SOLVER__*/</script>
+  <script>/*__APP__*/</script>
+</body>
+</html>

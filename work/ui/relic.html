@@ -1,0 +1,38 @@
+<section id="relic-view" hidden aria-labelledby="rl-title">
+  <header class="rl-header"><h1 id="rl-title">遗物转换</h1><span>古代文明遗物转换器</span></header>
+  <nav class="rl-modes" aria-label="遗物转换查询方式">
+    <a data-rl-mode="input" href="#work/relic">按遗物查产出</a><a data-rl-mode="item" href="#work/relic/item/Wood_WorldTree">按产物反查</a>
+  </nav>
+  <div id="rl-input" hidden>
+    <nav id="rl-tiers" class="rl-tiers" aria-label="选择投入的遗物"></nav>
+    <div class="rl-board">
+      <section class="rl-panel" aria-labelledby="rl-products-title">
+        <div class="rl-panel-heading"><h2 id="rl-products-title">可能产物</h2><span id="rl-count" class="rl-count" aria-live="polite"></span></div>
+        <div class="rl-filters"><label>查找产物<input id="rl-filter" type="search" placeholder="名称、英文名或物品 ID" autocomplete="off"></label><label>物品类别<select id="rl-category"></select></label></div>
+        <div id="rl-results" class="rl-products"></div>
+      </section>
+      <aside class="rl-panel rl-side" aria-label="本次转换">
+        <h2>单次转换</h2><div id="rl-selected"></div>
+        <h3>必得材料</h3><div id="rl-fixed"></div>
+        <div class="rl-sim-title"><h3>模拟结果</h3><button type="button" id="rl-roll">模拟转换一次</button></div>
+        <div id="rl-sim" aria-live="polite">选择遗物后可试转。</div>
+        <details><summary>查看各奖励槽的触发率</summary><div id="rl-slots"></div></details>
+      </aside>
+    </div>
+  </div>
+  <div id="rl-reverse" class="rl-board" hidden>
+    <section class="rl-panel" aria-labelledby="rl-choose-title">
+      <div class="rl-panel-heading"><h2 id="rl-choose-title">选择产物</h2><span id="rl-item-count" class="rl-count" aria-live="polite"></span></div>
+      <label class="rl-search">查找产物<input id="rl-item-filter" type="search" placeholder="名称、英文名或物品 ID" autocomplete="off"></label>
+      <div id="rl-item-list" class="rl-products"></div>
+    </section>
+    <section class="rl-panel rl-side rl-compare" aria-label="五档遗物产出对照"><div id="rl-target"></div>
+      <div id="rl-odds"></div>
+    </section>
+  </div>
+  <details class="rl-about"><summary>转换器与概率说明</summary>
+    <p>科技 74 级解锁古代文明遗物转换器。建造需要<span id="rl-materials"></span>。在据点接通电力，投入遗物，指派拥有手工作业适应性的帕鲁。</p>
+    <p>每次处理 1 件遗物。可选放入<a href="#items/WorldTreeHolyWater">世界树圣水</a>，使处理效率变为 1.5 倍。产物表采用每次转换至少获得 1 次该物品的概率。每个奖励槽独立判定，触发后按物品权重抽取，同一种产物可能在多个槽出现。</p>
+  </details>
+  <footer class="rl-sources">数据版本 1.0.5 · <a href="https://paldb.cc/cn/Ancient_Relic_Recycler" target="_blank" rel="noopener noreferrer">转换器与产物</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/Common/DT_FieldLotteryNameDataTable.json" target="_blank" rel="noopener noreferrer">奖励槽概率</a> · <a href="https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/Item/DT_ItemLotteryDataTable.json" target="_blank" rel="noopener noreferrer">物品权重与数量</a> · <a href="https://palworld.run/items/ancient-relic-recycler-ancientrelicrecycler" target="_blank" rel="noopener noreferrer">处理工作量与圣水</a></footer>
+</section>

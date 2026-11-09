@@ -1,0 +1,42 @@
+#enemies-view{padding-top:24px;color:var(--ink)}
+.enemy-heading h1{margin:0;font-size:clamp(26px,2.65vw,36px);line-height:1.18}
+.enemy-heading p{margin:6px 0 16px;color:var(--soft);font-size:.94rem}
+.enemy-layout{display:grid;grid-template-columns:minmax(270px,1fr) minmax(320px,1.15fr);gap:14px;align-items:start}
+.enemy-browser,.enemy-record{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--paper);overflow-wrap:anywhere}
+.enemy-filters{display:grid;gap:8px;padding:14px 14px 0}
+.enemy-filters div{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.enemy-filters label{min-width:0;display:grid;gap:4px;font-size:.8rem;font-weight:650;color:var(--soft)}
+.enemy-filters :is(select,input){font:inherit;font-size:.9rem;font-weight:500;width:100%;color:var(--ink);border:1px solid var(--border);border-radius:7px;background:var(--paper);padding:6px 8px;min-height:36px}
+#enemy-count{margin:9px 14px 5px;font-size:.81rem;color:var(--soft)}
+#enemy-list{margin:0 6px 9px;padding:2px 4px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,149px),1fr));gap:4px;max-height:min(65vh,760px);overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.enemy-choice{display:flex;align-items:center;gap:8px;padding:5px;border:1px solid transparent;border-radius:7px;min-width:0;min-height:46px;background:var(--skin-surface-soft);color:var(--ink);font-size:.83rem;line-height:1.3;font-weight:650;text-decoration:none}
+.enemy-choice small,.enemy-kicker{display:block;margin-top:2px;color:var(--soft);font-size:.73rem;font-weight:500}
+.enemy-choice[aria-current=true]{border-color:var(--skin-edge-strong);background:var(--skin-selected)}
+.enemy-choice:hover,.enemy-choice:focus-visible{border-color:var(--skin-accent)}
+.enemy-portrait{display:inline-grid;place-items:center;flex:none;width:36px;height:36px;background:var(--skin-tint);border-radius:7px;overflow:hidden;color:var(--skin-deep)}
+.enemy-portrait img,.enemy-reward img{width:100%;height:100%;object-fit:contain}
+.enemy-record{padding:16px}
+.enemy-record:focus:not(:focus-visible){outline:none}
+.enemy-profile{display:flex;align-items:center;gap:12px}
+.enemy-profile .enemy-portrait{height:70px;width:70px;border-radius:10px}
+.enemy-profile h2{margin:3px 0;font-size:clamp(20px,2vw,29px);line-height:1.2}
+.enemy-record section{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.enemy-record h3{font-size:1rem;margin:0 0 7px}
+.enemy-record h4{font-size:.85rem;margin:8px 0 4px}
+.enemy-meta,.enemy-note{margin:5px 0;color:var(--soft);font-size:.83rem;line-height:1.5}
+.enemy-rewards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,175px),1fr));gap:5px}
+.enemy-reward{display:flex;align-items:center;gap:7px;padding:6px 8px;min-height:40px;background:var(--skin-surface-soft);border:1px solid var(--line);border-radius:7px;color:var(--ink);font-size:.85rem;text-decoration:none}
+.enemy-reward img{width:30px;height:30px;flex:none}.enemy-reward small{display:block;color:var(--soft);font-size:.75rem}
+.enemy-reward:hover,.enemy-reward:focus-visible{border-color:var(--skin-edge-strong);background:var(--skin-tint)}
+.unit-stock{display:grid;align-content:start;border:1px solid var(--line);border-radius:7px;background:var(--skin-surface-soft)}
+.unit-stock .enemy-reward{border-color:transparent;background:transparent}
+.unit-price{padding:0 8px 6px 45px;font-size:.76rem;font-variant-numeric:tabular-nums;color:var(--soft)}
+.unit-price a{color:var(--skin-accent);text-underline-offset:2px}
+.unit-requests{display:grid;grid-template-columns:minmax(100px,0.8fr) 1.2fr;align-items:baseline;gap:5px 9px;font-size:.84rem}
+.unit-requests dd{margin:0}.unit-requests a{color:var(--skin-accent);text-underline-offset:2px}
+.enemy-links{display:flex;flex-wrap:wrap;gap:5px 12px}
+.enemy-links a,.enemy-sources a{color:var(--skin-accent);text-underline-offset:3px}
+.enemy-links a{font-size:.85rem;font-weight:650}
+.enemy-sources{display:flex;flex-wrap:wrap;gap:4px 10px;margin:13px 0;color:var(--soft);font-size:.75rem}
+@media(max-width:820px){#enemies-view{padding-top:16px}.enemy-layout{grid-template-columns:1fr}#enemy-list{max-height:34vh}.enemy-record{scroll-margin-top:9px}}
+@media(max-width:450px){#enemy-list{grid-template-columns:1fr 1fr}.enemy-record{padding:12px}.enemy-choice{gap:5px}.enemy-portrait{width:30px;height:30px}}
