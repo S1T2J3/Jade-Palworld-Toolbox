@@ -15,7 +15,7 @@
 | `SHA256SUMS.txt` | 对照该版本资产的 SHA-256。Windows 可运行 `Get-FileHash .\Jade-Palworld-Toolbox.exe -Algorithm SHA256`。 |
 | `Jade-Delta-from-….jdp` | 工具箱自动选择的增量更新文件。首次安装请下载主程序。 |
 
-安装版与便携版沿用当前 Windows 用户原有的世界档案、帕鲁仓库和设置。已有同版 Gecko 的电脑可以复用运行环境。新电脑首次运行时会从 Mozilla 下载约 90.5 MB 并校验 SHA-512。离线准备运行环境时，把[简体中文 x64 官方安装包](https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe) 按原名 `Firefox Setup 153.6.0esr.exe` 放在安装后的主程序旁。引擎准备完毕后，配种、仓库、地图和图鉴均可离线使用。
+安装版与便携版沿用当前 Windows 用户原有的世界档案、帕鲁仓库和设置。已有同版 Gecko 的电脑可以复用运行环境。从 v1.0.14 起，推荐的 Setup 安装包自带未经修改的官方运行环境安装文件，安装完成后首次启动无需连接 Mozilla。便携版首次运行时会依次尝试官方 CDN 和归档站下载约 90.5 MB，每个来源均校验 SHA-512，失败自动切换。下载安装包与在线更新仍需要访问 GitHub；也可通过 QQ 群转发完整 Setup 给无法联网的电脑。离线准备运行环境时，把[简体中文 x64 官方安装包](https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe) 按原名 `Firefox Setup 153.6.0esr.exe` 放在安装后的主程序旁。引擎准备完毕后，配种、仓库、地图和图鉴均可离线使用。
 
 在「设置 → 公告与更新」查看公告和更新状态。v1.0.7 起，官方桌面版会直接读取公开公告和更新。若旧版提示需要 GitHub 仓库权限，可从发布页下载新版安装包，沿用已有世界档案、仓库和设置。
 

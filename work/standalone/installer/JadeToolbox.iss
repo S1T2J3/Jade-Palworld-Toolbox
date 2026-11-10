@@ -37,6 +37,7 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 [Files]
 Source: "{#DistPath}\{#FullExe}"; DestDir: "{#BinDir}"; Flags: replacesameversion
 Source: "{#DistPath}\{#FastExe}"; DestDir: "{#BinDir}"; Flags: replacesameversion
+Source: "{#RuntimeInstaller}"; DestDir: "{#BinDir}"; DestName: "firefox-esr-x64.exe"; Flags: replacesameversion
 
 [Icons]
 Name: "{group}\{#Product}"; Filename: "{#BinDir}\{#FastExe}"; WorkingDir: "{#BinDir}"; AppUserModelID: "Jade.Palworld.Toolbox"

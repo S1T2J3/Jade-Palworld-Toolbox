@@ -13,6 +13,10 @@ using System.Windows.Forms;
 internal static class RuntimeBootstrap {
     internal const string FileName = "Firefox Setup 153.6.0esr.exe";
     const string DownloadUrl = "https://archive.mozilla.org/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe";
+    static readonly string[] DownloadUrls = {
+        "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe",
+        DownloadUrl
+    };
     const string InstallerHash = "2d41fd155a331b7400fe709fe73bb823e22c983b9d07f11cfe5e6d56ac55bdc1c0c418a7f81b163152b12e461b9385f17bed53510ba678aefaa1f21c87bb1927";
     const long InstallerLength = 90514512;
 
@@ -65,9 +69,9 @@ internal static class RuntimeBootstrap {
         }
     }
 
-    static void Download(string path,Action<string,int> progress) {
+    static void DownloadFrom(string url,string path,Action<string,int> progress) {
         ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
-        var request=(HttpWebRequest)WebRequest.Create(DownloadUrl);
+        var request=(HttpWebRequest)WebRequest.Create(url);
         request.Timeout=30000; request.ReadWriteTimeout=30000;
         request.UserAgent="Jade-Palworld-Toolbox"; request.AllowAutoRedirect=false;
         using(var response=(HttpWebResponse)request.GetResponse())
@@ -85,6 +89,27 @@ internal static class RuntimeBootstrap {
         }
     }
 
+    internal static bool ValidInstaller(string path) {
+        using(var input=File.OpenRead(path)) using(var digest=SHA512.Create())
+            return input.Length==InstallerLength && Hex(digest.ComputeHash(input))==InstallerHash;
+    }
+
+    static void Download(string path,Action<string,int> progress) {
+        Exception failure=null;
+        for(int i=0;i<DownloadUrls.Length;i++) {
+            try {
+                progress("正在连接引擎下载源 "+(i+1)+"/"+DownloadUrls.Length,-1);
+                DownloadFrom(DownloadUrls[i],path,progress);
+                if(!ValidInstaller(path)) throw new InvalidDataException("引擎安装包校验失败。");
+                return;
+            } catch(WebException e) {failure=e;}
+              catch(IOException e) {failure=e;}
+              catch(InvalidDataException e) {failure=e;}
+            if(File.Exists(path)) File.Delete(path);
+        }
+        throw new IOException("无法下载桌面引擎。请使用带运行环境的完整安装包，或将官方的 "+FileName+" 放在工具箱旁后重试。",failure);
+    }
+
     static void InstallOfficial(string stage,Dictionary<string,string> files,Action<string,int> progress) {
         string work=Path.Combine(stage,".official");
         Directory.CreateDirectory(work);
@@ -99,7 +124,7 @@ internal static class RuntimeBootstrap {
         } else {
             progress("正在连接 Mozilla",-1);
             try {Download(installer,progress);}
-            catch(WebException e) {throw new IOException("无法获取桌面引擎。请联网后重试，或将 Mozilla 官方的 "+FileName+" 放在工具箱旁。",e);}
+            catch(WebException e) {throw new IOException("无法获取桌面引擎。请改用带运行环境的完整安装包。",e);}
         }
         using(var input=File.OpenRead(installer)) using(var digest=SHA512.Create()) {
             if(input.Length!=InstallerLength || Hex(digest.ComputeHash(input))!=InstallerHash)
