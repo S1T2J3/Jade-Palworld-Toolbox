@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const releaseVersion = '1.0.11';
+const releaseVersion = '1.0.12';
 const releaseRepository = process.env.JADE_RELEASE_REPOSITORY || 'S1T2J3/Jade-Palworld-Toolbox';
 if (!/^[a-z\d][a-z\d-]{0,38}\/[a-z\d][a-z\d_.-]{0,99}$/i.test(releaseRepository)) {
   throw new Error('Invalid GitHub update repository');

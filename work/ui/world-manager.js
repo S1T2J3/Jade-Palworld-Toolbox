@@ -9,7 +9,23 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
   if(!desktop) el('game-help').textContent='Windows 独立版可以自动识别本机游戏存档。此页可在下方恢复手册 JSON 备份。';
   let gameSaves=[], gameRequest=null, gameAction=false;
   const terminalByWorld=new Map();
-  let shownOwners=null;
+  let shownOwners=null, directRefresh=null;
+  function refreshStatus(text,busy=false) {
+    const node=document.getElementById('tp-refresh-status');
+    if(node){node.hidden=!text;node.textContent=text;}
+    const button=document.querySelector('[data-world-refresh]');
+    if(button){button.disabled=busy;button.setAttribute('aria-busy',String(busy));}
+  }
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('[data-world-refresh]');
+    if(!button || directRefresh || gameRequest) return;
+    if(!desktop){refreshStatus('自动读取需要 Windows 独立版，请在仓库手动更新。');return;}
+    const world=worlds.active();
+    if(!world.gameId){refreshStatus('请先关联当前世界的游戏存档，之后可一键刷新。');document.querySelector('[data-world-open]')?.click();return;}
+    directRefresh={worldId:world.id,gameId:world.gameId};
+    refreshStatus('正在读取最新存档中的终端及随身队伍，请先在游戏内保存。',true);
+    requestGameSaves('auto');
+  });
   let legacyGuideOffered=false;
   let editingId=null, deletingId=null, preview=null, opener=null, fileRevision=0;
   function message(text='',error=false) {
@@ -46,6 +62,12 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
   }
   function showTerminal() {
     const world=worlds.active(),job=terminalByWorld.get(world.id);
+    if(directRefresh?.requestId && job?.requestId===directRefresh.requestId) {
+      const busy=['reading','saving'].includes(job.phase);
+      refreshStatus(job.text+(job.notes.length?' '+job.notes.join(' '):''),busy);
+      if(job.phase==='choose' && !dialog.open){dialog.showModal();refresh();}
+      if(!busy) directRefresh=null;
+    }
     const visible=desktop && dialog.open && job && world.gameId===job.gameId && gameSaves.some(s=>s.id===job.gameId);
     el('terminal').hidden=!visible;
     if(!visible){shownOwners=null;return;}
@@ -68,10 +90,11 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
   }
   const canonicalOwner=value=>typeof value==='string'?value.toLowerCase().replaceAll('-',''):'';
   function requestTerminal(world,choose=false) {
-    if(!desktop || !dialog.open || !world.gameId || !gameSaves.some(s=>s.id===world.gameId)) return;
+    if(!desktop || (!dialog.open && directRefresh?.worldId!==world.id) || !world.gameId || !gameSaves.some(s=>s.id===world.gameId)) return;
     const previous=terminalByWorld.get(world.id);
     if(previous?.gameId===world.gameId && ['reading','saving'].includes(previous.phase)) return;
     const requestId=globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+    if(directRefresh?.worldId===world.id) directRefresh.requestId=requestId;
     terminalByWorld.set(world.id,{worldId:world.id,gameId:world.gameId,requestId,started:Date.now(),priorOwner:worlds.terminalOwner(world.id,world.gameId),choose,
       phase:'reading',text:'正在读取终端里的帕鲁…',notes:[]});
     showTerminal();
@@ -161,7 +184,7 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
     renderGameChoice();
   }
   function requestGameSaves(mode) {
-    if(!desktop || !dialog.open || gameRequest) return;
+    if(!desktop || (!dialog.open && !directRefresh) || gameRequest) return;
     gameRequest=globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
     dialog.dataset.gameScanRequest=gameRequest;
     el('game-scan').disabled=true;el('game-folder').disabled=true;
@@ -171,7 +194,7 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
   if(desktop) document.addEventListener('pal-game-saves-result',async event=>{
     let result;
     try {result=JSON.parse(event.detail);} catch{return;}
-    if(!result || !dialog.open || !gameRequest || result.requestId!==gameRequest) return;
+    if(!result || (!dialog.open && !directRefresh) || !gameRequest || result.requestId!==gameRequest) return;
     const revision=gameRequest;
     const strings=list=>Array.isArray(list)?list.filter(s=>typeof s==='string'&&s):[];
     if(result.pickingDefault===true) {
@@ -201,7 +224,7 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
       }
       const records=[...valid.values()].sort((a,b)=>(Date.parse(b.modified)||0)-(Date.parse(a.modified)||0)||a.name.localeCompare(b.name,'zh-CN')||a.id.localeCompare(b.id));
       await worlds.syncGameNames(records);
-      if(revision!==gameRequest || !dialog.open) return;
+      if(revision!==gameRequest || (!dialog.open && !directRefresh)) return;
       const previous=el('game-select').value;
       gameSaves=records;renderGameList(previous);
       showTerminal();
@@ -213,11 +236,17 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
         ?'本机未找到下面的默认存档目录。可以选择游戏实际保存的位置。'
         :'已检查下面的默认存档目录，未找到可读取的世界。可以选择其他存档目录。';
       el('game-status').textContent=status+(warnings.length?' 有 '+warnings.length+' 条扫描提示。':'');
+      if(directRefresh && (worlds.active().id!==directRefresh.worldId || worlds.active().gameId!==directRefresh.gameId)) {
+        refreshStatus('当前世界已切换，请刷新当前世界。');directRefresh=null;return;
+      }
       requestTerminal(worlds.active());
     } catch(error) {
       if(revision===gameRequest) el('game-status').textContent='读取失败。'+error.message;
     } finally {
       if(revision===gameRequest){
+        if(directRefresh && terminalByWorld.get(directRefresh.worldId)?.phase!=='reading' && terminalByWorld.get(directRefresh.worldId)?.phase!=='saving') {
+          refreshStatus(el('game-status').textContent || '未找到当前世界，请检查存档路径后重试。');directRefresh=null;
+        }
         gameRequest=null;delete dialog.dataset.gameScanRequest;
         el('game-scan').disabled=false;el('game-folder').disabled=false;
       }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Pal Atlas additions, 2026. Read only the ordinary Palbox of each player.
+// Pal Atlas additions, 2026. Read the ordinary Palbox and carried party of each player.
 package resolve
 
 import (
@@ -134,15 +134,17 @@ func ReadTerminals(level []string, players []TerminalPlayerFile) (*TerminalResul
 		id := canonical(uid)
 		owners[uid] = len(result.Owners)
 		result.Owners = append(result.Owners, TerminalOwner{ID: id})
-		box, ok := guid(player.Properties, playerStoragePath)
-		if !ok || box.IsZero() {
-			result.Warnings = append(result.Warnings, "一位角色的玩家存档中没有帕鲁终端编号。")
-			continue
+		for _, containerPath := range []string{playerStoragePath, playerPartyPath} {
+			box, ok := guid(player.Properties, containerPath)
+			if !ok || box.IsZero() {
+				result.Warnings = append(result.Warnings, "一位角色的玩家存档中没有帕鲁终端编号。")
+				continue
+			}
+			if prior := boxes[box]; prior != "" && prior != id {
+				return nil, fmt.Errorf("同一个终端出现两个角色归属，暂时无法导入。")
+			}
+			boxes[box] = id
 		}
-		if prior := boxes[box]; prior != "" && prior != id {
-			return nil, fmt.Errorf("同一个终端出现两个角色归属，暂时无法导入。")
-		}
-		boxes[box] = id
 	}
 	if len(owners) == 0 {
 		return nil, fmt.Errorf("缺少可读取的角色资料，请检查同一次保存的 Players 与世界文件。")
