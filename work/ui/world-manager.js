@@ -85,7 +85,7 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
       job.phase='done';
       job.text=result.stale?'仓库已采用较新的读档结果。':'已从「'+(owner.name||owner.id)+'」的终端读取：新增 '+result.added+' 只，更新 '+result.updated+' 只，已有 '+result.unchanged+' 只。';
       if(result.ignored) job.notes.push('已在手册移除或归档的 '+result.ignored+' 只保留原状态。');
-      if(result.archived) job.notes.push('上一位角色导入的 '+result.archived+' 只已移到归档。');
+      if(result.archived) job.notes.push('已不在当前角色终端的 '+result.archived+' 只已移到归档，不再参与配种。');
       if(result.restored) job.notes.push('已恢复这名角色先前导入的 '+result.restored+' 只。');
       if(result.unrecognized?.length) job.notes.push('尚无图鉴的物种已按游戏编号入库：'+result.unrecognized.join('、')+'。');
       if(result.unknownTraits?.length) job.notes.push('尚无译名的词条按游戏编号显示：'+result.unknownTraits.join('、')+'。');
@@ -279,7 +279,7 @@ function initWorldManager({worlds,inventory,beforeOpen,restoreFocus,prepareImpor
     dialog.showModal();
     if(desktop) requestGameSaves('auto');
     refresh();
-    message(worlds.isPersistent()?'':'当前浏览器无法持久保存。请导出备份保留本次数据。',!worlds.isPersistent());
+    message(!worlds.isPersistent()?'当前浏览器无法持久保存。请导出备份保留本次数据。':button.hasAttribute('data-world-refresh')?(desktop?'正在重新检测存档并同步当前世界的终端；请先在游戏中保存。未关联世界时，请在下方选择存档。':'自动读取游戏终端需要 Windows 独立版；也可在仓库手动更新个体。'):'',!worlds.isPersistent());
   });
   el('close').addEventListener('click',()=>dialog.close());
   dialog.addEventListener('close',()=>{

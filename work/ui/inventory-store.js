@@ -211,13 +211,6 @@ function createPalInventory({species, traitData, storage, events = globalThis.wi
         saved.delete(row.id);archived.set(row.id,{...row,terminalArchived:true,terminalStamp:stamp});result.archived++;
       }
     }
-    for(const row of dormant.values()) {
-      if(row.id.startsWith(recordPrefix) && row.terminalArchived && row.terminalOwnerId===ownerId) {
-        const restored={...row,terminalStamp:stamp};
-        delete restored.terminalArchived;
-        archived.delete(row.id);saved.set(row.id,restored);result.restored++;
-      }
-    }
     for(const row of rows) {
       const uuid=String(row?.instanceId||'').replaceAll('-','').toLowerCase();
       if(!/^[0-9a-f]{32}$/.test(uuid) || /^0+$/.test(uuid) || typeof row.speciesKey!=='string' ||
@@ -239,6 +232,7 @@ function createPalInventory({species, traitData, storage, events = globalThis.wi
       }
       seen.set(id,signature);
       if((dormant.has(id)&&!dormant.get(id).terminalArchived)||read(removedPrefix+id)!==null){result.ignored++;continue;}
+      if(dormant.get(id)?.terminalArchived) result.restored++;
       // A traded individual keeps its game UUID across player terminals.
       if(archived.delete(id) && active.get(id)?.terminalOwnerId!==ownerId && active.has(id)) result.archived--;
       for(const t of traits) if(!traitKeys.has(t)) unknownTraits.add(t);
@@ -250,6 +244,16 @@ function createPalInventory({species, traitData, storage, events = globalThis.wi
       }
       if(old) result.updated++;else result.added++;
       saved.set(id,{...record,terminalStamp:stamp});
+    }
+    // This is a complete snapshot of this player's terminal, not an additive import.
+    // Keep missing individuals archived for history, but never usable as parents.
+    for(const row of saved.values()) {
+      if(read(removedPrefix+row.id)!==null) {saved.delete(row.id);continue;}
+      if(row.terminalOwnerId===ownerId && !seen.has(row.id)) {
+        saved.delete(row.id);
+        archived.set(row.id,{...row,terminalArchived:true,terminalStamp:stamp});
+        result.archived++;
+      }
     }
     result.unrecognized=[...unknownSpecies];result.unknownTraits=[...unknownTraits];
     // One write publishes the complete merge. An older scan cannot overwrite a
