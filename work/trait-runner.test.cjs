@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const context=vm.createContext({TraitSolver:require('./ui/trait-solver'),createOfflineRunner:fn=>fn});
+vm.runInContext(fs.readFileSync(require.resolve('./ui/trait-runner'),'utf8'),context);
+context.createOfflineRunner=fn=>fn;
+const run=context.createTraitRunner({traits:[{key:'a',random:true},{key:'b',random:true}]});
+const pal=(id,species,sex,traits=[])=>({id,species,sex,traits});
+const base={pairs:[[1,2,0]],speciesCount:3,target:0,traits:[],stock:[pal('owned',0,'M'),pal('dad',1,'M'),pal('mum',2,'F')],preferHatch:true,allowRandom:false};
+let r=run(base);assert.equal(r.status,'ok');assert.equal(r.steps.length,1);assert.equal(r.steps[0].species,0);
+assert.equal(run({...base,preferHatch:false}).status,'owned');
+r=run({...base,stock:[base.stock[0]]});assert.equal(r.status,'owned');assert.equal(r.hatchUnavailable,true);
+r=run({...base,traits:['a'],stock:[pal('owned',0,'M',['a']),...base.stock.slice(1)],allowRandom:true});assert.equal(r.status,'ok');assert(r.steps.some(s=>s.randomTraits.includes('a')));
+r=run({...base,traits:['a'],stock:[pal('owned',0,'M',['a']),pal('dad',1,'M',['a']),base.stock[2]]});assert.equal(r.status,'ok');assert.equal(r.conditional,false);
+r=run({...base,traits:['b'],surgeryOptions:[{key:'b',mode:'consume',cost:0,name:'b'}]});assert.equal(r.status,'ok');assert.equal(r.surgery.length,1);
+console.log('Runner prefers a real hatch over existing stock, retains unavailable fallback, random inheritance, surgery and completion mode.');

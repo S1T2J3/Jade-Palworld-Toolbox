@@ -5,9 +5,13 @@ function createTraitRunner(traitData) {
   // do not allow a worker on a file URL.
   function planRequest(request) {
     const inherited = TraitSolver.solve({...request,allowRandom:false});
-    if (!request.allowRandom || inherited.status === 'ok' || inherited.status === 'owned' ||
-        inherited.status === 'invalid' || !request.randomEligible.length) return inherited;
-    return TraitSolver.solve(request);
+    const owned=request.preferHatch && inherited.status==='owned' ? inherited : null;
+    const breeding=owned ? {...request,requireHatch:true} : request;
+    const deterministic=owned ? TraitSolver.solve({...breeding,allowRandom:false}) : inherited;
+    if (deterministic.status==='ok' || deterministic.status==='owned' || deterministic.status==='invalid') return deterministic;
+    const result=request.allowRandom && request.randomEligible.length ? TraitSolver.solve(breeding) : deterministic;
+    if(owned && result.status!=='ok') return {...owned,hatchUnavailable:true};
+    return result;
   }
   const run = createOfflineRunner(planRequest,['trait-solver-code']);
   return input => run({...input,randomEligible:input.traits.filter(key => eligible.has(key))});

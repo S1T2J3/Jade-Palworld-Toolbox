@@ -657,7 +657,7 @@ function initTraitPlanner({species,pairs,readPairs=()=>pairs,traitData,inventory
       return `<li class="tp-pair" data-tp-step="${i+1}" data-tp-child="${step.species}" data-tp-depth="${step.depth}"><span class="tp-pair-index"><b>第 ${generationById.get(step.id)} 代</b>配对 ${i+1}</span><div><div class="tp-parents">${parentMarkup(step.parents[0])}<span>×</span>${parentMarkup(step.parents[1])}</div><div class="tp-child">${icon('arrow')}<strong>${spawnLink(step.species)}</strong><span>${escape(keep+nextSex)}</span>${roll}</div>${action}</div></li>`;
     }).join('');
     const sexNote=result.conditionalSex ? '部分亲代尚未登记性别，请先核对下列个体的性别要求。' : '';
-    const note=sexNote+(result.status==='owned' ? (surgery.length?'选用下列个体，在手术台添加剩余目标词条。':'此个体已符合所选条件。') : (result.conditional ?
+    const note=(result.hatchUnavailable?'当前仓库无法组成孵出新目标个体的配对路线；以下展示现有个体。':'')+sexNote+(result.status==='owned' ? (surgery.length?'选用下列个体，在手术台添加剩余目标词条。':'此个体已符合所选条件。') : (result.conditional ?
       '标记“需随机孵出”的配对要反复孵蛋，直到随机获得指定词条。每一步只采用一个随机新增的目标词条，成功所需蛋数不定。' :
       '按代执行配对。孵到同时具有所列词条、且性别符合下一代要求的子代后，再继续繁育。'));
     const fees=surgery.reduce((sum,op)=>sum+op.cost,0);
@@ -686,7 +686,8 @@ function initTraitPlanner({species,pairs,readPairs=()=>pairs,traitData,inventory
     gapGuide?.cancel();
     hasOutput=true;
     const randomEnabled=$('tp-allow-random').checked;
-    const request={pairs:readPairs(),speciesCount:species.length,stock,target:selectedTarget,traits:[...requested],
+    const completed=currentPlan()?.log.some(entry=>stock.some(p=>p.id===entry.stockId && p.species===selectedTarget && [...requested].every(key=>p.traits.includes(key))));
+    const request={pairs:readPairs(),speciesCount:species.length,stock,target:selectedTarget,traits:[...requested],preferHatch:!completed,
       surgeryOptions:$('tp-use-surgery').checked?(surgeryBook?.options([...requested])||[]):[],
       rules:traitData,allowRandom:randomEnabled,randomEligible:catalog.filter(t=>t.random).map(t=>t.key)};
     message('tp-notice','正在检查仓库中的亲代、性别和词条组合…');
