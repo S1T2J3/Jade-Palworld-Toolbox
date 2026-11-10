@@ -104,6 +104,26 @@ const inaccessible = {speciesCount:2,pairs:[[0,0,0]],target:0,traits:['a'],stock
 assert.equal(solve(inaccessible).status,'unreachable-traits');
 assert.equal(solve({...inaccessible,allowRandom:true,randomEligible:['a']}).generations,1);
 
+const surgicalGoal={
+  speciesCount:2,pairs:[[0,0,1]],target:1,traits:['a'],
+  stock:[pal('father',0,[],'M'),pal('mother',0,[],'F')],
+  allowRandom:true,randomEligible:['a','b'],
+  surgeryOptions:[{key:'a',mode:'coins',cost:100}]
+};
+const surgicalResult=solve(surgicalGoal);
+assert.equal(surgicalResult.status,'ok');
+assert.equal(surgicalResult.generations,1);
+assert.equal(surgicalResult.conditional,false);
+assert.deepEqual(surgicalResult.surgery.map(op=>op.key),['a']);
+assert(surgicalResult.steps.every(step=>step.randomTraits.length===0));
+const randomWithoutSurgery=solve({...surgicalGoal,surgeryOptions:[]});
+assert.equal(randomWithoutSurgery.conditional,true);
+assert.deepEqual(randomWithoutSurgery.steps[0].randomTraits,['a']);
+const mixedSurgery=solve({...surgicalGoal,traits:['a','b']});
+assert.deepEqual(mixedSurgery.surgery.map(op=>op.key),['a']);
+assert(mixedSurgery.steps.every(step=>!step.randomTraits.includes('a')));
+assert(mixedSurgery.steps.some(step=>step.randomTraits.includes('b')));
+
 const id = name => db.species.findIndex(p=>p.en===name);
 const p = (name,traits=[],sex='any',n='') => pal(name+n,id(name),traits,sex);
 const full = {pairs:db.pairs,speciesCount:db.species.length};

@@ -58,7 +58,9 @@ const TraitSolver = (() => {
       }
     });
     const absent = allTraits & ~donorMask;
-    const randomMask = allowRandom ? traitMask(randomEligible) : 0;
+    // Available surgery supplies these traits after breeding, so do not require
+    // a random mutation for the same trait even when random hatching is enabled.
+    const randomMask = allowRandom ? traitMask(randomEligible) & inheritedMask : 0;
     const missing = traitKeys(absent & inheritedMask & ~randomMask);
     if (missing.length) return failure('missing-traits', missing);
 
