@@ -151,16 +151,14 @@ fn section<R>(ui: &mut egui::Ui, title: &str, body: impl FnOnce(&mut egui::Ui) -
 }
 fn hero(ui: &mut egui::Ui, d: &Data, e: &Entry, kind: &str, subtitle: &str) {
     ui.horizontal_top(|ui| {
-        match kind {
-            "pal" => d.portrait(ui, &e.id, 76.),
-            "item" => d.item_icon(ui, &e.id, 64.),
-            _ => {
-                if !e.icon.is_empty() {
-                    d.image(ui, &e.icon, Vec2::splat(64.));
-                } else if let Some(key) = e.value["palKey"].as_str() {
-                    d.portrait(ui, key, 64.);
-                }
+        let page = entry_page(e);
+        if let Some(source) = entry_image(d, page, e) {
+            let size = if kind == "pal" { 76. } else { 64. };
+            let mut image = egui::Image::new(source).fit_to_exact_size(Vec2::splat(size));
+            if page == "details/active" {
+                image = image.tint(crate::design::palette(ui.ctx()).accent);
             }
+            ui.add(image);
         }
         ui.vertical(|ui| {
             ui.set_width(ui.available_width());
@@ -170,6 +168,101 @@ fn hero(ui: &mut egui::Ui, d: &Data, e: &Entry, kind: &str, subtitle: &str) {
             ui.label(RichText::new(&e.name).size(25.).strong());
         });
     });
+}
+
+/// One image resolver for list cards, search results and detail headings. Many
+/// catalogue records reference another table's image instead of carrying `icon`.
+pub fn entry_image(d: &Data, page: &str, e: &Entry) -> Option<egui::ImageSource<'static>> {
+    if !e.icon.is_empty() {
+        if let Some(uri) = d.get("enemy-data")["icons"][&e.icon].as_str() {
+            return Some(d.image_source(uri));
+        }
+        if e.icon.starts_with("assets/") || e.icon.starts_with("data:image/") {
+            return Some(d.image_source(&e.icon));
+        }
+    }
+    if matches!(page, "paldex" | "details/partner" | "work/ranch") {
+        return pal_image(d, &e.id);
+    }
+    if let Some(key) = e.value["palKey"]
+        .as_str()
+        .or_else(|| e.value["speciesKey"].as_str())
+    {
+        if let Some(source) = pal_image(d, key) {
+            return Some(source);
+        }
+    }
+    match page {
+        "items" | "guide/gathering" => item_image(d, &e.id),
+        "work/production" => item_image(d, text(&e.value, "item")),
+        "details/fruits" => item_image(d, &format!("SkillCard_{}", e.id)).or_else(|| {
+            d.get("pal-details-data")["fruitIcons"][text(&e.value, "type")]
+                .as_str()
+                .filter(|uri| !uri.trim().is_empty())
+                .map(|uri| d.image_source(uri))
+        }),
+        "details/active" => element_image(text(&e.value, "type")),
+        "details/passive" | "details/surgery" => {
+            let rank = e.value["rank"].as_i64()?.unsigned_abs() as usize;
+            d.get("trait-ranks")[rank]
+                .as_str()
+                .filter(|uri| !uri.trim().is_empty())
+                .map(|uri| d.image_source(uri))
+        }
+        "guide/journals" => {
+            let icons = d.get("map-images");
+            let key = icons["mapIcons"]["defaults"]["journal"].as_str()?;
+            icons["mapIcons"]["art"][key]
+                .as_str()
+                .filter(|uri| !uri.trim().is_empty())
+                .map(|uri| d.image_source(uri))
+        }
+        _ => None,
+    }
+}
+fn item_image(d: &Data, id: &str) -> Option<egui::ImageSource<'static>> {
+    let icons = d.get("item-icons");
+    let index = icons["ids"][id].as_u64()? as usize;
+    icons["images"][index]
+        .as_str()
+        .filter(|uri| !uri.trim().is_empty())
+        .map(|uri| d.image_source(uri))
+}
+fn pal_image(d: &Data, key: &str) -> Option<egui::ImageSource<'static>> {
+    let pal = d.pal(key)?;
+    d.get("portraits")[text(pal, "en")]
+        .as_str()
+        .filter(|uri| !uri.trim().is_empty())
+        .map(|uri| d.image_source(uri))
+}
+fn element_image(key: &str) -> Option<egui::ImageSource<'static>> {
+    Some(match key {
+        "neutral" => egui::include_image!("../assets/neutral.svg"),
+        "fire" => egui::include_image!("../assets/fire.svg"),
+        "water" => egui::include_image!("../assets/water.svg"),
+        "grass" => egui::include_image!("../assets/grass.svg"),
+        "electric" => egui::include_image!("../assets/electric.svg"),
+        "ice" => egui::include_image!("../assets/ice.svg"),
+        "ground" => egui::include_image!("../assets/ground.svg"),
+        "dark" => egui::include_image!("../assets/dark.svg"),
+        "dragon" => egui::include_image!("../assets/dragon.svg"),
+        _ => return None,
+    })
+}
+fn entry_page(e: &Entry) -> &str {
+    let path = e.route.trim_start_matches('#');
+    let Some((first, rest)) = path.split_once('/') else {
+        return path;
+    };
+    if matches!(first, "details" | "work" | "guide") {
+        let end = rest
+            .find('/')
+            .map(|i| first.len() + 1 + i)
+            .unwrap_or(path.len());
+        &path[..end]
+    } else {
+        first
+    }
 }
 fn stats(ui: &mut egui::Ui, values: &[(&str, String)]) {
     ui.horizontal_wrapped(|ui| {

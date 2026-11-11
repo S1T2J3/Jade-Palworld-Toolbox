@@ -491,22 +491,61 @@ impl App {
                 scroll.show_rows(ui, 45., found.len(), |ui, range| {
                     for i in range {
                         let r = found[i];
-                        ui.horizontal(|ui| {
-                            let href = text(r, "href");
-                            if let Some(key) = href.strip_prefix("#paldex/") {
-                                self.data.portrait(ui, key, 32.);
-                            } else if let Some(key) = href.strip_prefix("#items/") {
-                                self.data.item_icon(ui, key, 28.);
+                        let href = text(r, "href");
+                        let (rect, response) = ui.allocate_exact_size(
+                            Vec2::new(ui.available_width(), 41.),
+                            egui::Sense::click(),
+                        );
+                        let p = design::palette(ui.ctx());
+                        if i == self.search_selected || response.hovered() {
+                            ui.painter().rect_filled(rect, 5, p.selected);
+                        }
+                        let mut row = ui.new_child(
+                            egui::UiBuilder::new()
+                                .id_salt(("search-result", href))
+                                .max_rect(rect.shrink(3.))
+                                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+                        );
+                        row.set_clip_rect(rect.intersect(ui.clip_rect()));
+                        if let Some(source) = self.catalog.image_for_route(&self.data, href) {
+                            let mut image =
+                                egui::Image::new(source).fit_to_exact_size(Vec2::splat(30.));
+                            if href.starts_with("#details/active/") {
+                                image = image.tint(p.accent);
                             }
-                            ui.weak(text(r, "kind"));
-                            if ui
-                                .selectable_label(i == self.search_selected, text(r, "name"))
-                                .clicked()
-                            {
-                                nav = Some(text(r, "href").into());
-                            }
-                            ui.small(text(r, "hint"));
-                        });
+                            row.add(image);
+                        } else {
+                            row.allocate_space(Vec2::splat(30.));
+                        }
+                        row.add_sized(
+                            Vec2::new(72., 32.),
+                            egui::Label::new(
+                                RichText::new(text(r, "kind")).size(12.).color(p.muted),
+                            )
+                            .halign(egui::Align::Min)
+                            .truncate(),
+                        );
+                        let name_width = (row.available_width() * 0.47).max(90.);
+                        row.add_sized(
+                            Vec2::new(name_width, 32.),
+                            egui::Label::new(RichText::new(text(r, "name")).size(14.))
+                                .halign(egui::Align::Min)
+                                .truncate(),
+                        );
+                        row.add_sized(
+                            Vec2::new(row.available_width(), 32.),
+                            egui::Label::new(
+                                RichText::new(text(r, "hint")).size(11.).color(p.muted),
+                            )
+                            .halign(egui::Align::Min)
+                            .truncate(),
+                        );
+                        if response
+                            .on_hover_text(format!("{}\n{}", text(r, "name"), text(r, "hint")))
+                            .clicked()
+                        {
+                            nav = Some(href.into());
+                        }
                     }
                 });
             });

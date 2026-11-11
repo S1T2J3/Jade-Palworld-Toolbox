@@ -129,7 +129,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"本次恢复原版窄侧栏、辉月伊配色、配种卡片与分页、图鉴详情、筛选和关联跳转。地图与世界档案恢复原版分区，计算器分别保存输入。测试版独立保存数据；可从正式版导出世界档案后导入。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],popup:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"修复地图拖动时点位重新聚类、图标前后遮挡跳变的问题；补齐敌人头像、技能与果实、采集与生产等图片。修复仓库多词条卡片布局，完善工作效率词条等级图与全局搜索。测试版独立保存数据，可沿用现有 Rust 测试版档案。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],popup:None,pending,install_prompt:false}
     }
     fn check(&mut self, ctx: &egui::Context) {
         if self.busy {

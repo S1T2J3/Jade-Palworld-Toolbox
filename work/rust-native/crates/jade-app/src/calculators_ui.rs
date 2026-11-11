@@ -1,5 +1,5 @@
 use crate::{
-    breeding_ui::{element_badges, pal_picker, panel, trait_badge, trait_picker},
+    breeding_ui::{element_badges, pal_picker, panel, trait_badge, trait_checkbox, trait_picker},
     data::{Data, array, search, text},
 };
 use eframe::egui;
@@ -577,7 +577,7 @@ impl Calculators {
         d: &Data,
         world: &Value,
         route: &str,
-        _nav: &mut Option<String>,
+        nav: &mut Option<String>,
     ) {
         crate::design::section(ui, "工作条件");
         let data = d.get("work-efficiency-data");
@@ -783,7 +783,10 @@ impl Calculators {
         }
         ui.horizontal_wrapped(|ui| {
             for key in self.traits.clone() {
-                if ui.button(format!("{} ×", d.trait_name(&key))).clicked() {
+                if trait_badge(ui, d, &key).clicked() {
+                    *nav = Some(format!("#details/passive/trait/{key}"));
+                }
+                if ui.small_button("×").on_hover_text("移除此词条").clicked() {
                     self.traits.retain(|v| v != &key);
                 }
             }
@@ -841,24 +844,15 @@ impl Calculators {
             .id_salt("work-trait-options")
             .max_height(250.)
             .show(ui, |ui| {
-                let columns = ((ui.available_width() / 130.) as usize).max(1);
+                let columns = ((ui.available_width() / 155.) as usize).max(1);
                 egui::Grid::new("work-trait-grid")
                     .num_columns(columns)
                     .show(ui, |ui| {
                         for (i, t) in choices.iter().enumerate() {
                             let key = text(t, "key");
                             let mut checked = self.traits.iter().any(|k| k == key);
-                            if ui
-                                .add_enabled(
-                                    checked || self.traits.len() < 4,
-                                    egui::Checkbox::new(&mut checked, text(t, "zh")),
-                                )
-                                .on_hover_text(text(
-                                    &d.get("pal-details-data")["passives"][key],
-                                    "effect",
-                                ))
-                                .changed()
-                            {
+                            let enabled = checked || self.traits.len() < 4;
+                            if trait_checkbox(ui, d, key, &mut checked, enabled).changed() {
                                 self.traits.retain(|k| k != key);
                                 if checked {
                                     self.traits.push(key.into());
@@ -1252,6 +1246,72 @@ mod tests {
         assert_eq!(calc.pal, 0);
         assert!(calc.traits.is_empty());
         assert_eq!(calc.capture_level, 23);
+    }
+    #[test]
+    fn inline_work_trait_choices_preserve_four_trait_limit_and_removal() {
+        let mut d = fixture();
+        d.tables.insert(
+            "trait-data".into(),
+            std::sync::Arc::new(json!({"traits":[
+                {"key":"One","zh":"甲","rank":5}, {"key":"Two","zh":"乙","rank":4},
+                {"key":"Three","zh":"丙","rank":3}, {"key":"Four","zh":"丁","rank":2},
+                {"key":"Five","zh":"戊","rank":1}
+            ]})),
+        );
+        let ctx = egui::Context::default();
+        crate::design::apply(&ctx, "moon");
+        let mut calc = Calculators::default();
+        calc.work_relevant = false;
+        calc.traits = ["One", "Two", "Three", "Four"].map(str::to_owned).to_vec();
+        let frame = |calc: &mut Calculators, events: Vec<egui::Event>| {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(760., 900.),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        calc.work_controls(ui, &d, &json!({}), "#work/efficiency", &mut None);
+                    });
+                },
+            );
+        };
+        let click = |calc: &mut Calculators, key: &str| {
+            frame(calc, vec![]);
+            let pos = ctx
+                .data(|m| {
+                    m.get_temp::<egui::Rect>(egui::Id::new(format!("test-widget:trait:{key}")))
+                })
+                .unwrap()
+                .center();
+            for pressed in [true, false] {
+                frame(
+                    calc,
+                    vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: Default::default(),
+                        },
+                    ],
+                );
+            }
+        };
+        click(&mut calc, "Five");
+        assert_eq!(calc.traits.len(), 4);
+        assert!(!calc.traits.iter().any(|k| k == "Five"));
+        click(&mut calc, "One");
+        assert_eq!(calc.traits.len(), 3);
+        click(&mut calc, "Five");
+        assert_eq!(calc.traits.len(), 4);
+        assert!(calc.traits.iter().any(|k| k == "Five"));
+        remove_fixture(d);
     }
     #[test]
     fn cumulative_keeps_tiny_probabilities() {

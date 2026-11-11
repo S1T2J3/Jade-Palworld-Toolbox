@@ -16,6 +16,7 @@ pub struct Entry {
 #[derive(Default)]
 pub struct Catalog {
     pub pages: HashMap<String, Vec<Entry>>,
+    route_entries: HashMap<String, (String, usize)>,
     pub query: String,
     pub group: String,
     pub last: String,
@@ -197,6 +198,21 @@ impl Catalog {
                 }
             }
         }
+        self.route_entries = self
+            .pages
+            .iter()
+            .flat_map(|(page, entries)| {
+                entries
+                    .iter()
+                    .enumerate()
+                    .map(move |(index, e)| (e.route.clone(), (page.clone(), index)))
+            })
+            .collect();
+    }
+    pub fn image_for_route(&self, d: &Data, route: &str) -> Option<egui::ImageSource<'static>> {
+        let (page, index) = self.route_entries.get(route)?;
+        let entry = self.pages.get(page)?.get(*index)?;
+        crate::catalog_views::entry_image(d, page, entry)
     }
     pub fn show(
         &mut self,
@@ -889,7 +905,8 @@ pub fn elements(ui: &mut egui::Ui, d: &Data) -> Option<String> {
         .data_mut(|m| m.get_temp::<String>(id).unwrap_or("fire".into()));
     egui::ScrollArea::vertical().show(ui, |ui| {
         if let Some(chart) = d.get("combat-guide-data")["chart"].as_str() {
-            d.image(ui, chart, Vec2::new(ui.available_width().min(900.), 550.));
+            let width = ui.available_width().min(900.);
+            d.image(ui, chart, Vec2::new(width, width * 675. / 1200.));
         }
         crate::breeding_ui::element_picker(ui, &mut selected);
         if !selected.is_empty() {
@@ -1194,16 +1211,12 @@ fn entry_card(
             .layout(egui::Layout::left_to_right(egui::Align::Center)),
     );
     cell.set_clip_rect(rect.intersect(ui.clip_rect()));
-    if ["paldex", "details/partner"].contains(&page) {
-        d.portrait(&mut cell, &e.id, 42.);
-    } else if page == "items" {
-        d.item_icon(&mut cell, &e.id, 32.);
-    } else if !e.icon.is_empty() {
-        d.image(&mut cell, &e.icon, Vec2::splat(32.));
-    } else if let Some(rank) = e.value["rank"].as_i64() {
-        if let Some(icon) = d.get("trait-ranks")[rank.unsigned_abs() as usize].as_str() {
-            d.image(&mut cell, icon, Vec2::splat(22.));
+    if let Some(source) = crate::catalog_views::entry_image(d, page, e) {
+        let mut image = egui::Image::new(source).fit_to_exact_size(Vec2::splat(36.));
+        if page == "details/active" {
+            image = image.tint(p.accent);
         }
+        cell.add(image);
     }
     cell.vertical(|ui| {
         let title = if page == "details/partner" {

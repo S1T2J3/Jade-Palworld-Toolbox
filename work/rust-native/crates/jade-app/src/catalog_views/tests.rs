@@ -1,6 +1,72 @@
 use super::*;
 use crate::catalog::Catalog;
 
+#[test]
+fn catalogue_images_resolve_to_decodable_bundled_art() {
+    let h = Harness::new();
+    let mut no_rank = h.c.pages["details/passive"][0].clone();
+    no_rank.value["rank"] = json!(0);
+    assert!(entry_image(&h.d, "details/passive", &no_rank).is_none());
+    let mut checked = std::collections::HashSet::new();
+    for page in [
+        "paldex",
+        "details/partner",
+        "details/active",
+        "details/fruits",
+        "details/passive",
+        "details/surgery",
+        "work/facilities",
+        "guide/gathering",
+        "work/production",
+        "guide/journals",
+        "enemies",
+        "merchants",
+        "neutrals",
+        "items",
+    ] {
+        let mut resolved = 0;
+        for e in &h.c.pages[page] {
+            let source = entry_image(&h.d, page, e);
+            // These sections all have a documented source for every entry. A
+            // missing connection used to silently erase both thumbnail and hero.
+            if !matches!(page, "enemies" | "items") {
+                assert!(source.is_some(), "missing image for {page}/{}", e.id);
+            }
+            let Some(source) = source else {
+                continue;
+            };
+            resolved += 1;
+            let (name, bytes) = match source {
+                egui::ImageSource::Bytes { uri, bytes } => (uri.to_string(), bytes.to_vec()),
+                egui::ImageSource::Uri(uri) => {
+                    let name = uri.to_string();
+                    if !checked.insert(name.clone()) {
+                        continue;
+                    }
+                    let path = name.strip_prefix("file:///").expect("bundled file image");
+                    let bytes = std::fs::read(path)
+                        .unwrap_or_else(|error| panic!("{page}/{}: {name}: {error}", e.id));
+                    (name, bytes)
+                }
+                egui::ImageSource::Texture(_) => continue,
+            };
+            if name.ends_with(".svg") {
+                assert!(
+                    std::str::from_utf8(&bytes).unwrap().contains("<svg"),
+                    "invalid SVG: {name}"
+                );
+            } else {
+                image::load_from_memory(&bytes)
+                    .unwrap_or_else(|error| panic!("invalid image {name}: {error}"));
+            }
+        }
+        println!(
+            "{page}: {resolved}/{} connected images",
+            h.c.pages[page].len()
+        );
+    }
+}
+
 struct Harness {
     ctx: egui::Context,
     d: Data,

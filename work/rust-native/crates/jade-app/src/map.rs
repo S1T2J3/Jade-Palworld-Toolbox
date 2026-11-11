@@ -741,45 +741,78 @@ fn color(cat: &str) -> Color32 {
         _ => Color32::from_rgb(154, 172, 236),
     }
 }
+/// Stable category priority: resource markers remain below destinations, bosses and user pins.
+/// It must never depend on screen position, hash iteration or a cluster's current membership.
+fn pin_layer(category: &str) -> u8 {
+    match category {
+        "custom" => 5,
+        "alpha_pals" | "alpha" => 4,
+        "fast_travel" | "warp_altar" => 3,
+        "syndicate_tower" | "merchant" | "neutral_unit" | "bounty" => 2,
+        "ore" | "coal" | "sulfur" | "pure_quartz" | "hexolite_quartz" | "chromite" | "soralite"
+        | "paloxite" | "crude_oil" | "ancient_bark" | "ancient_bone" | "ancient_lava"
+        | "nightstar_sand" | "beautiful_flower" | "kinship_peach" | "paldium" | "mushrooms"
+        | "red_berries" | "wild" => 0,
+        _ => 1,
+    }
+}
 fn spatial_groups<'a>(visible: &[&'a Pin], map_rect: Rect, clip: Rect) -> Vec<Vec<&'a Pin>> {
-    let mut bins: HashMap<(String, i32, i32), Vec<&Pin>> = HashMap::new();
+    const CELL: f32 = 34.;
+    let mut bins: HashMap<(&str, i32, i32), Vec<&Pin>> = HashMap::new();
     for p in visible {
-        let pos = map_rect.min + p.uv * map_rect.width();
-        if !clip.expand(22.).contains(pos) {
+        // Anchor the grid to the map, not the screen. Panning only translates a cluster;
+        // it must not split/recombine it or change which marker is drawn above another.
+        let local = p.uv * map_rect.width();
+        let x = (local.x / CELL).floor() as i32;
+        let y = (local.y / CELL).floor() as i32;
+        let cell = Rect::from_min_size(
+            map_rect.min + Vec2::new(x as f32 * CELL, y as f32 * CELL),
+            Vec2::splat(CELL),
+        );
+        // Cull complete cells, preserving every member at viewport edges so that the
+        // cluster center, count and identity cannot jump while it is entering the view.
+        if !clip.expand(22.).intersects(cell) {
             continue;
         }
-        let layer = if [
-            "alpha_pals",
-            "custom",
-            "ore",
-            "coal",
-            "sulfur",
-            "pure_quartz",
-            "hexolite_quartz",
-            "chromite",
-            "soralite",
-            "paloxite",
-            "crude_oil",
-            "wild",
-            "alpha",
-        ]
-        .contains(&p.category.as_str())
-        {
-            p.category.as_str()
-        } else {
-            "locations"
-        };
-        bins.entry((
-            layer.into(),
-            (pos.x / 34.).floor() as i32,
-            (pos.y / 34.).floor() as i32,
-        ))
-        .or_default()
-        .push(*p);
+        bins.entry((p.category.as_str(), x, y))
+            .or_default()
+            .push(*p);
     }
     let mut groups = bins.into_values().collect::<Vec<_>>();
-    groups.sort_by(|a, b| a[0].id.cmp(&b[0].id));
+    for group in &mut groups {
+        group.sort_unstable_by(|a, b| a.id.cmp(&b.id));
+    }
+    groups.sort_unstable_by(|a, b| {
+        (pin_layer(&a[0].category), &a[0].category, &a[0].id).cmp(&(
+            pin_layer(&b[0].category),
+            &b[0].category,
+            &b[0].id,
+        ))
+    });
     groups
+}
+fn marker_geometry(group: &[&Pin], map_rect: Rect) -> (Vec2, egui::Pos2, Rect) {
+    let uv = group.iter().fold(Vec2::ZERO, |sum, p| sum + p.uv) / group.len() as f32;
+    let pos = map_rect.min + uv * map_rect.width();
+    let rect = Rect::from_center_size(pos, Vec2::splat(if group.len() > 1 { 32. } else { 28. }));
+    (uv, pos, rect)
+}
+fn overlapping_markers<'a>(
+    groups: &[Vec<&'a Pin>],
+    map_rect: Rect,
+    pointer: Option<egui::Pos2>,
+) -> Vec<&'a Pin> {
+    let Some(pointer) = pointer else {
+        return vec![];
+    };
+    let mut seen = HashSet::new();
+    groups
+        .iter()
+        .rev()
+        .filter(|group| marker_geometry(group, map_rect).2.contains(pointer))
+        .flat_map(|group| group.iter().copied())
+        .filter(|p| seen.insert(p.id.as_str()))
+        .collect()
 }
 fn scene(
     ui: &mut egui::Ui,
@@ -846,12 +879,31 @@ fn scene(
     if let Some(uri) = data.get("map-images")[&state.region].as_str() {
         egui::Image::new(data.image_source(uri)).paint_at(ui, map_rect);
     }
-    for group in spatial_groups(visible, map_rect, clip) {
-        let uv = group.iter().fold(Vec2::ZERO, |sum, p| sum + p.uv) / (group.len() as f32);
-        let pos = map_rect.min + uv * side;
-        let p = group[0];
-        let rect =
-            Rect::from_center_size(pos, Vec2::splat(if group.len() > 1 { 32. } else { 28. }));
+    let mut groups = spatial_groups(visible, map_rect, clip);
+    // A selected marker has one explicit top layer, independent of hover and pan.
+    groups.sort_by_key(|group| group.iter().any(|p| p.id == state.selected));
+    // Hit-test the exact same rectangles as painting. Cross-category overlaps stay
+    // visually separate, but clicking any shared part must offer every obscured point.
+    let click_pos = ui.input(|i| {
+        i.pointer
+            .any_click()
+            .then(|| i.pointer.interact_pos())
+            .flatten()
+    });
+    let overlaps = overlapping_markers(&groups, map_rect, click_pos);
+    let cross_category_overlap = overlaps
+        .iter()
+        .map(|p| p.category.as_str())
+        .collect::<HashSet<_>>()
+        .len()
+        > 1;
+    for group in groups {
+        let (uv, pos, rect) = marker_geometry(&group, map_rect);
+        let p = group
+            .iter()
+            .find(|p| p.id == state.selected)
+            .copied()
+            .unwrap_or(group[0]);
         let id = ui.id().with(("map-pin", spawn, &p.id));
         let mark = ui.interact(rect, id, Sense::click());
         if group.len() > 1 {
@@ -923,7 +975,12 @@ fn scene(
             );
         }
         if mark.clicked() {
-            if group.len() == 1 {
+            if cross_category_overlap {
+                state.cluster = overlaps.iter().map(|p| p.id.clone()).collect();
+                state.selected.clear();
+                state.coordinate = None;
+                state.delete_confirm = false;
+            } else if group.len() == 1 {
                 state.selected = p.id.clone();
                 state.delete_confirm = false;
                 state.cluster.clear();
@@ -1813,6 +1870,203 @@ pub fn show_spawns(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn marker(id: &str, category: &str, x: f32, y: f32) -> Pin {
+        Pin {
+            id: id.into(),
+            region: "palpagos".into(),
+            category: category.into(),
+            name: id.into(),
+            detail: String::new(),
+            uv: Vec2::new(x / 1000., y / 1000.),
+            x: x.into(),
+            y: y.into(),
+            levels: String::new(),
+            art: String::new(),
+            raw: Value::Null,
+            search: String::new(),
+        }
+    }
+    fn group_ids(groups: &[Vec<&Pin>]) -> Vec<Vec<String>> {
+        groups
+            .iter()
+            .map(|g| g.iter().map(|p| p.id.clone()).collect())
+            .collect()
+    }
+    #[test]
+    fn panning_keeps_cluster_members_identity_and_layer_order() {
+        let points = [
+            marker("z-ore", "ore", 410., 410.),
+            marker("a-ore", "ore", 430., 416.),
+            marker("travel", "fast_travel", 420., 420.),
+            marker("tower", "syndicate_tower", 422., 422.),
+            marker("boss", "alpha_pals", 425., 425.),
+            marker("custom", "custom", 427., 427.),
+        ];
+        let mut visible = points.iter().collect::<Vec<_>>();
+        let clip = Rect::from_min_max(egui::pos2(-1000., -1000.), egui::pos2(2000., 2000.));
+        let origin = Rect::from_min_size(egui::Pos2::ZERO, Vec2::splat(1000.));
+        let baseline = group_ids(&spatial_groups(&visible, origin, clip));
+        assert_eq!(baseline.last().unwrap(), &vec!["custom"]);
+        assert!(baseline.iter().any(|g| g == &vec!["a-ore", "z-ore"]));
+        // Reverse data order and cross many former screen-grid boundaries in both axes.
+        visible.reverse();
+        for offset in [
+            Vec2::new(7., 29.),
+            Vec2::new(35., -46.),
+            Vec2::new(-105., 73.),
+        ] {
+            let groups = spatial_groups(&visible, origin.translate(offset), clip);
+            assert_eq!(group_ids(&groups), baseline);
+            assert!(
+                groups
+                    .iter()
+                    .all(|g| g.iter().all(|p| p.category == g[0].category))
+            );
+        }
+    }
+    #[test]
+    fn clipping_preserves_complete_edge_clusters() {
+        let points = [
+            marker("left", "ore", 1., 20.),
+            marker("right", "ore", 30., 20.),
+        ];
+        let visible = points.iter().collect::<Vec<_>>();
+        let clip = Rect::from_min_size(egui::Pos2::ZERO, Vec2::splat(300.));
+        let origin = Rect::from_min_size(egui::pos2(-30., 0.), Vec2::splat(1000.));
+        let groups = spatial_groups(&visible, origin, clip);
+        // One member is outside the old per-point culling margin, but belongs to the
+        // same visible cell. It must not disappear and move the center/count/ID.
+        assert_eq!(group_ids(&groups), vec![vec!["left", "right"]]);
+    }
+    #[test]
+    fn native_cross_category_overlap_lists_every_point_and_preserves_selected_layer() {
+        let data = fixture();
+        let ctx = egui::Context::default();
+        let mut points = vec![
+            marker("custom", "custom", 500., 500.),
+            marker("merchant", "merchant", 500., 500.),
+        ];
+        for p in &mut points {
+            p.levels = "Lv.1".into();
+        }
+        let mut state = MapState::default();
+        state.zoom = 4.;
+        let mut notes = json!({"completed":[],"custom":[]});
+        fn render(
+            ctx: &egui::Context,
+            data: &Data,
+            points: &[Pin],
+            state: &mut MapState,
+            notes: &mut Value,
+            events: Vec<egui::Event>,
+        ) -> (egui::FullOutput, Option<String>) {
+            let mut route = None;
+            let output = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        Vec2::new(1000., 750.),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        route = scene(
+                            ui,
+                            data,
+                            state,
+                            &points.iter().collect::<Vec<_>>(),
+                            &HashSet::new(),
+                            false,
+                        );
+                        if let Some(next) = floating_detail(ui, data, state, points, notes) {
+                            route = Some(next);
+                        }
+                    });
+                },
+            );
+            (output, route)
+        }
+        fn locate(shape: &egui::Shape, label: &str) -> Option<egui::Pos2> {
+            match shape {
+                egui::Shape::Text(t) if t.galley.job.text == label => {
+                    Some(t.pos + t.galley.size() * 0.5)
+                }
+                egui::Shape::Vec(shapes) => shapes.iter().find_map(|s| locate(s, label)),
+                _ => None,
+            }
+        }
+        let click = |pos, state: &mut MapState, notes: &mut Value| {
+            let mut result = None;
+            for pressed in [true, false] {
+                result = render(
+                    &ctx,
+                    &data,
+                    &points,
+                    state,
+                    notes,
+                    vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                )
+                .1
+                .or(result);
+            }
+            result
+        };
+        for target in ["merchant", "custom"] {
+            for _ in 0..3 {
+                render(&ctx, &data, &points, &mut state, &mut notes, vec![]);
+            }
+            let center = state.viewport.center();
+            click(center, &mut state, &mut notes);
+            assert!(state.selected.is_empty());
+            assert_eq!(state.cluster.len(), 2);
+            assert!(state.cluster.iter().any(|id| id == "merchant"));
+            assert!(state.cluster.iter().any(|id| id == "custom"));
+            render(&ctx, &data, &points, &mut state, &mut notes, vec![]);
+            let output = render(&ctx, &data, &points, &mut state, &mut notes, vec![]).0;
+            let label = format!("{target} · Lv.1");
+            let pos = output
+                .shapes
+                .iter()
+                .find_map(|s| locate(&s.shape, &label))
+                .unwrap();
+            let route = click(pos, &mut state, &mut notes);
+            assert_eq!(state.selected, target);
+            assert_eq!(
+                route.as_deref(),
+                Some(format!("#map/point/{target}").as_str())
+            );
+            assert!(state.cluster.is_empty());
+            for offset in [Vec2::ZERO, Vec2::new(0.01, -0.01), Vec2::new(-0.01, 0.01)] {
+                state.center = Vec2::splat(0.5) + offset;
+                let output = render(&ctx, &data, &points, &mut state, &mut notes, vec![]).0;
+                let top = output.shapes.iter().rev().find_map(|s| match &s.shape {
+                    egui::Shape::Circle(c)
+                        if c.fill == color("custom") || c.fill == color("merchant") =>
+                    {
+                        Some(c.fill)
+                    }
+                    _ => None,
+                });
+                assert_eq!(
+                    top,
+                    Some(color(target)),
+                    "selected marker stays above the other category while panning"
+                );
+                assert_eq!(state.selected, target);
+            }
+            state.center = Vec2::splat(0.5);
+        }
+    }
     fn fixture() -> Data {
         let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let root = [base.join("../../data"), base.join("../../rust-native/data")]

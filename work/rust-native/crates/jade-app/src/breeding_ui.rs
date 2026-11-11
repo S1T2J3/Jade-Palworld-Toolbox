@@ -487,7 +487,7 @@ impl Breeding {
         }
         egui::ScrollArea::vertical()
             .id_salt("warehouse-cards")
-            .max_height(620.)
+            .max_height((ui.available_height() - 42.).clamp(80., 620.))
             .show_rows(ui, 232., records.len().div_ceil(cols), |ui, range| {
                 for row in range {
                     ui.horizontal_top(|ui| {
@@ -496,9 +496,10 @@ impl Breeding {
                             let Some(p) = records.get(row * cols + col) else {
                                 break;
                             };
-                            panel(ui).inner_margin(10).show(ui, |ui| {
+                            let _card = panel(ui).inner_margin(10).show(ui, |ui| {
                                 ui.set_width((width - 20.).max(180.));
                                 ui.set_min_height(210.);
+                                ui.spacing_mut().item_spacing.y = 4.;
                                 let key = text(p, "speciesKey");
                                 let species = d.species.iter().find(|s| text(s, "key") == key);
                                 ui.horizontal(|ui| {
@@ -536,6 +537,10 @@ impl Breeding {
                                 ui.separator();
                                 ui.small("被动词条");
                                 ui.allocate_ui(Vec2::new(width - 20., 78.), |ui| {
+                                    // Four compact rows must fit the reserved area; otherwise
+                                    // the virtual list's 232 px row stride skips card contents.
+                                    ui.spacing_mut().interact_size.y = 16.;
+                                    ui.spacing_mut().item_spacing.y = 3.;
                                     if array(&p["traits"]).is_empty() {
                                         ui.label(
                                             egui::RichText::new("尚未登记词条").weak().size(12.),
@@ -561,6 +566,12 @@ impl Breeding {
                                     }
                                 });
                             });
+                            #[cfg(test)]
+                            track_test_rect(
+                                ui,
+                                &_card.response,
+                                &format!("stock-card:{}", text(p, "id")),
+                            );
                         }
                     });
                 }
@@ -1606,35 +1617,50 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
             for (i, t) in traits.iter().enumerate() {
                 let key = text(t, "key");
                 let mut selected = keys.iter().any(|k| k == key);
-                ui.horizontal(|ui| {
-                    let rank = t["rank"].as_i64().unwrap_or(0);
-                    if let Some(icon) = d.get("trait-ranks")[rank.unsigned_abs() as usize].as_str()
-                    {
-                        egui::Frame::new()
-                            .fill(egui::Color32::from_rgb(52, 62, 80))
-                            .corner_radius(3)
-                            .inner_margin(1)
-                            .show(ui, |ui| d.image(ui, icon, Vec2::splat(14.)));
+                let enabled = selected || keys.len() < 4;
+                if trait_checkbox(ui, d, key, &mut selected, enabled).changed() {
+                    keys.retain(|k| k != key);
+                    if selected {
+                        keys.push(key.into());
                     }
-                    let response = ui
-                        .add_enabled(
-                            selected || keys.len() < 4,
-                            egui::Checkbox::new(&mut selected, text(t, "zh")),
-                        )
-                        .on_hover_text(text(&d.get("pal-details-data")["passives"][key], "effect"));
-                    track_test_rect(ui, &response, &format!("trait:{key}"));
-                    if response.changed() {
-                        keys.retain(|k| k != key);
-                        if selected {
-                            keys.push(key.into());
-                        }
-                    }
-                });
+                }
                 if (i + 1) % cols == 0 {
                     ui.end_row();
                 }
             }
         });
+}
+/// Keep the inline work picker and the full picker consistent, including the game's rank art.
+pub fn trait_checkbox(
+    ui: &mut egui::Ui,
+    d: &Data,
+    key: &str,
+    selected: &mut bool,
+    enabled: bool,
+) -> egui::Response {
+    ui.horizontal(|ui| {
+        let rank = array(&d.get("trait-data")["traits"])
+            .iter()
+            .find(|t| text(t, "key") == key)
+            .and_then(|t| t["rank"].as_i64())
+            .unwrap_or_default();
+        if let Some(icon) = d.get("trait-ranks")[rank.unsigned_abs() as usize]
+            .as_str()
+            .filter(|s| !s.is_empty())
+        {
+            egui::Frame::new()
+                .fill(egui::Color32::from_rgb(52, 62, 80))
+                .corner_radius(3)
+                .inner_margin(1)
+                .show(ui, |ui| d.image(ui, icon, Vec2::splat(14.)));
+        }
+        let response = ui
+            .add_enabled(enabled, egui::Checkbox::new(selected, d.trait_name(key)))
+            .on_hover_text(text(&d.get("pal-details-data")["passives"][key], "effect"));
+        track_test_rect(ui, &response, &format!("trait:{key}"));
+        response
+    })
+    .inner
 }
 pub fn trait_picker(ctx: &egui::Context, d: &Data, open: &mut bool, keys: &mut Vec<String>) {
     let mut done = false;
@@ -1752,14 +1778,21 @@ fn compact_lookup_pair(
         let name = format!("{}{sex}", text(pal, "zh"));
         if child
             .scope_builder(
-                egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(
-                    egui::pos2(left + 31., rect.top() + 3.),
-                    Vec2::new((member - 31.).max(15.), 17.),
-                )).layout(egui::Layout::top_down(egui::Align::Min)),
-                |ui|ui.add(egui::Label::new(egui::RichText::new(&name).size(12.).strong())
-                    .truncate()
-                    .sense(egui::Sense::click())),
-            ).inner
+                egui::UiBuilder::new()
+                    .max_rect(egui::Rect::from_min_size(
+                        egui::pos2(left + 31., rect.top() + 3.),
+                        Vec2::new((member - 31.).max(15.), 17.),
+                    ))
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+                |ui| {
+                    ui.add(
+                        egui::Label::new(egui::RichText::new(&name).size(12.).strong())
+                            .truncate()
+                            .sense(egui::Sense::click()),
+                    )
+                },
+            )
+            .inner
             .on_hover_text(&name)
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()
@@ -2414,6 +2447,40 @@ mod progress_tests {
         page = 15;
         assert_eq!(page_range(467, 0, &mut page), 0..467);
         assert_eq!(page, 0);
+    }
+    #[test]
+    fn warehouse_cards_fit_virtual_row_with_four_traits_and_long_nickname() {
+        let (d, temp) = ui_fixture();
+        let mut store = Store::open(temp.0.join("profile"));
+        store.world_mut()["inventory"]["records"] = json!([
+            {"id":"one","speciesKey":"SheepBall","name":"这是游戏内一个很长很长的自定义昵称","sex":"M","traits":["Legend","Artisan","Legend","Artisan"]},
+            {"id":"two","speciesKey":"SheepBall","name":"另一只","sex":"F","traits":[]}
+        ]);
+        let ctx = egui::Context::default();
+        crate::design::apply(&ctx, "moon");
+        let mut breeding = Breeding::default();
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(360., 900.),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    breeding.warehouse_content(ui, &d, &mut store);
+                });
+            },
+        );
+        let rect = ctx
+            .data(|m| m.get_temp::<egui::Rect>(egui::Id::new("test-widget:stock-card:one")))
+            .unwrap();
+        assert!(
+            rect.height() <= 232. + 1.,
+            "card {} exceeds the virtual row",
+            rect.height()
+        );
     }
     #[test]
     fn trait_checkboxes_can_select_and_remove_by_pointer() {

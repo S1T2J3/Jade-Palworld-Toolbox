@@ -239,7 +239,10 @@ impl Probe {
                     if !current.actions.is_empty() {
                         current.phase = 7;
                         current.action_frame = 0;
-                    } else if self.drag && current.route == "#map" {
+                    } else if self.drag
+                        && (current.route.starts_with("#map")
+                            || current.route.starts_with("#spawns"))
+                    {
                         current.phase = 5;
                         current.frames = 0;
                         self.mouse(0, 500., 420.);

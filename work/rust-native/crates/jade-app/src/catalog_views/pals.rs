@@ -388,17 +388,17 @@ pub(super) fn partner(
 pub(super) fn active(ui: &mut egui::Ui, d: &Data, e: &Entry, page: &str, nav: &mut Option<String>) {
     let v = &e.value;
     let fruit_id = format!("SkillCard_{}", e.id);
-    if page == "details/fruits" {
-        ui.horizontal_top(|ui| {
-            d.item_icon(ui, &fruit_id, 64.);
-            ui.vertical(|ui| {
-                ui.heading(&e.name);
-                ui.weak(text(v, "zh"));
-            });
-        });
-    } else {
-        hero(ui, d, e, "", text(v, "en"));
-    }
+    hero(
+        ui,
+        d,
+        e,
+        "",
+        if page == "details/fruits" {
+            text(v, "zh")
+        } else {
+            text(v, "en")
+        },
+    );
     ui.horizontal_wrapped(|ui| {
         element(ui, text(v, "type"));
         ui.weak(if v["inherit"] == true {
