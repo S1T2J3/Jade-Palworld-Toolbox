@@ -8,7 +8,7 @@ use std::{
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
 };
 use unicode_normalization::UnicodeNormalization;
 

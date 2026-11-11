@@ -1,4 +1,4 @@
-param([string]$Version='2.0.0-beta.1',[string]$InnoCompiler)
+param([string]$Version='2.0.0-beta.2',[string]$InnoCompiler,[string]$PreviousPackage)
 $ErrorActionPreference='Stop'
 $project=[IO.Path]::GetFullPath($PSScriptRoot)
 $dist=Join-Path $project 'dist'
@@ -28,8 +28,24 @@ try{foreach($file in (Get-ChildItem -LiteralPath $package -Recurse -File)){
 }}finally{$zip.Dispose();$stream.Dispose()}
 $tag='rust-v'+$Version
 $update=[ordered]@{schema=1;version=$Version;releaseTag=$tag;package=$manifest;full=[ordered]@{name=[IO.Path]::GetFileName($archive);url=('https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases/download/'+$tag+'/'+[IO.Path]::GetFileName($archive));size=(Get-Item -LiteralPath $archive).Length;sha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()};deltas=@()}
+if($PreviousPackage){
+ $previousRoot=(Resolve-Path -LiteralPath $PreviousPackage).Path
+ $previousFile=Join-Path $previousRoot 'rust-package.json'
+ $previous=Get-Content -Raw -LiteralPath $previousFile | ConvertFrom-Json
+ $old=@{};foreach($file in $previous.files){$old[$file.path]=$file}
+ $changed=@($files | Where-Object {-not $old.ContainsKey($_.path) -or $old[$_.path].sha256 -ne $_.sha256 -or $old[$_.path].size -ne $_.size})
+ $deltaName='Jade-Palworld-Rust-'+$Version+'-from-'+$previous.version+'-delta.zip'
+ $deltaPath=Join-Path $dist $deltaName
+ $stream=[IO.File]::Create($deltaPath);$zip=[IO.Compression.ZipArchive]::new($stream,[IO.Compression.ZipArchiveMode]::Create)
+ try{foreach($relative in @('rust-package.json')+@($changed|ForEach-Object {$_.path})){
+  $entry=$zip.CreateEntry($relative,[IO.Compression.CompressionLevel]::Optimal)
+  $output=$entry.Open();$input=[IO.File]::OpenRead((Join-Path $package $relative))
+  try{$input.CopyTo($output)}finally{$input.Dispose();$output.Dispose()}
+ }}finally{$zip.Dispose();$stream.Dispose()}
+ $update.deltas=@([ordered]@{fromManifestSha256=(Get-FileHash -LiteralPath $previousFile -Algorithm SHA256).Hash.ToLowerInvariant();name=$deltaName;url=('https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases/download/'+$tag+'/'+$deltaName);size=(Get-Item -LiteralPath $deltaPath).Length;sha256=(Get-FileHash -LiteralPath $deltaPath -Algorithm SHA256).Hash.ToLowerInvariant()})
+}
 [IO.File]::WriteAllText((Join-Path $dist 'rust-update.json'),($update|ConvertTo-Json -Depth 20),$encoding)
 if($InnoCompiler){& $InnoCompiler ('/DPackageDir='+$package) ('/DDistDir='+$dist) ('/DVersion='+$Version) (Join-Path $project 'installer.iss');if($LASTEXITCODE-ne 0){throw 'Installer build failed'}}
-$hashes=Get-ChildItem -LiteralPath $dist -File | Where-Object {$_.Extension -in '.zip','.exe','.json'} | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.Name }
+$hashes=Get-ChildItem -LiteralPath $dist -File | Where-Object {($_.Name -like "*$Version*" -and $_.Extension -in '.zip','.exe') -or $_.Name -eq 'rust-update.json'} | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.Name }
 [IO.File]::WriteAllLines((Join-Path $dist 'SHA256SUMS.txt'),$hashes,$encoding)
 Write-Output $archive

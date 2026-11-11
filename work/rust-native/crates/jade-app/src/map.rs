@@ -1,7 +1,7 @@
 //! Native map camera, spatial clustering, annotations and Pal spawn lookup.
-use crate::data::{array, normalize, text, Data};
+use crate::data::{Data, array, normalize, text};
 use eframe::egui::{self, Color32, Rect, Sense, Stroke, Vec2};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -56,6 +56,9 @@ pub struct MapState {
     spawn_kind: u8,
     spawn_cache: (String, u8, u8),
     spawn_points: Vec<Pin>,
+    categories_expanded: bool,
+    viewport: Rect,
+    detail_height: f32,
 }
 impl Default for MapState {
     fn default() -> Self {
@@ -87,6 +90,9 @@ impl Default for MapState {
             spawn_kind: 0,
             spawn_cache: (String::new(), 0, 0),
             spawn_points: vec![],
+            categories_expanded: false,
+            viewport: Rect::NOTHING,
+            detail_height: 220.,
         }
     }
 }
@@ -388,33 +394,323 @@ fn routes(data: &Data, state: &mut MapState, points: &[Pin]) {
     }
 }
 fn map_header(ui: &mut egui::Ui, state: &mut MapState) {
-    ui.horizontal_wrapped(|ui| {
-        let old = state.region.clone();
-        egui::ComboBox::from_id_salt("map-region")
-            .selected_text(region_name(&state.region))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut state.region, "palpagos".into(), "帕洛斯群岛");
-                ui.selectable_value(&mut state.region, "worldtree".into(), "世界树");
+    let old = state.region.clone();
+    egui::ComboBox::from_id_salt("map-region")
+        .width(140.)
+        .selected_text(region_name(&state.region))
+        .show_ui(ui, |ui| {
+            ui.selectable_value(&mut state.region, "palpagos".into(), "帕洛斯群岛");
+            ui.selectable_value(&mut state.region, "worldtree".into(), "世界树");
+        });
+    if old != state.region {
+        reset_camera(state);
+        state.selected.clear();
+        state.cluster.clear();
+        state.picking = false;
+        state.editor = None;
+        state.delete_confirm = false;
+    }
+}
+fn map_tools(ui: &mut egui::Ui, state: &mut MapState) {
+    let clip = state.viewport;
+    if !clip.is_positive() {
+        return;
+    }
+    let p = crate::design::palette(ui.ctx());
+    let mut tools = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt("map-floating-tools")
+            .max_rect(Rect::from_min_size(
+                clip.right_top() + Vec2::new(-48., 12.),
+                Vec2::new(36., 112.),
+            ))
+            .layout(egui::Layout::top_down(egui::Align::Center)),
+    );
+    tools.spacing_mut().item_spacing = Vec2::new(0., 2.);
+    tools.spacing_mut().button_padding = Vec2::splat(4.);
+    for (label, help) in [("＋", "放大"), ("−", "缩小"), ("全图", "查看全图")] {
+        if tools
+            .add_sized(
+                [34., 34.],
+                egui::Button::new(egui::RichText::new(label).size(if label == "全图" {
+                    12.
+                } else {
+                    20.
+                }))
+                .fill(p.surface),
+            )
+            .on_hover_text(help)
+            .clicked()
+        {
+            match label {
+                "＋" => state.zoom = (state.zoom * 1.5).min(32.),
+                "−" => state.zoom = (state.zoom / 1.5).max(1.),
+                _ => reset_camera(state),
+            }
+        }
+    }
+    let readout = format!(
+        "{} · {:.0}%  拖动平移 / 滚轮缩放",
+        region_name(&state.region),
+        state.zoom * 100.
+    );
+    let mut caption = ui.new_child(egui::UiBuilder::new().id_salt("map-readout").max_rect(
+        Rect::from_min_size(
+            clip.left_bottom() + Vec2::new(10., -29.),
+            Vec2::new(320., 24.),
+        ),
+    ));
+    egui::Frame::new()
+        .fill(Color32::from_rgba_unmultiplied(18, 33, 39, 215))
+        .corner_radius(5)
+        .inner_margin(5)
+        .show(&mut caption, |ui| {
+            ui.label(
+                egui::RichText::new(readout)
+                    .size(11.)
+                    .color(Color32::from_rgb(233, 242, 242)),
+            );
+        });
+}
+fn floating_detail(
+    ui: &mut egui::Ui,
+    data: &Data,
+    state: &mut MapState,
+    points: &[Pin],
+    notes: &mut Value,
+) -> Option<String> {
+    let clip = state.viewport;
+    let Some(p) = points.iter().find(|p| p.id == state.selected) else {
+        if state.cluster.is_empty() {
+            return None;
+        }
+        let mut out = None;
+        let rect = Rect::from_min_size(
+            clip.left_bottom() + Vec2::new(11., -260.),
+            Vec2::new(315., 222.),
+        );
+        let mut panel = ui.new_child(
+            egui::UiBuilder::new()
+                .id_salt("map-floating-cluster")
+                .max_rect(rect),
+        );
+        crate::design::card(&panel).show(&mut panel, |ui| {
+            ui.set_width(289.);
+            ui.horizontal(|ui| {
+                ui.strong(format!("附近 {} 处点位", state.cluster.len()));
+                if ui.small_button("×").clicked() {
+                    state.cluster.clear();
+                }
             });
-        if old != state.region {
-            reset_camera(state);
-            state.selected.clear();
-            state.cluster.clear();
-            state.picking = false;
-            state.editor = None;
-            state.delete_confirm = false;
-        }
-        if ui.button("＋ 放大").clicked() {
-            state.zoom = (state.zoom * 1.5).min(32.);
-        }
-        if ui.button("− 缩小").clicked() {
-            state.zoom = (state.zoom / 1.5).max(1.);
-        }
-        if ui.button("查看全图").clicked() {
-            reset_camera(state);
-        }
-        ui.label(format!("{:.0}% · 拖动平移，滚轮缩放", state.zoom * 100.));
+            egui::ScrollArea::vertical()
+                .max_height(170.)
+                .show(ui, |ui| {
+                    for id in state.cluster.clone() {
+                        if let Some(p) = points.iter().find(|p| p.id == id) {
+                            if ui.button(format!("{} · {}", p.name, p.levels)).clicked() {
+                                focus(state, p);
+                                out = Some(format!("#map/point/{}", encode(&p.id)));
+                            }
+                        }
+                    }
+                });
+        });
+        return out;
+    };
+    let width = 315f32.min(clip.width() - 24.);
+    let height = state.detail_height.min(clip.height() - 68.).max(80.);
+    let rect = Rect::from_min_size(
+        clip.left_bottom() + Vec2::new(11., -38. - height),
+        Vec2::new(width, clip.height() - 68.),
+    );
+    let mut panel = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt("map-floating-detail")
+            .max_rect(rect),
+    );
+    let result = crate::design::card(&panel).show(&mut panel, |ui| {
+        ui.set_width(width - 26.);
+        ui.horizontal(|ui| {
+            ui.label(
+                egui::RichText::new("点位详情")
+                    .size(11.)
+                    .color(crate::design::palette(ui.ctx()).muted),
+            );
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.small_button("×").on_hover_text("关闭详情").clicked() {
+                    state.selected.clear();
+                }
+            });
+        });
+        egui::ScrollArea::vertical()
+            .id_salt("map-detail-scroll")
+            .max_height(clip.height() - 128.)
+            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
+            .show(ui, |ui| details(ui, data, state, p, notes))
+            .inner
     });
+    state.detail_height = result.response.rect.height();
+    result.inner
+}
+fn category_button(
+    ui: &mut egui::Ui,
+    data: &Data,
+    cat: &Value,
+    count: usize,
+    on: bool,
+    width: f32,
+) -> egui::Response {
+    let palette = crate::design::palette(ui.ctx());
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 29.), Sense::click());
+    ui.painter()
+        .rect_filled(rect, 6, if on { palette.selected } else { palette.soft });
+    ui.painter().rect_stroke(
+        rect,
+        6,
+        Stroke::new(1.0_f32, if on { palette.accent } else { palette.line }),
+        egui::StrokeKind::Inside,
+    );
+    let art = icon(data, &json!({"category":text(cat,"id")}));
+    if !art.is_empty() {
+        egui::Image::new(data.image_source(&art)).paint_at(
+            ui,
+            Rect::from_center_size(rect.left_center() + Vec2::new(15., 0.), Vec2::splat(19.)),
+        );
+    } else {
+        ui.painter().circle_filled(
+            rect.left_center() + Vec2::new(15., 0.),
+            5.,
+            color(text(cat, "id")),
+        );
+    }
+    let name = text(cat, "name");
+    let limit = ((width - 53.) / 12.).floor().max(3.) as usize;
+    let display = if name.chars().count() > limit {
+        format!("{}…", name.chars().take(limit - 1).collect::<String>())
+    } else {
+        name.into()
+    };
+    ui.painter().text(
+        rect.left_center() + Vec2::new(29., 0.),
+        egui::Align2::LEFT_CENTER,
+        display,
+        egui::FontId::proportional(12.),
+        palette.ink,
+    );
+    ui.painter().text(
+        rect.right_center() - Vec2::new(5., 0.),
+        egui::Align2::RIGHT_CENTER,
+        count.to_string(),
+        egui::FontId::proportional(10.),
+        palette.muted,
+    );
+    response
+        .on_hover_text(format!("{name} · {count} 处点位"))
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+}
+fn point_row(
+    ui: &mut egui::Ui,
+    data: &Data,
+    p: &Pin,
+    selected: bool,
+    done: Option<bool>,
+) -> (bool, Option<bool>) {
+    let palette = crate::design::palette(ui.ctx());
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(ui.available_width(), 44.), Sense::click());
+    let painter = ui.painter().with_clip_rect(rect);
+    if selected || response.hovered() {
+        painter.rect_filled(rect, 4, palette.selected);
+    }
+    let mut x = rect.left() + 3.;
+    let mut changed = None;
+    if let Some(mut checked) = done {
+        let mut check = ui.new_child(
+            egui::UiBuilder::new()
+                .id_salt(("point-done", &p.id))
+                .max_rect(Rect::from_center_size(
+                    egui::pos2(x + 9., rect.center().y),
+                    Vec2::splat(18.),
+                )),
+        );
+        check.spacing_mut().interact_size = Vec2::splat(18.);
+        if check.checkbox(&mut checked, "").changed() {
+            changed = Some(checked);
+        }
+        x += 24.;
+    }
+    if !p.art.is_empty() {
+        egui::Image::new(data.image_source(&p.art)).paint_at(
+            ui,
+            Rect::from_center_size(egui::pos2(x + 13., rect.center().y), Vec2::splat(26.)),
+        );
+        x += 32.;
+    }
+    let label = if p.category == "wild" || p.category == "alpha" {
+        format!("{:.0}，{:.0}", p.x, p.y)
+    } else {
+        p.name.clone()
+    };
+    painter.text(
+        egui::pos2(x, rect.top() + 5.),
+        egui::Align2::LEFT_TOP,
+        label,
+        egui::FontId::proportional(12.),
+        palette.ink,
+    );
+    painter.text(
+        egui::pos2(x, rect.top() + 25.),
+        egui::Align2::LEFT_TOP,
+        if p.category == "wild" || p.category == "alpha" {
+            p.levels.clone()
+        } else {
+            format!("{:.0}，{:.0} {}", p.x, p.y, p.levels)
+        },
+        egui::FontId::proportional(10.5),
+        palette.muted,
+    );
+    painter.line_segment(
+        [rect.left_bottom(), rect.right_bottom()],
+        Stroke::new(0.5_f32, palette.line),
+    );
+    (
+        response
+            .on_hover_text(format!(
+                "{}
+{}
+{:.0}，{:.0}",
+                p.name, p.levels, p.x, p.y
+            ))
+            .clicked()
+            && changed.is_none(),
+        changed,
+    )
+}
+fn coordinate_tools(ui: &mut egui::Ui, state: &mut MapState) {
+    ui.horizontal(|ui| {
+        ui.label("X");
+        ui.add(egui::DragValue::new(&mut state.x));
+        ui.label("Y");
+        ui.add(egui::DragValue::new(&mut state.y));
+        if ui.small_button("定位").clicked() {
+            if let Some(uv) = position(&state.region, state.x, state.y) {
+                state.center = uv;
+                state.coordinate = Some(uv);
+                state.zoom = 5.;
+                state.selected.clear();
+            }
+        }
+    });
+    if ui.button("输入坐标添加").clicked() {
+        state.editor = Some(Editor {
+            id: String::new(),
+            name: String::new(),
+            note: String::new(),
+            x: state.x,
+            y: state.y,
+            error: String::new(),
+        });
+    }
 }
 fn filtered<'a>(points: &'a [Pin], state: &MapState, done: &HashSet<String>) -> Vec<&'a Pin> {
     let q = normalize(state.search.trim());
@@ -498,6 +794,7 @@ fn scene(
         ui.available_height().max(300.),
     );
     let (clip, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
+    state.viewport = clip;
     let mut route = None;
     if response.dragged() {
         let delta = ui.input(|i| i.pointer.delta());
@@ -528,6 +825,12 @@ fn scene(
             if i.key_pressed(egui::Key::ArrowDown) {
                 state.center.y += step
             }
+            if i.key_pressed(egui::Key::Plus) {
+                state.zoom = (state.zoom * 1.5).min(32.);
+            }
+            if i.key_pressed(egui::Key::Minus) {
+                state.zoom = (state.zoom / 1.5).max(1.);
+            }
             if i.key_pressed(egui::Key::Home) {
                 reset_camera(state)
             }
@@ -537,7 +840,7 @@ fn scene(
     let side = clip.width().min(clip.height()) * state.zoom;
     let map_rect = Rect::from_min_size(clip.center() - state.center * side, Vec2::splat(side));
     let painter = ui.painter().with_clip_rect(clip);
-    painter.rect_filled(clip, 8., Color32::from_rgb(24, 35, 51));
+    painter.rect_filled(clip, 15., Color32::from_rgb(12, 22, 28));
     let old_clip = ui.clip_rect();
     ui.set_clip_rect(old_clip.intersect(clip));
     if let Some(uri) = data.get("map-images")[&state.region].as_str() {
@@ -551,22 +854,57 @@ fn scene(
             Rect::from_center_size(pos, Vec2::splat(if group.len() > 1 { 32. } else { 28. }));
         let id = ui.id().with(("map-pin", spawn, &p.id));
         let mark = ui.interact(rect, id, Sense::click());
-        painter.circle_filled(pos, 15., Color32::from_rgba_unmultiplied(25, 28, 48, 225));
-        if !p.art.is_empty() {
-            egui::Image::new(data.image_source(&p.art)).paint_at(ui, rect.shrink(1.));
-        } else {
-            painter.circle_filled(pos, 9., color(&p.category));
-        }
         if group.len() > 1 {
-            let badge = pos + Vec2::new(10., -11.);
-            painter.circle_filled(badge, 10., Color32::from_rgb(69, 68, 123));
+            let fill = if spawn {
+                Color32::from_rgb(139, 116, 57)
+            } else {
+                Color32::from_rgb(46, 80, 73)
+            };
+            painter.circle_filled(pos, 13., fill);
+            painter.circle_stroke(
+                pos,
+                13.,
+                Stroke::new(1.3_f32, Color32::from_rgb(237, 236, 211)),
+            );
             painter.text(
-                badge,
+                pos,
                 egui::Align2::CENTER_CENTER,
                 group.len().to_string(),
-                egui::FontId::proportional(10.),
+                egui::FontId::proportional(12.),
                 Color32::WHITE,
             );
+        } else if spawn {
+            painter.circle_filled(
+                pos,
+                6.,
+                if p.category == "alpha" {
+                    Color32::from_rgb(218, 122, 73)
+                } else {
+                    Color32::from_rgb(211, 166, 66)
+                },
+            );
+            painter.circle_stroke(
+                pos,
+                6.,
+                Stroke::new(1.0_f32, Color32::from_rgb(245, 225, 176)),
+            );
+        } else if !p.art.is_empty() {
+            if p.category == "alpha_pals" {
+                painter.circle_filled(pos, 15., Color32::from_rgb(246, 240, 225));
+                painter.circle_stroke(
+                    pos,
+                    15.,
+                    Stroke::new(1.3_f32, Color32::from_rgb(178, 112, 156)),
+                );
+                egui::Image::new(data.image_source(&p.art))
+                    .corner_radius(14)
+                    .paint_at(ui, Rect::from_center_size(pos, Vec2::splat(28.)));
+            } else {
+                egui::Image::new(data.image_source(&p.art))
+                    .paint_at(ui, Rect::from_center_size(pos, Vec2::splat(23.)));
+            }
+        } else {
+            painter.circle_filled(pos, 7., color(&p.category));
         }
         if state.selected == p.id {
             painter.circle_stroke(
@@ -680,8 +1018,7 @@ fn details(
     notes: &mut Value,
 ) -> Option<String> {
     let mut out = None;
-    ui.separator();
-    ui.heading(&p.name);
+    ui.label(egui::RichText::new(&p.name).size(17.).strong());
     ui.label(format!("坐标 {:.0}，{:.0}", p.x, p.y));
     if !p.levels.is_empty() {
         ui.label(&p.levels);
@@ -910,44 +1247,29 @@ pub fn show(
     routes(data, state, &points);
     let done = done_set(notes);
     let mut out = None;
-    map_header(ui, state);
-    ui.horizontal_wrapped(|ui| {
-        if ui
-            .button(if state.picking {
-                "取消选点"
-            } else {
-                "＋ 添加点位"
-            })
-            .clicked()
-        {
-            state.picking = !state.picking;
-        }
-        if ui.button("输入坐标添加").clicked() {
-            state.editor = Some(Editor {
-                id: String::new(),
-                name: String::new(),
-                note: String::new(),
-                x: state.x,
-                y: state.y,
-                error: String::new(),
-            });
-        }
-        ui.label("定位 X");
-        ui.add(egui::DragValue::new(&mut state.x));
-        ui.label("Y");
-        ui.add(egui::DragValue::new(&mut state.y));
-        if ui.button("定位").clicked() {
-            if let Some(uv) = position(&state.region, state.x, state.y) {
-                state.center = uv;
-                state.coordinate = Some(uv);
-                state.zoom = 5.;
-                state.selected.clear();
+    ui.horizontal(|ui| {
+        ui.small("地图区域");
+        map_header(ui, state);
+        ui.menu_button("坐标定位", |ui| coordinate_tools(ui, state));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui
+                .button(if state.picking {
+                    "取消选点"
+                } else {
+                    "＋ 添加点位"
+                })
+                .clicked()
+            {
+                state.picking = !state.picking;
             }
-        }
+            ui.small("点位进度随当前世界保存");
+        });
     });
-    let height = ui.available_height();
+    let height = ui.available_height().max(300.);
+    let sidebar = (ui.available_width() * 0.24).clamp(225., 292.);
+    ui.spacing_mut().item_spacing.x = 13.;
     ui.horizontal_top(|ui| {
-        let map_width = (ui.available_width() - 310.).max(240.);
+        let map_width = (ui.available_width() - sidebar - 13.).max(200.);
         ui.allocate_ui_with_layout(
             Vec2::new(map_width, height),
             egui::Layout::top_down(egui::Align::Min),
@@ -956,89 +1278,45 @@ pub fn show(
                 if let Some(route) = scene(ui, data, state, &visible, &done, false) {
                     out = Some(route);
                 }
+                map_tools(ui, state);
+                if let Some(route) = floating_detail(ui, data, state, &points, notes) {
+                    out = Some(route);
+                }
             },
         );
         ui.allocate_ui_with_layout(
-            Vec2::new(300., height),
+            Vec2::new(sidebar, height),
             egui::Layout::top_down(egui::Align::Min),
             |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("map-sidebar")
-                    .show(ui, |ui| {
-                        ui.strong("点位筛选");
-                        ui.horizontal(|ui| {
-                            if ui.button("全选").clicked() {
+                crate::design::card(ui).show(ui, |ui| {
+                    ui.set_width(sidebar - 26.);
+                    ui.set_height(height - 26.);
+                    ui.spacing_mut().item_spacing = Vec2::new(6., 6.);
+                    ui.spacing_mut().interact_size.y = 25.;
+                    ui.spacing_mut().button_padding = Vec2::new(7., 4.);
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("点位筛选").size(16.).strong());
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.small_button("清空").clicked() {
+                                state.categories.clear();
+                            }
+                            if ui.small_button("全选").clicked() {
                                 state.categories = array(&data.get("map-data")["categories"])
                                     .iter()
                                     .map(|c| text(c, "id").into())
                                     .chain(std::iter::once("custom".into()))
                                     .collect();
                             }
-                            if ui.button("清空").clicked() {
-                                state.categories.clear();
-                            }
                         });
-                        let counts = state
-                            .category_counts
-                            .get(&state.region)
-                            .cloned()
-                            .unwrap_or_default();
-                        egui::CollapsingHeader::new("类别")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                egui::ScrollArea::vertical()
-                                    .id_salt("map-category-scroll")
-                                    .max_height(210.)
-                                    .show(ui, |ui| {
-                                        egui::Grid::new("map-categories")
-                                            .num_columns(2)
-                                            .max_col_width(140.)
-                                            .show(ui, |ui| {
-                                                let mut n = 0;
-                                                for cat in array(
-                                                    &data.get("map-data")["categories"],
-                                                )
-                                                .iter()
-                                                .cloned()
-                                                .chain(std::iter::once(
-                                                    json!({"id":"custom","name":"我的点位"}),
-                                                )) {
-                                                    let id = text(&cat, "id");
-                                                    let count =
-                                                        counts.get(id).copied().unwrap_or_default();
-                                                    if count == 0 {
-                                                        continue;
-                                                    }
-                                                    let mut on = state.categories.contains(id);
-                                                    if ui
-                                                        .checkbox(
-                                                            &mut on,
-                                                            format!(
-                                                                "{} ({count})",
-                                                                text(&cat, "name")
-                                                            ),
-                                                        )
-                                                        .changed()
-                                                    {
-                                                        if on {
-                                                            state.categories.insert(id.into());
-                                                        } else {
-                                                            state.categories.remove(id);
-                                                        }
-                                                    }
-                                                    n += 1;
-                                                    if n % 2 == 0 {
-                                                        ui.end_row();
-                                                    }
-                                                }
-                                            });
-                                    });
-                            });
-                        ui.add(
-                            egui::TextEdit::singleline(&mut state.search)
-                                .hint_text("搜索点位、资源、地点"),
-                        );
+                    });
+                    ui.add(
+                        egui::TextEdit::singleline(&mut state.search)
+                            .hint_text("搜索地点、资源…")
+                            .desired_width(f32::INFINITY),
+                    );
+                    ui.horizontal(|ui| {
                         egui::ComboBox::from_id_salt("map-completion")
+                            .width(102.)
                             .selected_text(
                                 ["全部状态", "未完成", "已完成"][state.completion as usize],
                             )
@@ -1049,66 +1327,119 @@ pub fn show(
                                     ui.selectable_value(&mut state.completion, i as u8, *label);
                                 }
                             });
-                        if let Some(p) = points.iter().find(|p| p.id == state.selected) {
-                            if let Some(route) = details(ui, data, state, p, notes) {
-                                out = Some(route);
-                            }
-                        }
-                        if !state.cluster.is_empty() {
-                            ui.separator();
-                            ui.strong("附近的点位");
-                            for id in state.cluster.clone() {
-                                if let Some(p) = points.iter().find(|p| p.id == id) {
-                                    if ui.button(&p.name).clicked() {
-                                        focus(state, p);
-                                    }
-                                }
-                            }
-                        }
-                        let list = filtered(&points, state, &done);
-                        ui.separator();
-                        ui.label(format!("{} 处点位", list.len()));
-                        egui::ScrollArea::vertical()
-                            .id_salt("map-points")
-                            .max_height(330.)
-                            .show_rows(ui, 42., list.len(), |ui, range| {
-                                for i in range {
-                                    let p = &list[i];
-                                    ui.horizontal(|ui| {
-                                        let mut checked = done.contains(&p.id);
-                                        if ui.checkbox(&mut checked, "").changed() {
-                                            set_done(notes, &p.id, checked);
-                                        }
-                                        if !p.art.is_empty() {
-                                            data.image(ui, &p.art, Vec2::splat(28.));
-                                        }
-                                        if ui
-                                            .selectable_label(
-                                                state.selected == p.id,
-                                                format!(
-                                                    "{}\n{:.0}，{:.0} {}",
-                                                    p.name, p.x, p.y, p.levels
-                                                ),
-                                            )
-                                            .clicked()
+                        ui.small(format!(
+                            "已完成 {} 处",
+                            points
+                                .iter()
+                                .filter(|p| p.region == state.region && done.contains(&p.id))
+                                .count()
+                        ));
+                    });
+                    let counts = state
+                        .category_counts
+                        .get(&state.region)
+                        .cloned()
+                        .unwrap_or_default();
+                    let cats = array(&data.get("map-data")["categories"])
+                        .iter()
+                        .cloned()
+                        .chain(std::iter::once(json!({"id":"custom","name":"我的点位"})))
+                        .filter(|c| {
+                            counts.get(text(c, "id")).copied().unwrap_or(0) > 0
+                                || text(c, "id") == "custom"
+                        })
+                        .collect::<Vec<_>>();
+                    let limit = if state.categories_expanded {
+                        cats.len()
+                    } else {
+                        cats.len().min(24)
+                    };
+                    let category_height = (height - 290.).clamp(130., 500.);
+                    let cell = (ui.available_width() - 6.) / 2.;
+                    egui::ScrollArea::vertical()
+                        .id_salt("map-category-scroll")
+                        .max_height(category_height)
+                        .show(ui, |ui| {
+                            egui::Grid::new("map-categories")
+                                .num_columns(2)
+                                .spacing(Vec2::new(6., 4.))
+                                .show(ui, |ui| {
+                                    for (i, cat) in cats.iter().take(limit).enumerate() {
+                                        let id = text(cat, "id");
+                                        let on = state.categories.contains(id);
+                                        if category_button(
+                                            ui,
+                                            data,
+                                            cat,
+                                            counts.get(id).copied().unwrap_or(0),
+                                            on,
+                                            cell,
+                                        )
+                                        .clicked()
                                         {
-                                            focus(state, p);
-                                            out = Some(format!("#map/point/{}", encode(&p.id)));
+                                            if on {
+                                                state.categories.remove(id);
+                                            } else {
+                                                state.categories.insert(id.into());
+                                            }
                                         }
-                                    });
+                                        if i % 2 == 1 {
+                                            ui.end_row();
+                                        }
+                                    }
+                                });
+                        });
+                    if cats.len() > 24
+                        && ui
+                            .small_button(if state.categories_expanded {
+                                "收起类别".into()
+                            } else {
+                                format!("展开全部 {} 类", cats.len())
+                            })
+                            .clicked()
+                    {
+                        state.categories_expanded = !state.categories_expanded;
+                    }
+                    let list = filtered(&points, state, &done);
+                    ui.separator();
+                    ui.small(format!("显示 {} 处点位 · 点击定位", list.len()));
+                    if list.is_empty()
+                        && !state.search.is_empty()
+                        && ui.button("在全部类别中搜索").clicked()
+                    {
+                        state.categories = counts.keys().cloned().collect();
+                    }
+                    let remaining =
+                        (height - (ui.cursor().top() - ui.min_rect().top()) - 48.).max(60.);
+                    egui::ScrollArea::vertical()
+                        .id_salt("map-points")
+                        .max_height(remaining)
+                        .auto_shrink([false, false])
+                        .show_rows(ui, 45., list.len(), |ui, range| {
+                            for i in range {
+                                let p = list[i];
+                                let (clicked, changed) = point_row(
+                                    ui,
+                                    data,
+                                    p,
+                                    state.selected == p.id,
+                                    Some(done.contains(&p.id)),
+                                );
+                                if let Some(checked) = changed {
+                                    set_done(notes, &p.id, checked);
                                 }
-                            });
-                        if list.is_empty() && !state.search.is_empty() {
-                            if ui.button("在全部类别中搜索").clicked() {
-                                state.categories = counts.keys().cloned().collect();
-                            }
-                        }
-                        egui::CollapsingHeader::new("资料来源").show(ui, |ui| {
-                            for s in array(&data.get("map-data")["sources"]) {
-                                ui.hyperlink_to(text(s, "name"), text(s, "url"));
+                                if clicked {
+                                    focus(state, p);
+                                    out = Some(format!("#map/point/{}", encode(&p.id)));
+                                }
                             }
                         });
+                    egui::CollapsingHeader::new("资料来源").show(ui, |ui| {
+                        for s in array(&data.get("map-data")["sources"]) {
+                            ui.hyperlink_to(text(s, "name"), text(s, "url"));
+                        }
                     });
+                });
             },
         );
     });
@@ -1267,16 +1598,22 @@ pub fn show_spawns(
         out = Some(format!("#spawns/{}", encode(&state.spawn_key)));
     }
     load_spawns(data, state);
-    map_header(ui, state);
+    ui.horizontal(|ui| {
+        ui.small("地图区域");
+        map_header(ui, state);
+        ui.small("白天 / 夜间与头目位置可分别筛选，悬停查看等级。");
+    });
     let shown = state
         .spawn_points
         .iter()
         .filter(|p| p.region == state.region)
         .cloned()
         .collect::<Vec<_>>();
-    let height = ui.available_height();
+    let height = ui.available_height().max(300.);
+    let sidebar = (ui.available_width() * 0.24).clamp(250., 304.);
+    ui.spacing_mut().item_spacing.x = 13.;
     ui.horizontal_top(|ui| {
-        let map_width = (ui.available_width() - 310.).max(240.);
+        let map_width = (ui.available_width() - sidebar - 13.).max(200.);
         ui.allocate_ui_with_layout(
             Vec2::new(map_width, height),
             egui::Layout::top_down(egui::Align::Min),
@@ -1289,137 +1626,184 @@ pub fn show_spawns(
                     &HashSet::new(),
                     true,
                 );
+                map_tools(ui, state);
+                if let Some(p) = shown.iter().find(|p| p.id == state.selected) {
+                    let clip = state.viewport;
+                    let mut detail = ui.new_child(
+                        egui::UiBuilder::new()
+                            .id_salt("spawn-floating-detail")
+                            .max_rect(Rect::from_min_size(
+                                clip.left_bottom() + Vec2::new(11., -168.),
+                                Vec2::new(300., 130.),
+                            )),
+                    );
+                    crate::design::card(&detail).show(&mut detail, |ui| {
+                        ui.set_width(274.);
+                        ui.horizontal(|ui| {
+                            ui.strong(&p.name);
+                            if ui.small_button("×").clicked() {
+                                state.selected.clear();
+                            }
+                        });
+                        ui.label(format!("坐标 {:.0}，{:.0}", p.x, p.y));
+                        ui.label(&p.levels);
+                        nav(
+                            ui,
+                            &mut out,
+                            "在世界地图上定位",
+                            format!("#map/coords/{}/{}/{}", p.region, p.x, p.y),
+                        );
+                    });
+                }
             },
         );
         ui.allocate_ui_with_layout(
-            Vec2::new(300., height),
+            Vec2::new(sidebar, height),
             egui::Layout::top_down(egui::Align::Min),
             |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("spawns-sidebar")
-                    .show(ui, |ui| {
-                        data.portrait(ui, &state.spawn_key, 72.);
-                        ui.heading(data.pal_name(&state.spawn_key));
-                        if let Some(p) = data.pal(&state.spawn_key) {
-                            ui.label(format!("{} · {}", text(p, "dex"), text(p, "en")));
+                crate::design::card(ui).show(ui, |ui| {
+                    ui.set_width(sidebar - 26.);
+                    egui::ScrollArea::vertical()
+                        .id_salt("spawn-profile")
+                        .max_height((height * 0.39).clamp(155., 260.))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                data.portrait(ui, &state.spawn_key, 64.);
+                                ui.vertical(|ui| {
+                                    ui.label(
+                                        egui::RichText::new(data.pal_name(&state.spawn_key))
+                                            .size(21.)
+                                            .strong(),
+                                    );
+                                    if let Some(p) = data.pal(&state.spawn_key) {
+                                        ui.small(format!(
+                                            "#{} · {}",
+                                            text(p, "dex"),
+                                            text(p, "en")
+                                        ));
+                                        ui.horizontal_wrapped(|ui| {
+                                            for element in
+                                                array(&p["types"]).iter().filter_map(Value::as_str)
+                                            {
+                                                crate::design::badge(
+                                                    ui,
+                                                    match element {
+                                                        "neutral" => "无",
+                                                        "fire" => "火",
+                                                        "water" => "水",
+                                                        "grass" => "草",
+                                                        "electric" => "雷",
+                                                        "ice" => "冰",
+                                                        "ground" => "地",
+                                                        "dark" => "暗",
+                                                        "dragon" => "龙",
+                                                        other => other,
+                                                    },
+                                                );
+                                            }
+                                        });
+                                    }
+                                });
+                            });
+                            let facts = &data.get("spawn-data")["profiles"][&state.spawn_key];
                             ui.horizontal_wrapped(|ui| {
-                                for element in array(&p["types"]).iter().filter_map(Value::as_str) {
-                                    ui.label(match element {
-                                        "neutral" => "无",
-                                        "fire" => "火",
-                                        "water" => "水",
-                                        "grass" => "草",
-                                        "electric" => "雷",
-                                        "ice" => "冰",
-                                        "ground" => "地",
-                                        "dark" => "暗",
-                                        "dragon" => "龙",
-                                        other => other,
-                                    });
-                                }
-                            });
-                        }
-                        for (name, prefix) in [
-                            ("帕鲁图鉴", "#paldex/"),
-                            ("伙伴技能", "#details/partner/"),
-                            ("捕捉概率计算", "#details/capture/"),
-                            ("属性值计算", "#details/stats/"),
-                        ] {
-                            nav(
-                                ui,
-                                &mut out,
-                                name,
-                                format!("{prefix}{}", encode(&state.spawn_key)),
-                            );
-                        }
-                        let facts = &data.get("spawn-data")["profiles"][&state.spawn_key];
-                        ui.separator();
-                        for (key, label) in
-                            [("hp", "生命"), ("attack", "攻击"), ("defense", "防御")]
-                        {
-                            if !facts[key].is_null() {
-                                ui.label(format!("{label}种族值：{}", facts[key]));
-                            }
-                        }
-                        for work in array(&facts["work"]) {
-                            let name = work[0].as_str().unwrap_or("");
-                            nav(
-                                ui,
-                                &mut out,
-                                format!("{} {}", name, work[1]),
-                                format!(
-                                    "#work/efficiency/{}/{}",
-                                    encode(&state.spawn_key),
-                                    encode(name)
-                                ),
-                            );
-                        }
-                        if let Some(partner) = facts["partner"].as_str() {
-                            ui.label(format!("伙伴技能：{partner}"));
-                        }
-                        if let Some(p) = shown.iter().find(|p| p.id == state.selected) {
-                            ui.separator();
-                            ui.strong(format!("{:.0}，{:.0}", p.x, p.y));
-                            ui.label(&p.levels);
-                            nav(
-                                ui,
-                                &mut out,
-                                "在世界地图上定位",
-                                format!("#map/coords/{}/{}/{}", p.region, p.x, p.y),
-                            );
-                        }
-                        if !state.cluster.is_empty() {
-                            ui.separator();
-                            ui.strong("附近刷新记录");
-                            for id in state.cluster.clone() {
-                                if let Some(p) = shown.iter().find(|p| p.id == id) {
-                                    if ui
-                                        .button(format!("{:.0}，{:.0}\n{}", p.x, p.y, p.levels))
-                                        .clicked()
-                                    {
-                                        state.selected = p.id.clone();
-                                        state.cluster.clear();
-                                    }
-                                }
-                            }
-                        }
-                        ui.separator();
-                        ui.strong(format!("{} 处刷新位置", shown.len()));
-                        if shown.is_empty() {
-                            if state.spawn_points.is_empty() {
-                                ui.label("本版资料没有符合筛选条件的刷新记录。");
-                            } else {
-                                if ui.button("切换到有记录的地图").clicked() {
-                                    state.region = state.spawn_points[0].region.clone();
-                                    reset_camera(state);
-                                }
-                            }
-                        }
-                        egui::ScrollArea::vertical()
-                            .id_salt("spawn-site-list")
-                            .max_height(330.)
-                            .show_rows(ui, 54., shown.len(), |ui, range| {
-                                for i in range {
-                                    let p = &shown[i];
-                                    if ui
-                                        .selectable_label(
-                                            state.selected == p.id,
-                                            format!("{:.0}，{:.0}\n{}", p.x, p.y, p.levels),
-                                        )
-                                        .clicked()
-                                    {
-                                        state.center = p.uv;
-                                        state.zoom = 5.;
-                                        state.selected = p.id.clone();
+                                for (key, label) in
+                                    [("hp", "生命"), ("attack", "攻击"), ("defense", "防御")]
+                                {
+                                    if !facts[key].is_null() {
+                                        crate::design::badge(ui, format!("{label} {}", facts[key]));
                                     }
                                 }
                             });
-                        egui::CollapsingHeader::new("资料来源").show(ui, |ui| {
-                            for s in array(&data.get("spawn-data")["sources"]) {
-                                ui.hyperlink_to(text(s, "name"), text(s, "url"));
+                            ui.horizontal_wrapped(|ui| {
+                                for work in array(&facts["work"]) {
+                                    let name = work[0].as_str().unwrap_or("");
+                                    nav(
+                                        ui,
+                                        &mut out,
+                                        format!("{} {}", name, work[1]),
+                                        format!(
+                                            "#work/efficiency/{}/{}",
+                                            encode(&state.spawn_key),
+                                            encode(name)
+                                        ),
+                                    );
+                                }
+                            });
+                            if let Some(partner) = facts["partner"].as_str() {
+                                ui.small(format!("伙伴技能：{partner}"));
+                            }
+                            ui.horizontal_wrapped(|ui| {
+                                for (name, prefix) in [
+                                    ("帕鲁图鉴", "#paldex/"),
+                                    ("伙伴技能", "#details/partner/"),
+                                    ("捕捉概率", "#details/capture/"),
+                                    ("属性计算", "#details/stats/"),
+                                ] {
+                                    nav(
+                                        ui,
+                                        &mut out,
+                                        name,
+                                        format!("{prefix}{}", encode(&state.spawn_key)),
+                                    );
+                                }
+                            });
+                        });
+                });
+                let list_height = ui.available_height().max(130.);
+                crate::design::card(ui).show(ui, |ui| {
+                    ui.set_width(sidebar - 26.);
+                    ui.label(
+                        egui::RichText::new(format!("刷新位置 · {}", shown.len()))
+                            .size(16.)
+                            .strong(),
+                    );
+                    ui.small("点击坐标定位，鼠标悬停查看等级");
+                    if shown.is_empty() {
+                        if state.spawn_points.is_empty() {
+                            ui.label("本版资料没有符合筛选条件的刷新记录。");
+                        } else if ui.button("切换到有记录的地图").clicked() {
+                            state.region = state.spawn_points[0].region.clone();
+                            reset_camera(state);
+                        }
+                    }
+                    if !state.cluster.is_empty() {
+                        egui::CollapsingHeader::new("附近刷新记录")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                for id in state.cluster.clone() {
+                                    if let Some(p) = shown.iter().find(|p| p.id == id) {
+                                        if ui
+                                            .button(format!("{:.0}，{:.0} {}", p.x, p.y, p.levels))
+                                            .clicked()
+                                        {
+                                            state.selected = p.id.clone();
+                                            state.cluster.clear();
+                                        }
+                                    }
+                                }
+                            });
+                    }
+                    egui::ScrollArea::vertical()
+                        .id_salt("spawn-site-list")
+                        .max_height((list_height - 105.).max(65.))
+                        .auto_shrink([false, false])
+                        .show_rows(ui, 45., shown.len(), |ui, range| {
+                            for i in range {
+                                let p = &shown[i];
+                                if point_row(ui, data, p, state.selected == p.id, None).0 {
+                                    state.center = p.uv;
+                                    state.zoom = 5.;
+                                    state.selected = p.id.clone();
+                                }
                             }
                         });
+                    egui::CollapsingHeader::new("资料来源").show(ui, |ui| {
+                        for s in array(&data.get("spawn-data")["sources"]) {
+                            ui.hyperlink_to(text(s, "name"), text(s, "url"));
+                        }
                     });
+                });
             },
         );
     });

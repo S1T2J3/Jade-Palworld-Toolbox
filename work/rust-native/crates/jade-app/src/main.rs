@@ -2,7 +2,9 @@
 mod breeding_ui;
 mod calculators_ui;
 mod catalog;
+mod catalog_views;
 mod data;
+mod design;
 mod instance;
 mod links;
 mod map;
@@ -129,6 +131,114 @@ fn decode_route(s: &str) -> String {
     String::from_utf8(out).unwrap_or_else(|_| s.into())
 }
 
+fn page_header(ui: &mut egui::Ui, page: &str, heading: &str, d: &Data) {
+    let p = design::palette(ui.ctx());
+    if page == "lookup" {
+        let (rect, _) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 100.), egui::Sense::hover());
+        ui.painter().rect_filled(rect, 14, p.soft);
+        let artwork = egui::Rect::from_min_max(
+            egui::pos2(rect.left() + rect.width() * 0.36, rect.top()),
+            rect.max,
+        );
+        let crop = (artwork.height() / artwork.width() * (1536. / 864.)).min(1.);
+        let top = (1. - crop) * 0.2;
+        egui::Image::new(egui::include_image!("../assets/hero.webp"))
+            .uv(egui::Rect::from_min_max(
+                egui::pos2(0., top),
+                egui::pos2(1., top + crop),
+            ))
+            .corner_radius(14)
+            .tint(Color32::from_white_alpha(165))
+            .paint_at(ui, artwork);
+        let fade = egui::Rect::from_min_max(
+            artwork.min,
+            egui::pos2(artwork.left() + artwork.width() * 0.25, artwork.bottom()),
+        );
+        design::gradient(ui.painter(), fade, &[p.soft, Color32::TRANSPARENT], true);
+        ui.painter().rect_stroke(
+            rect,
+            14,
+            egui::Stroke::new(1., p.line),
+            egui::StrokeKind::Inside,
+        );
+        for (dy, size, text) in [
+            (15., 28., "帕鲁配种查询".to_string()),
+            (
+                51.,
+                13.,
+                "选一只帕鲁，查找配种伙伴，或反查它的双亲。".into(),
+            ),
+            (
+                74.,
+                12.,
+                format!(
+                    "{} 个图鉴条目    ·    {:} 条配方",
+                    d.species.len(),
+                    d.pairs.len()
+                ),
+            ),
+        ] {
+            ui.painter().text(
+                rect.min + Vec2::new(22., dy),
+                egui::Align2::LEFT_TOP,
+                text,
+                egui::FontId::proportional(size),
+                p.ink,
+            );
+        }
+        ui.add_space(6.);
+        return;
+    }
+    let description = match page {
+        "warehouse" => "逐只管理你的帕鲁，保存昵称、性别和词条；数据按世界独立保存。",
+        "offspring" => "从当前世界的仓库出发，查看指定步数内能配出的帕鲁与路线。",
+        "planner" => "选择目标帕鲁与词条，使用仓库中的帕鲁规划配种并记录孵化进度。",
+        "map" => "筛选点位、查看等级与奖励，标记完成情况或添加自己的点位。",
+        "spawns" => "查找帕鲁的昼夜分布，查看刷新等级与相关资料。",
+        "paldex" => "按属性、工作适应性和编号筛选，查看帕鲁的完整资料。",
+        "items" => "查询获取方式、合成表和制作路径，跳转到对应地图点位与资料。",
+        "details/active" => "查找技能威力、冷却与学习方式，也可以按具体帕鲁查看。",
+        "details/passive" => "查询词条效果，或选择帕鲁查看其固定被动。",
+        "details/partner" => "按图鉴编号排列，筛选技能类型并查看各等级效果。",
+        "details/surgery" => "查看手术条件，标记已有植入体，并在目标配种中使用。",
+        "details/fruits" => "查看技能果实效果，以及能够获取果实的位置与来源。",
+        "details/stats" => "计算帕鲁的生命、攻击、防御与远征属性。",
+        "details/capture" => "根据目标、帕鲁球与增益条件计算捕捉概率。",
+        "work/suitability" => "按工作种类查看帕鲁，工作等级从高到低排列。",
+        "work/efficiency" => "按工作适应性等级、帕鲁词条与当前条件计算工作效率。",
+        "work/facilities" => "查询设施要求、建造材料与可生产的物品。",
+        "work/production" => "查找据点设施、生产配方与相关工作适应性。",
+        "work/ranch" => "按帕鲁查看牧场产物，或从材料反查生产它的帕鲁。",
+        "work/relic" => "查看遗物转换各档奖励，反查所需材料与获取方式。",
+        "work/expeditions" => "查看远征要求、推荐属性与可能获得的物品。",
+        "guide/journals" => "阅读探索手记原文，并在世界地图中定位。",
+        "guide/quests" => "查看任务条件、前后任务与奖励。",
+        "guide/gathering" => "查看采集产物与等级要求，定位对应的野外资源。",
+        "guide/loot" => "按地点查看探索奖励与各栏位掉落。",
+        "guide/elements" => "查看游戏中的属性克制关系。",
+        "guide/status" => "查询异常状态效果与相关主动技能。",
+        "enemies" => "查找敌人等级、掉落物与地图位置。",
+        "merchants" => "查询商人出售的物品或帕鲁，定位其所在位置。",
+        "neutrals" => "查看其他中立单位的相关资料。",
+        "settings/skins" => "选择辉月伊配色，或使用普通颜色主题。",
+        _ => "",
+    };
+    ui.label(
+        RichText::new(heading)
+            .size(if page == "map" || page == "spawns" {
+                24.
+            } else {
+                30.
+            })
+            .strong(),
+    );
+    if !description.is_empty() {
+        ui.label(RichText::new(description).size(13.).color(p.muted));
+    }
+    ui.add_space(5.);
+}
+
 struct App {
     data: Data,
     store: store::Store,
@@ -252,7 +362,7 @@ impl App {
                 self.breeding.pal = i;
             }
             if page == "details/stats" || page == "details/capture" {
-                self.calculators.pal = i;
+                self.calculators.activate_pal(&page, i);
             }
         }
     }
@@ -288,41 +398,15 @@ impl App {
             return;
         }
         self.theme = id.clone();
-        let accent = match id.as_str() {
-            "jade" => Color32::from_rgb(60, 139, 115),
-            "rose" => Color32::from_rgb(181, 106, 143),
-            "amber" => Color32::from_rgb(164, 126, 50),
-            "slate" => Color32::from_rgb(104, 119, 144),
-            "blue" => Color32::from_rgb(62, 132, 186),
-            _ => Color32::from_rgb(131, 108, 202),
-        };
-        let mut visuals = egui::Visuals::light();
-        visuals.panel_fill = if id == "moon" {
-            Color32::from_rgb(220, 219, 239)
-        } else {
-            Color32::from_rgb(228, 234, 235)
-        };
-        visuals.window_fill = Color32::from_rgb(237, 236, 246);
-        visuals.extreme_bg_color = Color32::from_rgb(229, 229, 241);
-        visuals.selection.bg_fill = accent;
-        visuals.hyperlink_color = accent;
-        visuals.widgets.active.bg_fill = accent;
-        visuals.override_text_color = Some(Color32::from_rgb(40, 48, 69));
-        ctx.set_visuals(visuals);
-        ctx.style_mut(|s| {
-            s.spacing.item_spacing = Vec2::new(10., 9.);
-            s.spacing.button_padding = Vec2::new(12., 8.);
-            s.text_styles
-                .insert(egui::TextStyle::Body, egui::FontId::proportional(16.));
-            s.text_styles
-                .insert(egui::TextStyle::Button, egui::FontId::proportional(16.));
-            s.text_styles
-                .insert(egui::TextStyle::Heading, egui::FontId::proportional(24.));
-        });
+        design::apply(ctx, &id);
     }
     fn search_dialog(&mut self, ctx: &egui::Context) -> Option<String> {
         let mut nav = None;
         if !self.search_open {
+            return None;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            self.search_open = false;
             return None;
         }
         let mut open = true;
@@ -408,6 +492,12 @@ impl App {
                     for i in range {
                         let r = found[i];
                         ui.horizontal(|ui| {
+                            let href = text(r, "href");
+                            if let Some(key) = href.strip_prefix("#paldex/") {
+                                self.data.portrait(ui, key, 32.);
+                            } else if let Some(key) = href.strip_prefix("#items/") {
+                                self.data.item_icon(ui, key, 28.);
+                            }
                             ui.weak(text(r, "kind"));
                             if ui
                                 .selectable_label(i == self.search_selected, text(r, "name"))
@@ -425,23 +515,88 @@ impl App {
     }
     fn settings(&mut self, ui: &mut egui::Ui, page: &str) {
         if page == "settings/skins" {
-            ui.heading("选择界面皮肤");
-            ui.horizontal_wrapped(|ui| {
-                for (id, label) in [
-                    ("moon", "辉月伊"),
-                    ("jade", "玉绿"),
-                    ("blue", "海蓝"),
-                    ("rose", "玫瑰"),
-                    ("amber", "琥珀"),
-                    ("slate", "岩灰"),
-                ] {
-                    if ui.selectable_label(self.theme == id, label).clicked() {
-                        self.store.state["theme"] = json!(id);
-                        self.store.changed();
-                    }
-                }
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                design::card(ui).show(ui, |ui| {
+                    design::section(ui, "界面皮肤");
+                    ui.horizontal_top(|ui| {
+                        ui.vertical(|ui| {
+                            ui.add(
+                                egui::Image::new(egui::include_image!(
+                                    "../assets/jade-selyne.webp"
+                                ))
+                                .fit_to_exact_size(Vec2::splat(260.)),
+                            );
+                            if ui
+                                .add_sized(
+                                    [260., 38.],
+                                    egui::Button::new("辉月伊 · 默认皮肤")
+                                        .selected(self.theme == "moon"),
+                                )
+                                .clicked()
+                            {
+                                self.store.state["theme"] = json!("moon");
+                                self.store.changed();
+                            }
+                        });
+                        ui.vertical(|ui| {
+                            design::section(ui, "纯色皮肤");
+                            for (id, label) in [
+                                ("jade", "玉绿"),
+                                ("blue", "海蓝"),
+                                ("rose", "玫瑰"),
+                                ("amber", "琥珀"),
+                                ("slate", "岩灰"),
+                            ] {
+                                let colors = design::colors(id);
+                                let (rect, response) = ui.allocate_exact_size(
+                                    Vec2::new(260., 52.),
+                                    egui::Sense::click(),
+                                );
+                                ui.painter().rect_filled(rect, 8, colors.surface);
+                                ui.painter().rect_stroke(
+                                    rect,
+                                    8,
+                                    egui::Stroke::new(
+                                        if self.theme == id { 2. } else { 1. },
+                                        colors.accent,
+                                    ),
+                                    egui::StrokeKind::Inside,
+                                );
+                                for (i, c) in [colors.rail, colors.accent, colors.selected]
+                                    .iter()
+                                    .enumerate()
+                                {
+                                    ui.painter().circle_filled(
+                                        rect.left_center() + Vec2::new(22. + i as f32 * 27., 0.),
+                                        10.,
+                                        *c,
+                                    );
+                                }
+                                ui.painter().text(
+                                    rect.left_center() + Vec2::new(112., 0.),
+                                    egui::Align2::LEFT_CENTER,
+                                    label,
+                                    egui::FontId::proportional(15.),
+                                    colors.ink,
+                                );
+                                if self.theme == id {
+                                    ui.painter().text(
+                                        rect.right_center() - Vec2::new(22., 0.),
+                                        egui::Align2::CENTER_CENTER,
+                                        "✓",
+                                        egui::FontId::proportional(18.),
+                                        colors.accent,
+                                    );
+                                }
+                                if response.clicked() {
+                                    self.store.state["theme"] = json!(id);
+                                    self.store.changed();
+                                }
+                            }
+                        });
+                    });
+                });
             });
-            self.data.portrait(ui, "MoonQueen", 180.);
         } else {
             let before = self.store.state.clone();
             if self.updates.show(ui, &mut self.store.state) == Some(updates::UpdateAction::Restart)
@@ -463,7 +618,10 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.probe.begin_frame();
         self.frames += 1;
-        if self.last_save.elapsed()>Duration::from_secs(1){self.store.flush();self.last_save=Instant::now();}
+        if self.last_save.elapsed() > Duration::from_secs(1) {
+            self.store.flush();
+            self.last_save = Instant::now();
+        }
         ctx.request_repaint_after(Duration::from_secs(1));
         self.data.poll();
         self.data.preload(ctx);
@@ -510,24 +668,55 @@ impl eframe::App for App {
             .position(|(_, _, tabs)| tabs.iter().any(|(_, p)| *p == page))
             .unwrap_or(0);
         let mut nav = None;
+        let palette = design::palette(ctx);
         egui::TopBottomPanel::top("titlebar")
-            .exact_height(40.)
+            .exact_height(32.)
+            .frame(
+                egui::Frame::new()
+                    .fill(palette.surface)
+                    .inner_margin(egui::Margin::symmetric(10, 0)),
+            )
             .show(ctx, |ui| {
+                let drag = ui.interact(
+                    ui.max_rect(),
+                    ui.id().with("window-drag"),
+                    egui::Sense::drag(),
+                );
+                if drag.drag_started() {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                }
+                if drag.double_clicked() {
+                    let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
+                }
                 ui.horizontal(|ui| {
-                    let title =
-                        ui.label(RichText::new("Jade · 幻兽帕鲁工具箱  |  Rust 测试版").strong());
-                    if title.interact(egui::Sense::drag()).drag_started() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
-                    }
+                    ui.add(
+                        egui::Image::new(egui::include_image!("../assets/jade-symbol.webp"))
+                            .fit_to_exact_size(Vec2::splat(24.)),
+                    );
+                    ui.label(RichText::new("Jade · 幻兽帕鲁工具箱").size(12.).strong());
+                    ui.weak(RichText::new("Rust 测试版").size(11.));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("×").clicked() {
+                        if ui
+                            .add_sized([38., 28.], egui::Button::new("×").frame(false))
+                            .on_hover_text("关闭")
+                            .clicked()
+                        {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
-                        if ui.button("□").clicked() {
+                        if ui
+                            .add_sized([38., 28.], egui::Button::new("□").frame(false))
+                            .on_hover_text("最大化 / 还原")
+                            .clicked()
+                        {
                             let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
                             ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
                         }
-                        if ui.button("—").clicked() {
+                        if ui
+                            .add_sized([38., 28.], egui::Button::new("—").frame(false))
+                            .on_hover_text("最小化")
+                            .clicked()
+                        {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
                         }
                     });
@@ -535,149 +724,266 @@ impl eframe::App for App {
             });
         egui::SidePanel::left("navigation")
             .resizable(false)
-            .exact_width(190.)
+            .exact_width(108.)
+            .frame(
+                egui::Frame::new()
+                    .fill(palette.rail)
+                    .inner_margin(egui::Margin::symmetric(9, 10)),
+            )
             .show(ctx, |ui| {
-                ui.add_space(12.);
-                ui.heading("Jade");
-                ui.small("幻兽帕鲁工具箱");
-                ui.add_space(12.);
-                if ui.button("全局搜索   Ctrl+K").clicked() {
+                if self.theme == "moon" {
+                    design::gradient(
+                        ui.painter(),
+                        ui.max_rect().expand2(Vec2::new(9., 10.)),
+                        &[
+                            palette.rail,
+                            Color32::from_rgb(151, 168, 231),
+                            Color32::from_rgb(191, 145, 223),
+                            Color32::from_rgb(166, 154, 223),
+                        ],
+                        false,
+                    );
+                }
+                let compact = ui.available_height() < 700.;
+                let nav_height = if compact { 36. } else { 54. };
+                ui.style_mut().visuals.override_text_color = Some(if self.theme == "moon" {
+                    palette.ink
+                } else {
+                    Color32::from_rgb(241, 245, 231)
+                });
+                ui.vertical_centered(|ui| {
+                    ui.add(
+                        egui::Image::new(egui::include_image!("../assets/jade-symbol.webp"))
+                            .fit_to_exact_size(Vec2::splat(if compact { 38. } else { 50. })),
+                    );
+                    ui.label(RichText::new("Jade").size(21.).strong());
+                    ui.label(RichText::new("幻兽帕鲁工具箱").size(10.));
+                });
+                ui.add_space(5.);
+                ui.separator();
+                if ui
+                    .add_sized(
+                        [90., 34.],
+                        egui::Button::image_and_text(
+                            egui::Image::new(design::icon_source("search"))
+                                .fit_to_exact_size(Vec2::splat(14.))
+                                .tint(ui.visuals().text_color()),
+                            RichText::new("全局搜索").size(12.),
+                        )
+                        .wrap_mode(egui::TextWrapMode::Extend)
+                        .fill(Color32::TRANSPARENT),
+                    )
+                    .on_hover_text("搜索全部资料 · Ctrl+K")
+                    .clicked()
+                {
                     self.search_open = true;
                     self.search_focus = true;
                 }
-                ui.separator();
                 egui::ScrollArea::vertical()
                     .id_salt("sidebar")
-                    .max_height((ui.available_height() - 145.).max(100.))
+                    .max_height((ui.available_height() - 113.).max(100.))
                     .show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 4.;
+                        let icons = [
+                            "egg", "worldmap", "paldex", "enemy", "book", "ranch", "items",
+                            "compass", "settings",
+                        ];
                         for (i, (name, route, _)) in SECTIONS.iter().enumerate() {
-                            if ui
-                                .add_sized(
-                                    [170., 40.],
-                                    egui::Button::new(*name).selected(i == section),
-                                )
-                                .clicked()
+                            if design::nav_button(
+                                ui,
+                                name,
+                                icons[i],
+                                i == section,
+                                nav_height,
+                                self.theme == "moon",
+                            )
+                            .clicked()
                             {
                                 nav = Some(format!("#{route}"));
                             }
                         }
                     });
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
-                    if ui.button("数据说明").clicked() {
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                    ui.label(
+                        RichText::new(if self.data.pending > 0 {
+                            "正在准备资料"
+                        } else {
+                            "● 离线可用"
+                        })
+                        .size(10.),
+                    );
+                    if ui
+                        .add(
+                            egui::Button::image_and_text(
+                                egui::Image::new(design::icon_source("info"))
+                                    .fit_to_exact_size(Vec2::splat(12.))
+                                    .tint(ui.visuals().text_color()),
+                                RichText::new("数据说明").size(11.),
+                            )
+                            .frame(false),
+                        )
+                        .clicked()
+                    {
                         self.about = true;
                     }
                     if ui
-                        .button(format!("世界档案 · {}", text(self.store.world(), "name")))
+                        .add_sized(
+                            [88., 46.],
+                            egui::Button::new(
+                                RichText::new(format!(
+                                    "世界档案\n{}",
+                                    text(self.store.world(), "name")
+                                ))
+                                .size(11.),
+                            )
+                            .wrap()
+                            .fill(Color32::from_white_alpha(28)),
+                        )
                         .clicked()
                     {
                         self.worlds.open = true;
                     }
-                    if self.data.pending > 0 {
-                        ui.small(format!("后台准备资料 · 剩余 {} 项", self.data.pending));
-                    } else {
-                        ui.small("● 离线资料已就绪");
-                    }
                 });
             });
-        egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .add_enabled(!self.history.is_empty(), egui::Button::new("← 返回"))
-                    .clicked()
-                {
-                    self.back();
-                }
-                if ui
-                    .add_enabled(!self.forward.is_empty(), egui::Button::new("前进 →"))
-                    .clicked()
-                {
-                    self.next();
-                }
-                for (name, id) in SECTIONS[section].2 {
-                    if ui.selectable_label(page == *id, *name).clicked() {
-                        nav = Some(format!("#{id}"));
-                    }
-                }
-            });
-        });
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let heading = SECTIONS[section]
-                .2
-                .iter()
-                .find(|(_, id)| *id == page)
-                .map(|(name, _)| *name)
-                .unwrap_or("工具箱");
-            ui.heading(heading);
-            ui.add_space(6.);
-            if let Some(e) = &self.store.error {
-                ui.colored_label(Color32::DARK_RED, e);
-            }
-            for error in &self.data.errors {
-                ui.colored_label(Color32::DARK_RED, error);
-            }
-            if ["warehouse", "planner", "offspring"].contains(&page.as_str()) {
-                ui.horizontal(|ui| {
+        egui::TopBottomPanel::top("tabs")
+            .exact_height(58.)
+            .frame(
+                egui::Frame::new()
+                    .fill(palette.surface)
+                    .inner_margin(egui::Margin::symmetric(20, 5)),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal_centered(|ui| {
                     if ui
-                        .add_enabled(!self.worlds.busy, egui::Button::new("↻ 刷新现有帕鲁"))
+                        .add_enabled(!self.history.is_empty(), egui::Button::new("← 返回"))
                         .clicked()
                     {
-                        self.worlds.refresh(ctx, &self.store);
+                        self.back();
                     }
-                    ui.small(&self.worlds.message);
-                });
-            }
-            let next = match page.as_str() {
-                "lookup" => self.breeding.lookup(ui, &self.data, &mut self.store),
-                "warehouse" => self.breeding.warehouse(ui, &self.data, &mut self.store),
-                "planner" | "offspring" => {
-                    self.breeding
-                        .planner(ui, &self.data, &mut self.store, page == "offspring")
-                }
-                "map" | "spawns" => {
-                    self.map.set_world_id(text(self.store.world(), "id"));
-                    self.spawns.set_world_id(text(self.store.world(), "id"));
-                    let notes = &self.store.world()["mapNotes"];
-                    let mut edited = notes.clone();
-                    let next = if page == "map" {
-                        self.map.route = self.route.clone();
-                        map::show(ui, &self.data, &mut self.map, &mut edited)
+                    if !self.forward.is_empty()
+                        && ui
+                            .add(egui::Button::new("→").small())
+                            .on_hover_text("前进 · Alt+→")
+                            .clicked()
+                    {
+                        self.next();
+                    }
+                    let unread = self.updates.unread_count(&self.store.state);
+                    let news = if unread > 0 {
+                        format!("公告 {unread}")
                     } else {
-                        self.spawns.route = self.route.clone();
-                        map::show_spawns(ui, &self.data, &mut self.spawns, &mut edited)
+                        "公告".into()
                     };
-                    if &edited != notes {
-                        self.store.world_mut()["mapNotes"] = edited;
+                    if ui
+                        .add(egui::Button::image_and_text(
+                            egui::Image::new(design::icon_source("bell"))
+                                .fit_to_exact_size(Vec2::splat(16.))
+                                .tint(palette.accent),
+                            news,
+                        ))
+                        .clicked()
+                    {
+                        nav = Some("#settings/updates".into());
                     }
-                    next
+                    egui::ScrollArea::horizontal()
+                        .id_salt("tab-scroll")
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                for (name, id) in SECTIONS[section].2 {
+                                    if design::tab(ui, name, page == *id).clicked() {
+                                        nav = Some(format!("#{id}"));
+                                    }
+                                }
+                            });
+                        });
+                });
+            });
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::new()
+                    .fill(palette.bg)
+                    .inner_margin(egui::Margin::symmetric(20, 14)),
+            )
+            .show(ctx, |ui| {
+                let heading = SECTIONS[section]
+                    .2
+                    .iter()
+                    .find(|(_, id)| *id == page)
+                    .map(|(name, _)| *name)
+                    .unwrap_or("工具箱");
+                page_header(ui, &page, heading, &self.data);
+                if let Some(e) = &self.store.error {
+                    ui.colored_label(Color32::DARK_RED, e);
                 }
-                "details/stats" | "details/capture" | "work/efficiency" | "work/relic" => self
-                    .calculators
-                    .show(ui, &self.data, &page, self.store.world(), &self.route),
-                "work/suitability" => self.calculators.suitability(ui, &self.data, &self.route),
-                "guide/elements" => catalog::elements(ui, &self.data),
-                "settings/skins" | "settings/updates" => {
-                    self.settings(ui, &page);
-                    None
+                for error in &self.data.errors {
+                    ui.colored_label(Color32::DARK_RED, error);
                 }
-                _ => {
-                    let mut surgery = self.store.world()["surgery"].clone();
-                    let next = self
-                        .catalog
-                        .show(ui, &self.data, &page, &self.route, &mut surgery);
-                    if surgery != self.store.world()["surgery"] {
-                        self.store.world_mut()["surgery"] = surgery;
+                if ["warehouse", "planner", "offspring"].contains(&page.as_str()) {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(!self.worlds.busy, egui::Button::new("↻ 刷新现有帕鲁"))
+                            .clicked()
+                        {
+                            self.worlds.refresh(ctx, &self.store);
+                        }
+                        ui.small(&self.worlds.message);
+                    });
+                }
+                let next = match page.as_str() {
+                    "lookup" => self.breeding.lookup(ui, &self.data, &mut self.store),
+                    "warehouse" => self.breeding.warehouse(ui, &self.data, &mut self.store),
+                    "planner" | "offspring" => {
+                        self.breeding
+                            .planner(ui, &self.data, &mut self.store, page == "offspring")
                     }
-                    next
+                    "map" | "spawns" => {
+                        self.map.set_world_id(text(self.store.world(), "id"));
+                        self.spawns.set_world_id(text(self.store.world(), "id"));
+                        let notes = &self.store.world()["mapNotes"];
+                        let mut edited = notes.clone();
+                        let next = if page == "map" {
+                            self.map.route = self.route.clone();
+                            map::show(ui, &self.data, &mut self.map, &mut edited)
+                        } else {
+                            self.spawns.route = self.route.clone();
+                            map::show_spawns(ui, &self.data, &mut self.spawns, &mut edited)
+                        };
+                        if &edited != notes {
+                            self.store.world_mut()["mapNotes"] = edited;
+                        }
+                        next
+                    }
+                    "details/stats" | "details/capture" | "work/efficiency" | "work/relic" => self
+                        .calculators
+                        .show(ui, &self.data, &page, self.store.world(), &self.route),
+                    "work/suitability" => self.calculators.suitability(ui, &self.data, &self.route),
+                    "guide/elements" => catalog::elements(ui, &self.data),
+                    "settings/skins" | "settings/updates" => {
+                        self.settings(ui, &page);
+                        None
+                    }
+                    _ => {
+                        let mut surgery = self.store.world()["surgery"].clone();
+                        let next =
+                            self.catalog
+                                .show(ui, &self.data, &page, &self.route, &mut surgery);
+                        if surgery != self.store.world()["surgery"] {
+                            self.store.world_mut()["surgery"] = surgery;
+                        }
+                        next
+                    }
+                };
+                if next.is_some() {
+                    nav = next;
                 }
-            };
-            if next.is_some() {
-                nav = next;
-            }
-        });
+            });
         if let Some(route) = self.search_dialog(ctx) {
             nav = Some(route);
         }
         self.worlds.show(ctx, &mut self.store, &self.data);
+        if std::mem::take(&mut self.worlds.new_window_requested) {
+            self.new_window();
+        }
         if self.about {
             egui::Window::new("数据说明")
                 .open(&mut self.about)
@@ -751,7 +1057,11 @@ fn main() -> eframe::Result {
     };
     let resources = arg("--resources").unwrap_or_else(|| {
         let adjacent = exe.parent().unwrap().join("data");
-        if adjacent.exists() || !(cfg!(debug_assertions)||arg("--qa-output").is_some()||std::env::var_os("JADE_QA_OUTPUT").is_some()) {
+        if adjacent.exists()
+            || !(cfg!(debug_assertions)
+                || arg("--qa-output").is_some()
+                || std::env::var_os("JADE_QA_OUTPUT").is_some())
+        {
             adjacent
         } else {
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data")
@@ -769,9 +1079,20 @@ fn main() -> eframe::Result {
             }
         })
         .unwrap_or_default();
+    let qa_size = if std::env::var_os("JADE_QA_OUTPUT").is_some() {
+        std::env::var("JADE_QA_SIZE")
+            .ok()
+            .and_then(|s| {
+                s.split_once('x')
+                    .map(|(a, b)| (a.parse::<f32>(), b.parse::<f32>()))
+            })
+            .and_then(|(a, b)| Some([a.ok()?.max(960.), b.ok()?.max(620.)]))
+    } else {
+        None
+    };
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1440., 900.])
+            .with_inner_size(qa_size.unwrap_or([1440., 900.]))
             .with_min_inner_size([960., 620.])
             .with_decorations(false)
             .with_icon(std::sync::Arc::new(icon))

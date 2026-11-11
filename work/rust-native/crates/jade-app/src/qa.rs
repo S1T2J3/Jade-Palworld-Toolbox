@@ -1,7 +1,7 @@
 //! Opt-in native-window probes. Disabled unless JADE_QA_OUTPUT is explicitly set.
 use crate::{data::Data, store::Store};
 use eframe::egui;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     path::PathBuf,
@@ -14,6 +14,9 @@ struct Scene {
     frames: usize,
     phase: u8,
     drag_step: usize,
+    action_step: usize,
+    action_frame: usize,
+    actions: Vec<Value>,
     cpu: Vec<f64>,
     intervals: Vec<f64>,
     last: Instant,
@@ -31,6 +34,7 @@ pub struct Probe {
     initial: String,
     drag: bool,
     pending_input: Vec<egui::Event>,
+    actions: Value,
 }
 impl Default for Probe {
     fn default() -> Self {
@@ -53,6 +57,10 @@ impl Default for Probe {
             initial: std::env::var("JADE_QA_ROUTE").unwrap_or_default(),
             drag: std::env::var("JADE_QA_DRAG").as_deref() == Ok("1"),
             pending_input: vec![],
+            actions: std::env::var("JADE_QA_ACTIONS")
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or(Value::Null),
         }
     }
 }
@@ -184,7 +192,10 @@ impl Probe {
             } else if current.phase == 5 && current.frames >= 3 {
                 current.phase = 6;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
-            } else if (current.phase == 1 || current.phase == 3 || current.phase == 6)
+            } else if (current.phase == 1
+                || current.phase == 3
+                || current.phase == 6
+                || current.phase == 8)
                 && screenshot.is_some()
             {
                 let image = screenshot.unwrap();
@@ -197,11 +208,13 @@ impl Probe {
                     "native-scene-{:02}-{}.png",
                     self.index,
                     if current.phase == 1 {
-                        "ready"
+                        "ready".into()
+                    } else if current.phase == 8 {
+                        format!("action-{:02}", current.action_step + 1)
                     } else if current.phase == 6 {
-                        "zoom"
+                        "zoom".into()
                     } else {
-                        "drag"
+                        "drag".into()
                     }
                 );
                 let file = output.parent().unwrap().join(filename);
@@ -223,7 +236,10 @@ impl Probe {
                     current.result["imageHash"] = json!(hash);
                     current.result["width"] = json!(image.size[0]);
                     current.result["height"] = json!(image.size[1]);
-                    if self.drag && current.route == "#map" {
+                    if !current.actions.is_empty() {
+                        current.phase = 7;
+                        current.action_frame = 0;
+                    } else if self.drag && current.route == "#map" {
                         current.phase = 5;
                         current.frames = 0;
                         self.mouse(0, 500., 420.);
@@ -231,6 +247,15 @@ impl Probe {
                     } else {
                         current.phase = 4;
                     }
+                } else if current.phase == 8 {
+                    current.result["actions"].as_array_mut().unwrap().push(json!({"action":current.actions[current.action_step],"screenshot":file,"imageHash":hash,"routeAfter":route.as_str()}));
+                    current.action_step += 1;
+                    current.action_frame = 0;
+                    current.phase = if current.action_step >= current.actions.len() {
+                        4
+                    } else {
+                        7
+                    };
                 } else if current.phase == 6 {
                     current.result["dragBaselineScreenshot"] = json!(file);
                     current.result["dragBaselineHash"] = json!(hash);
@@ -247,6 +272,65 @@ impl Probe {
                     current.result["dragFrameIntervalsRaw"] = json!(current.intervals);
                     current.phase = 4;
                 }
+            } else if current.phase == 7 {
+                let action = &current.actions[current.action_step];
+                let point = action.as_array().or_else(|| action["click"].as_array());
+                if let Some(point) = point {
+                    if current.action_frame < 2 {
+                        self.mouse(
+                            if current.action_frame == 0 { 1 } else { 3 },
+                            point.first().and_then(Value::as_f64).unwrap_or(0.) as f32,
+                            point.get(1).and_then(Value::as_f64).unwrap_or(0.) as f32,
+                        );
+                    }
+                } else if current.action_frame == 0 {
+                    if let Some(point) = action["hover"].as_array() {
+                        self.mouse(
+                            0,
+                            point.first().and_then(Value::as_f64).unwrap_or(0.) as f32,
+                            point.get(1).and_then(Value::as_f64).unwrap_or(0.) as f32,
+                        );
+                    }
+                    if let Some(s) = action["text"].as_str() {
+                        self.pending_input.push(egui::Event::Text(s.into()));
+                    }
+                    if let Some(point) = action["scroll"].as_array() {
+                        self.pending_input.push(egui::Event::MouseWheel {
+                            unit: egui::MouseWheelUnit::Point,
+                            delta: egui::Vec2::new(
+                                point.first().and_then(Value::as_f64).unwrap_or(0.) as f32,
+                                point.get(1).and_then(Value::as_f64).unwrap_or(0.) as f32,
+                            ),
+                            modifiers: egui::Modifiers::NONE,
+                        });
+                    }
+                    if let Some(name) = action["key"].as_str() {
+                        if let Some(key) = match name {
+                            "Escape" => Some(egui::Key::Escape),
+                            "Enter" => Some(egui::Key::Enter),
+                            "Tab" => Some(egui::Key::Tab),
+                            "Home" => Some(egui::Key::Home),
+                            _ => None,
+                        } {
+                            for pressed in [true, false] {
+                                self.pending_input.push(egui::Event::Key {
+                                    key,
+                                    physical_key: None,
+                                    pressed,
+                                    repeat: false,
+                                    modifiers: egui::Modifiers::NONE,
+                                });
+                            }
+                        }
+                    }
+                }
+                current.action_frame += 1;
+                if current.action_frame
+                    >= action["waitFrames"].as_u64().unwrap_or(6).max(4) as usize
+                {
+                    current.phase = 8;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                }
             } else if current.phase == 2 {
                 current.drag_step += 1;
                 let t = current.drag_step as f32 / 90.;
@@ -261,7 +345,9 @@ impl Probe {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
                 }
             }
-            if current.start.elapsed() > Duration::from_secs(20) {
+            if current.start.elapsed()
+                > Duration::from_secs(if current.actions.is_empty() { 20 } else { 60 })
+            {
                 current.result["error"] = json!("Timed out waiting for native scene/capture");
                 self.mouse(3, 560., 420.);
                 current.phase = 4;
@@ -288,10 +374,13 @@ impl Probe {
                     frames: 0,
                     phase: 0,
                     drag_step: 0,
+                    action_step: 0,
+                    action_frame: 0,
+                    actions: self.actions[next].as_array().cloned().unwrap_or_default(),
                     cpu: vec![],
                     intervals: vec![],
                     last: Instant::now(),
-                    result: json!({"route":next}),
+                    result: json!({"route":next,"actions":[]}),
                 });
                 ctx.request_repaint();
             } else {

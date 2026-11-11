@@ -4,7 +4,9 @@ Windows x64 原生桌面应用。界面、配种与计算器、存档读取、�
 
 ## 使用
 
-安装 `Jade-Palworld-Rust-2.0.0-beta.1-Setup.exe`，或解压同版本 Windows ZIP 后运行 `Jade-Palworld-Rust.exe`。保留相邻的 `data` 目录。安装与离线资料查询不需要连接 GitHub；检查公告或下载更新时需要网络。
+安装 `Jade-Palworld-Rust-2.0.0-beta.2-Setup.exe`，或解压同版本 Windows ZIP 后运行 `Jade-Palworld-Rust.exe`。保留相邻的 `data` 目录。安装与离线资料查询不需要连接 GitHub；检查公告或下载更新时需要网络。
+
+beta.2 按 v1.0.17 恢复窄侧栏、图标与辉月伊配色，配种/仓库的密集卡片和分页，以及图鉴详情、原版筛选和关联跳转。地图恢复侧栏筛选、浮动点位详情和档案弹窗；计算器分别记忆输入。仍使用 Rust 原生界面，保留后台预加载和长列表虚拟化。
 
 测试版独立安装，数据位于 `%LOCALAPPDATA%\JadePalworldRustBeta`。正式版保持不变。如需迁移工具箱记录：在正式版的世界档案导出 JSON，在测试版的世界档案导入并确认预览。也可直接扫描游戏存档；原始游戏存档只读。不要把真实存档提交到公开仓库。
 

@@ -146,6 +146,10 @@ pub struct Worlds {
     delete: Option<String>,
     unlink: Option<String>,
     export_current: bool,
+    was_open: bool,
+    creating: bool,
+    selected_game: String,
+    pub new_window_requested: bool,
 }
 fn timestamp() -> u64 {
     std::time::SystemTime::now()
@@ -379,67 +383,152 @@ impl Worlds {
             self.names = GameNames::from_tables(&d.species, d.get("trait-data"));
         }
         if !self.open {
+            self.was_open = false;
             return;
+        }
+        if !self.was_open {
+            self.was_open = true;
+            if !self.busy && self.result.is_none() && std::env::var_os("JADE_QA_OUTPUT").is_none() {
+                self.scan(
+                    ctx,
+                    store.state["lastSaveDirectory"].as_str().map(PathBuf::from),
+                );
+            }
         }
         if self.fallback_pending && !self.busy {
             self.fallback_pending = false;
             self.pick_directory(ctx, store);
         }
-        let mut open = true;
-        egui::Window::new("世界档案").open(&mut open).default_width(800.).default_height(680.).vscroll(true).show(ctx,|ui|{
-            ui.horizontal_wrapped(|ui|{
-                if ui.add_enabled(!self.busy,egui::Button::new("自动识别游戏存档")).clicked(){self.scan(ctx,store.state["lastSaveDirectory"].as_str().map(PathBuf::from));}
-                if ui.add_enabled(!self.busy,egui::Button::new("重新扫描默认目录")).clicked(){self.scan(ctx,None);}
-                if ui.add_enabled(!self.busy,egui::Button::new("选择存档文件夹")).clicked(){self.pick_directory(ctx,store);}
-            });if self.busy{ui.spinner();}ui.label(&self.message);if let Some(e)=&store.error{ui.colored_label(egui::Color32::LIGHT_RED,e);}
-            if !self.scan_warnings.is_empty(){egui::CollapsingHeader::new("扫描提示").show(ui,|ui|{for warning in &self.scan_warnings{ui.label(warning);}});}
-            if let Some(path)=store.state["lastSaveDirectory"].as_str(){ui.small(format!("已记住存档目录：{path}"));}
-            for game in self.games.clone(){ui.group(|ui|{
-                ui.strong(format!("{} · {}",text(&game,"name"),text(&game,"platform")));ui.small(text(&game,"path"));ui.small(format!("保存时间：{}",text(&game,"modified")));
-                ui.horizontal_wrapped(|ui|{if ui.add_enabled(!self.busy,egui::Button::new("读取到对应世界")).clicked(){self.read_linked(ctx,game.clone(),store,None,false);}let linked=array(&store.state["worlds"]).iter().any(|w|w["nativeGame"]["id"]==game["id"]);if ui.add_enabled(!self.busy&&!linked,egui::Button::new("关联到当前工具箱世界")).clicked(){self.read_linked(ctx,game.clone(),store,Some(text(store.world(),"id").to_owned()),true);}});
-            });}
-            if let Some((game,result))=self.result.clone(){ui.separator();ui.strong("选择你在此世界中的角色");ui.label("无法自动确认本人时，请选一次；以后刷新沿用此选择。");for owner in array(&result["owners"]){let count=array(&result["records"]).iter().filter(|r|r["ownerId"]==owner["id"]).count();ui.radio_value(&mut self.owner,text(owner,"id").to_owned(),format!("{} · {} 只 · {}",text(owner,"name"),count,text(owner,"id")));}ui.horizontal(|ui|{if ui.add_enabled(!self.owner.is_empty(),egui::Button::new("只导入此玩家")).clicked(){let owner=self.owner.clone();self.finish_import(store,&game,&result,&owner);}if ui.button("取消读取").clicked(){self.result=None;}});}
-            ui.separator();ui.heading("工具箱世界");
-            for w in array(&store.state["worlds"]).to_vec(){ui.group(|ui|{ui.horizontal_wrapped(|ui|{
-                if ui.add_enabled(!self.busy&&self.result.is_none(),egui::Button::selectable(store.state["activeWorldId"]==w["id"],text(&w,"name"))).clicked(){let mut next=store.state.clone();next["activeWorldId"]=w["id"].clone();if let Err(e)=store.commit(next){self.message=e;}}
-                ui.small(format!("{} 只 · {} 条计划 · {} 个标记",array(&w["inventory"]["records"]).len(),array(&w["plans"]).len(),array(&w["mapNotes"]["custom"]).len()));
-                if ui.add_enabled(!self.busy,egui::Button::new("重命名")).clicked(){self.rename=Some((text(&w,"id").into(),text(&w,"name").into()));}
-                if ui.add_enabled(!self.busy&&array(&store.state["worlds"]).len()>1,egui::Button::new("删除")).clicked(){self.delete=Some(text(&w,"id").into());}
-            });if w["nativeGame"].is_object(){ui.small(format!("已关联：{} · 玩家 {}",text(&w["nativeGame"],"name"),text(&w,"terminalOwner")));ui.horizontal(|ui|{
-                if ui.add_enabled(!self.busy,egui::Button::new("刷新现有帕鲁")).clicked(){self.read_linked(ctx,w["nativeGame"].clone(),store,Some(text(&w,"id").into()),false);}
-                if ui.add_enabled(!self.busy,egui::Button::new("更换导入玩家")).clicked(){self.read_linked(ctx,w["nativeGame"].clone(),store,Some(text(&w,"id").into()),true);}
-                if ui.add_enabled(!self.busy,egui::Button::new("解除存档关联")).clicked(){self.unlink=Some(text(&w,"id").into());}
-            });}});}
-            ui.horizontal(|ui|{ui.add(egui::TextEdit::singleline(&mut self.new_name).hint_text("新世界名称").char_limit(256));if ui.add_enabled(!self.busy&&!self.new_name.trim().is_empty(),egui::Button::new("新建")).clicked(){match store.create_checked(&self.new_name){Ok(())=>self.new_name.clear(),Err(e)=>self.message=e}}});
-            ui.separator();ui.horizontal_wrapped(|ui|{
-                ui.checkbox(&mut self.export_current,"仅导出当前世界");if ui.button("导出世界备份").clicked(){if let Some(path)=rfd::FileDialog::new().set_file_name("Jade-worlds.json").add_filter("世界备份",&["json"]).save_file(){let backup=if self.export_current{store.backup_current()}else{store.backup()};self.message=match serde_json::to_vec_pretty(&backup).map_err(|e|e.to_string()).and_then(|bytes|std::fs::write(path,bytes).map_err(|e|e.to_string())){Ok(())=>"已导出仓库、计划、手术台词条和地图标记。".into(),Err(e)=>e};}}
-                if ui.add_enabled(!self.busy,egui::Button::new("导入正式版 / 测试版备份")).clicked(){if let Some(path)=rfd::FileDialog::new().add_filter("世界备份",&["json"]).pick_file(){match read_backup(&path){Ok(v)=>{self.import_preview=Some(v);self.message.clear();},Err(e)=>self.message=e}}}
+        let palette = crate::design::palette(ctx);
+        let frame = egui::Frame::new()
+            .fill(palette.surface)
+            .stroke(egui::Stroke::new(1.0_f32, palette.line))
+            .corner_radius(14)
+            .inner_margin(egui::Margin::symmetric(22, 17));
+        let modal=egui::Modal::new(egui::Id::new("world-archives-modal")).frame(frame)
+            .backdrop_color(egui::Color32::from_rgba_unmultiplied(30,28,55,104)).show(ctx,|ui|{
+            ui.set_width((ctx.content_rect().width()-70.).min(521.).max(280.));
+            ui.set_max_height((ctx.content_rect().height()*0.90-34.).max(300.));
+            ui.spacing_mut().item_spacing=egui::Vec2::new(8.,8.);
+            ui.horizontal(|ui|{
+                crate::design::icon(ui,"worldmap",22.);ui.label(egui::RichText::new("世界档案").size(20.).strong());
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center),|ui|{if ui.button("×").on_hover_text("关闭").clicked(){self.open=false;}});
             });
-            if let Some(preview)=self.import_preview.clone(){ui.group(|ui|{ui.strong("导入预览（已有世界会保留，同名世界会自动编号）");for w in array(&preview["worlds"]){ui.label(format!("{}：{} 只可用 / {} 只归档，{} 条手术台词条，{} 条计划，{} 个自定义点位",text(w,"name"),array(&w["inventory"]["records"]).len(),array(&w["inventory"]["archived"]).len(),array(&w["surgery"]).len(),array(&w["plans"]).len(),array(&w["mapNotes"]["custom"]).len()));}ui.horizontal(|ui|{if ui.button("确认导入独立副本").clicked(){match store.import(preview.clone()){Ok(n)=>{self.message=format!("已导入 {n} 个世界，原有世界保持完整。");self.import_preview=None;},Err(e)=>self.message=e}}if ui.button("取消导入").clicked(){self.import_preview=None;}});});}
-            ui.small("Rust 测试版使用独立数据目录。读取游戏存档是只读操作，不会修改游戏文件。");
+            ui.small("每个游戏世界都有独立的仓库、配种计划和探索记录。");ui.separator();
+            egui::ScrollArea::vertical().id_salt("world-archive-body").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded).max_height((ctx.content_rect().height()*0.90-108.).max(260.)).show(ui,|ui|{
+                crate::design::section(ui,"当前世界");
+                let world=store.world().clone();let current=text(&world,"id").to_owned();let mut chosen=current.clone();
+                ui.horizontal(|ui|{
+                    ui.add_enabled_ui(!self.busy&&self.result.is_none(),|ui|{
+                        egui::ComboBox::from_id_salt("archive-current-world").width((ui.available_width()-180.).max(160.)).selected_text(text(&world,"name")).show_ui(ui,|ui|{
+                            for w in array(&store.state["worlds"]){ui.selectable_value(&mut chosen,text(w,"id").to_owned(),text(w,"name"));}
+                        });
+                    });
+                    if ui.add_enabled(!self.busy,egui::Button::new("新建世界")).clicked(){self.creating=!self.creating;}
+                    if ui.button("另开窗口").clicked(){self.new_window_requested=true;}
+                });
+                if chosen!=current {let mut next=store.state.clone();next["activeWorldId"]=json!(chosen);if let Err(e)=store.commit(next){self.message=e;}}
+                ui.small(format!("仓库 {} 只 · 已归档 {} 只 · 手术台词条 {} 条 · 配种计划 {} 条",array(&world["inventory"]["records"]).len(),array(&world["inventory"]["archived"]).len(),array(&world["surgery"]).len(),array(&world["plans"]).len()));
+                ui.horizontal(|ui|{
+                    if ui.add_enabled(!self.busy,egui::Button::new("重命名")).clicked(){self.rename=Some((current.clone(),text(&world,"name").into()));}
+                    if ui.add_enabled(!self.busy&&array(&store.state["worlds"]).len()>1,egui::Button::new("删除世界")).clicked(){self.delete=Some(current.clone());}
+                    ui.small(format!("{} 个自定义点位",array(&world["mapNotes"]["custom"]).len()));
+                });
+                if self.creating{ui.horizontal(|ui|{
+                    ui.add(egui::TextEdit::singleline(&mut self.new_name).hint_text("新世界名称").char_limit(256).desired_width(280.));
+                    if ui.add_enabled(!self.busy&&!self.new_name.trim().is_empty(),egui::Button::new("创建")).clicked(){match store.create_checked(&self.new_name){Ok(())=>{self.new_name.clear();self.creating=false;},Err(e)=>self.message=e}}
+                    if ui.small_button("取消").clicked(){self.creating=false;}
+                });}
+                if world["nativeGame"].is_object(){
+                    ui.small(format!("已关联游戏世界：{}",text(&world["nativeGame"],"name")));
+                    ui.horizontal_wrapped(|ui|{
+                        if ui.add_enabled(!self.busy,egui::Button::new("刷新现有帕鲁")).clicked(){self.read_linked(ctx,world["nativeGame"].clone(),store,Some(current.clone()),false);}
+                        if ui.add_enabled(!self.busy,egui::Button::new("更换导入玩家")).clicked(){self.read_linked(ctx,world["nativeGame"].clone(),store,Some(current.clone()),true);}
+                        if ui.add_enabled(!self.busy,egui::Button::new("解除关联")).clicked(){self.unlink=Some(current.clone());}
+                    });
+                }
+                ui.add_space(8.);ui.separator();crate::design::section(ui,"从游戏存档读取");
+                ui.small("自动识别本机存档，沿用游戏中的世界名称，并同步自己的帕鲁终端与背包。");
+                ui.horizontal_wrapped(|ui|{
+                    if ui.add_enabled(!self.busy,egui::Button::new("重新扫描")).clicked(){self.scan(ctx,store.state["lastSaveDirectory"].as_str().map(PathBuf::from));}
+                    if ui.add_enabled(!self.busy,egui::Button::new("扫描默认目录")).clicked(){self.scan(ctx,None);}
+                    if ui.add_enabled(!self.busy,egui::Button::new("选择存档文件夹")).clicked(){self.pick_directory(ctx,store);}
+                    if self.busy{ui.spinner();}
+                });
+                if !self.message.is_empty(){ui.label(&self.message);}
+                if let Some(e)=&store.error{ui.colored_label(egui::Color32::from_rgb(166,48,65),e);}
+                if !self.scan_warnings.is_empty(){egui::CollapsingHeader::new("扫描提示").show(ui,|ui|{for warning in &self.scan_warnings{ui.label(warning);}});}
+                if let Some(path)=store.state["lastSaveDirectory"].as_str(){ui.small(format!("存档目录：{path}"));}
+                if !self.games.is_empty(){
+                    if !self.games.iter().any(|g|text(g,"id")==self.selected_game){self.selected_game=text(&self.games[0],"id").into();}
+                    let selected=self.games.iter().find(|g|text(g,"id")==self.selected_game).cloned();
+                    egui::ComboBox::from_id_salt("archive-game-world").width(ui.available_width()-12.).selected_text(selected.as_ref().map(|g|format!("{} · {}",text(g,"name"),text(g,"platform"))).unwrap_or_default()).show_ui(ui,|ui|{
+                        for g in &self.games{ui.selectable_value(&mut self.selected_game,text(g,"id").into(),format!("{} · {}",text(g,"name"),text(g,"platform")));}
+                    });
+                    if let Some(game)=selected{
+                        ui.small(format!("保存时间：{}",text(&game,"modified"))).on_hover_text(text(&game,"path"));
+                        ui.horizontal_wrapped(|ui|{
+                            if ui.add_enabled(!self.busy,egui::Button::new("读取到对应世界")).clicked(){self.read_linked(ctx,game.clone(),store,None,false);}
+                            let linked=array(&store.state["worlds"]).iter().any(|w|w["nativeGame"]["id"]==game["id"]);
+                            if ui.add_enabled(!self.busy&&!linked,egui::Button::new("关联当前世界")).clicked(){self.read_linked(ctx,game.clone(),store,Some(current.clone()),true);}
+                        });
+                    }
+                }else if !self.busy&&self.message.is_empty(){ui.small("未找到游戏世界时，可选择 SaveGames 文件夹或具体世界文件夹。");}
+                if let Some((game,result))=self.result.clone(){
+                    ui.group(|ui|{
+                        ui.strong("选择你在此世界中的角色");ui.small("无法识别本人时选一次，以后刷新沿用此选择。");
+                        egui::ComboBox::from_id_salt("archive-owner").width(ui.available_width()-12.).selected_text(array(&result["owners"]).iter().find(|o|text(o,"id")==self.owner).map(|o|text(o,"name")).unwrap_or("请选择你的角色")).show_ui(ui,|ui|{
+                            for owner in array(&result["owners"]){let count=array(&result["records"]).iter().filter(|r|r["ownerId"]==owner["id"]).count();ui.selectable_value(&mut self.owner,text(owner,"id").to_owned(),format!("{} · {} 只",text(owner,"name"),count)).on_hover_text(text(owner,"id"));}
+                        });
+                        ui.horizontal(|ui|{if ui.add_enabled(!self.owner.is_empty(),egui::Button::new("只导入此玩家")).clicked(){let owner=self.owner.clone();self.finish_import(store,&game,&result,&owner);}if ui.button("取消读取").clicked(){self.result=None;}});
+                    });
+                }
+                ui.add_space(8.);ui.separator();crate::design::section(ui,"备份与恢复");
+                ui.small("备份包含仓库、归档帕鲁、手术台词条、配种计划及地图标记。");
+                ui.horizontal_wrapped(|ui|{
+                    egui::ComboBox::from_id_salt("archive-export-scope").width(135.).selected_text(if self.export_current{"仅当前世界"}else{"全部世界"}).show_ui(ui,|ui|{ui.selectable_value(&mut self.export_current,false,"全部世界");ui.selectable_value(&mut self.export_current,true,"仅当前世界");});
+                    if ui.button("导出备份").clicked(){if let Some(path)=rfd::FileDialog::new().set_file_name("Jade-worlds.json").add_filter("世界备份",&["json"]).save_file(){let backup=if self.export_current{store.backup_current()}else{store.backup()};self.message=match serde_json::to_vec_pretty(&backup).map_err(|e|e.to_string()).and_then(|bytes|std::fs::write(path,bytes).map_err(|e|e.to_string())){Ok(())=>"已导出世界备份。".into(),Err(e)=>e};}}
+                    if ui.add_enabled(!self.busy,egui::Button::new("导入备份")).clicked(){if let Some(path)=rfd::FileDialog::new().add_filter("世界备份",&["json"]).pick_file(){match read_backup(&path){Ok(v)=>{self.import_preview=Some(v);self.message.clear();},Err(e)=>self.message=e}}}
+                });
+                if let Some(preview)=self.import_preview.clone(){ui.group(|ui|{
+                    ui.strong("导入预览");ui.small("现有世界会保留，同名世界会自动编号。");
+                    for w in array(&preview["worlds"]){ui.label(format!("{}：{} 只可用 / {} 只归档，{} 条手术台词条，{} 条计划，{} 个自定义点位",text(w,"name"),array(&w["inventory"]["records"]).len(),array(&w["inventory"]["archived"]).len(),array(&w["surgery"]).len(),array(&w["plans"]).len(),array(&w["mapNotes"]["custom"]).len()));}
+                    ui.horizontal(|ui|{if ui.button("确认导入独立副本").clicked(){match store.import(preview.clone()){Ok(n)=>{self.message=format!("已导入 {n} 个世界，原有世界保持完整。");self.import_preview=None;},Err(e)=>self.message=e}}if ui.button("取消导入").clicked(){self.import_preview=None;}});
+                });}
+                egui::CollapsingHeader::new("从旧版或另一台电脑迁移").show(ui,|ui|{
+                    ui.label("在原来的工具箱中打开世界档案，选择全部世界并导出备份；在这里点击导入备份，核对预览后确认导入。");
+                    ui.small("正式版和测试版使用独立的工具箱数据目录；此处读取游戏存档不会修改游戏文件。");
+                });
+            });
         });
-        self.open = open;
+        if modal.should_close() {
+            self.open = false;
+        }
+        if !self.open {
+            self.was_open = false;
+            self.creating = false;
+            self.import_preview = None;
+        }
         self.confirmations(ctx, store);
     }
     fn confirmations(&mut self, ctx: &egui::Context, store: &mut Store) {
         if let Some((id, mut name)) = self.rename.clone() {
             let mut keep = true;
-            egui::Window::new("重命名世界")
-                .collapsible(false)
-                .show(ctx, |ui| {
-                    ui.add(egui::TextEdit::singleline(&mut name).char_limit(256));
-                    ui.horizontal(|ui| {
-                        if ui.button("保存名称").clicked() {
-                            match store.rename(&id, &name) {
-                                Ok(()) => keep = false,
-                                Err(e) => self.message = e,
-                            }
+            egui::Modal::new(egui::Id::new("rename-world-modal")).show(ctx, |ui| {
+                ui.strong("重命名世界");
+                ui.add(egui::TextEdit::singleline(&mut name).char_limit(256));
+                ui.horizontal(|ui| {
+                    if ui.button("保存名称").clicked() {
+                        match store.rename(&id, &name) {
+                            Ok(()) => keep = false,
+                            Err(e) => self.message = e,
                         }
-                        if ui.button("取消").clicked() {
-                            keep = false;
-                        }
-                    });
+                    }
+                    if ui.button("取消").clicked() {
+                        keep = false;
+                    }
                 });
+            });
             self.rename = keep.then_some((id, name));
         }
         for removing in [true, false] {
@@ -450,7 +539,7 @@ impl Worlds {
             };
             if let Some(id) = pending {
                 let mut keep = true;
-                egui::Window::new(if removing{"确认删除世界"}else{"确认解除关联"}).collapsible(false).show(ctx,|ui|{let name=array(&store.state["worlds"]).iter().find(|w|w["id"]==id).map(|w|text(w,"name")).unwrap_or("");ui.label(if removing{format!("删除「{name}」的工具箱仓库、计划和地图标记？游戏存档不受影响。建议先导出备份。")}else{format!("解除「{name}」的自动刷新关联？现有仓库和记录仍保留。")});ui.horizontal(|ui|{if ui.button(if removing{"确认删除"}else{"确认解除"}).clicked(){let result=if removing{store.remove_world(&id)}else{store.unlink(&id)};match result{Ok(())=>keep=false,Err(e)=>self.message=e}}if ui.button("取消").clicked(){keep=false;}});});
+                egui::Modal::new(egui::Id::new(if removing{"delete-world-modal"}else{"unlink-world-modal"})).show(ctx,|ui|{ui.set_width(420.);ui.strong(if removing{"确认删除世界"}else{"确认解除关联"});let name=array(&store.state["worlds"]).iter().find(|w|w["id"]==id).map(|w|text(w,"name")).unwrap_or("");ui.label(if removing{format!("删除「{name}」的工具箱仓库、计划和地图标记？游戏存档不受影响。建议先导出备份。")}else{format!("解除「{name}」的自动刷新关联？现有仓库和记录仍保留。")});ui.horizontal(|ui|{if ui.button(if removing{"确认删除"}else{"确认解除"}).clicked(){let result=if removing{store.remove_world(&id)}else{store.unlink(&id)};match result{Ok(())=>keep=false,Err(e)=>self.message=e}}if ui.button("取消").clicked(){keep=false;}});});
                 if removing {
                     self.delete = keep.then_some(id);
                 } else {

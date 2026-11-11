@@ -19,13 +19,27 @@ pub struct Catalog {
     pub query: String,
     pub group: String,
     pub last: String,
-    pub quantity: u64,
-    pub choices: Value,
-    pub views: HashMap<String, (String, String, String)>,
+    views: HashMap<String, Filters>,
     pub filter: String,
-    craft_key: String,
-    craft_plan: Value,
     ranch_level: usize,
+    sort: String,
+    scope: String,
+    pal_filter: String,
+    pal_query: String,
+    tags: BTreeSet<String>,
+    last_route: String,
+    match_key: String,
+    matched: Vec<usize>,
+    pub detail: crate::catalog_views::DetailState,
+}
+#[derive(Clone, Default)]
+struct Filters {
+    query: String,
+    group: String,
+    filter: String,
+    scope: String,
+    pal: String,
+    tags: BTreeSet<String>,
     sort: String,
 }
 fn entry(id: &str, name: &str, route: &str, value: Value) -> Entry {
@@ -46,6 +60,7 @@ fn entry(id: &str, name: &str, route: &str, value: Value) -> Entry {
 impl Catalog {
     pub fn rebuild(&mut self, d: &Data) {
         self.pages.clear();
+        self.match_key.clear();
         for (route, table, field) in [
             ("items", "item-catalog-data", "items"),
             ("enemies", "enemy-data", "enemies"),
@@ -169,6 +184,19 @@ impl Catalog {
             }
             self.pages.insert(page.into(), rows);
         }
+        for rows in self.pages.values_mut() {
+            for e in rows {
+                let mut names = BTreeSet::new();
+                search_names(d, &e.value, &mut names);
+                for shop in array(&e.value["shops"]).iter().filter_map(Value::as_str) {
+                    search_names(d, &d.get("enemy-data")["shopLists"][shop], &mut names);
+                }
+                for name in names {
+                    e.needle.push(' ');
+                    e.needle.push_str(&crate::data::normalize(&name));
+                }
+            }
+        }
     }
     pub fn show(
         &mut self,
@@ -178,40 +206,69 @@ impl Catalog {
         route: &str,
         surgery: &mut Value,
     ) -> Option<String> {
-        if page == "work/ranch" {
-            return self.ranch(ui, d, route);
-        }
-        let mut navigate = None;
         if self.last != page {
             self.views.insert(
                 self.last.clone(),
-                (self.query.clone(), self.group.clone(), self.filter.clone()),
+                Filters {
+                    query: self.query.clone(),
+                    group: self.group.clone(),
+                    filter: self.filter.clone(),
+                    scope: self.scope.clone(),
+                    pal: self.pal_filter.clone(),
+                    tags: self.tags.clone(),
+                    sort: self.sort.clone(),
+                },
             );
-            let v = self.views.get(page).cloned().unwrap_or_default();
-            self.query = v.0;
-            self.group = v.1;
-            self.filter = v.2;
+            let view = self.views.get(page).cloned().unwrap_or_default();
+            self.query = view.query;
+            self.group = view.group;
+            self.filter = view.filter;
+            self.scope = view.scope;
+            self.pal_filter = view.pal;
+            self.tags = view.tags;
+            self.sort = view.sort;
             self.last = page.into();
         }
-        let entries = match self.pages.get(page) {
-            Some(v) => v,
-            None => {
-                ui.spinner();
-                ui.label("正在准备资料…");
-                return None;
-            }
+        if page == "work/ranch" {
+            return self.ranch(ui, d, route);
+        }
+        let Some(entries) = self.pages.get(page) else {
+            ui.spinner();
+            ui.label("正在准备资料…");
+            return None;
         };
-        let wanted = route
+        let mut navigate = None;
+        let raw = route
             .trim_start_matches('#')
             .strip_prefix(page)
             .unwrap_or("")
             .trim_start_matches('/');
-        let wanted = wanted
+        let wanted = raw
             .strip_prefix("move/")
-            .or_else(|| wanted.strip_prefix("trait/"))
-            .unwrap_or(wanted);
-        let item_shops = page == "items" && wanted.ends_with("/shops");
+            .or_else(|| raw.strip_prefix("trait/"))
+            .unwrap_or(raw);
         let wanted = wanted.strip_suffix("/shops").unwrap_or(wanted);
+        let (wanted, context_pal) = if ["details/active", "details/passive"].contains(&page) {
+            if let Some((pal, id)) = wanted.split_once('/') {
+                if d.pal(pal).is_some() {
+                    (id, Some(pal))
+                } else {
+                    (wanted, None)
+                }
+            } else if d.pal(wanted).is_some() {
+                ("", Some(wanted))
+            } else {
+                (wanted, None)
+            }
+        } else {
+            (wanted, None)
+        };
+        if route != self.last_route {
+            if let Some(pal) = context_pal {
+                self.pal_filter = pal.into();
+            }
+            self.last_route = route.into();
+        }
         let loot_item = if page == "guide/loot" {
             wanted.split_once("/item/")
         } else {
@@ -229,80 +286,159 @@ impl Catalog {
                     && !wanted.is_empty()
                     && e.id.starts_with(&format!("{wanted}/"))
         });
-        let groups: BTreeSet<_> = if page == "details/partner" {
-            entries
-                .iter()
-                .flat_map(|e| {
-                    array(&e.value["tags"])
-                        .iter()
-                        .filter_map(Value::as_str)
-                        .map(str::to_owned)
-                })
-                .collect()
-        } else if page == "paldex" {
+        if page == "paldex" && selected.is_some() {
+            let e = selected.unwrap();
+            ui.horizontal(|ui| {
+                if ui.button("← 返回图鉴列表").clicked() {
+                    navigate = Some("#paldex".into());
+                }
+                if let Some(index) = entries.iter().position(|r| r.id == e.id) {
+                    if ui
+                        .add_enabled(index > 0, egui::Button::new("上一只"))
+                        .clicked()
+                    {
+                        navigate = Some(entries[index - 1].route.clone());
+                    }
+                    if ui
+                        .add_enabled(index + 1 < entries.len(), egui::Button::new("下一只"))
+                        .clicked()
+                    {
+                        navigate = Some(entries[index + 1].route.clone());
+                    }
+                }
+            });
+            egui::ScrollArea::vertical()
+                .id_salt(("dex-detail", &e.id))
+                .show(ui, |ui| {
+                    if let Some(n) =
+                        crate::catalog_views::show(ui, d, page, e, route, surgery, &mut self.detail)
+                    {
+                        navigate = Some(n);
+                    }
+                });
+            return navigate;
+        }
+        let groups: BTreeSet<String> = if page == "paldex" {
             entries
                 .iter()
                 .flat_map(|e| {
                     array(&e.value["基础属性"]["work"])
                         .iter()
-                        .filter_map(|r| r[0].as_str().map(str::to_owned))
+                        .filter_map(|v| v[0].as_str().map(str::to_owned))
                 })
                 .collect()
         } else {
             entries
                 .iter()
                 .map(|e| e.group.clone())
-                .filter(|g| !g.is_empty())
+                .filter(|v| !v.is_empty())
                 .collect()
         };
-        ui.horizontal_wrapped(|ui| {
-            ui.add(
-                egui::TextEdit::singleline(&mut self.query)
-                    .hint_text("搜索名称、编号或效果")
-                    .desired_width(280.),
-            );
-            egui::ComboBox::from_id_salt("catalog-group")
-                .selected_text(if self.group.is_empty() {
-                    "全部分类"
-                } else {
-                    group_label(&self.group)
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.group, String::new(), "全部分类");
-                    for g in groups {
-                        ui.selectable_value(&mut self.group, g.clone(), group_label(&g));
-                    }
-                });
-            if page == "paldex" {
-                crate::breeding_ui::element_picker(ui, &mut self.filter);
-                egui::ComboBox::from_id_salt("dex-sort")
-                    .selected_text(if self.sort.is_empty() {
-                        "编号排序"
-                    } else {
-                        &self.sort
-                    })
-                    .show_ui(ui, |ui| {
-                        for s in [
-                            "编号排序",
+        crate::design::card(ui).inner_margin(10).show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.query)
+                        .hint_text("搜索名称、编号或效果")
+                        .desired_width(250.),
+                );
+                if !groups.is_empty()
+                    && !["details/partner", "details/active", "details/fruits"].contains(&page)
+                {
+                    choice(
+                        ui,
+                        "catalog-group",
+                        &mut self.group,
+                        if page == "paldex" {
+                            "全部工作"
+                        } else {
+                            "全部分类"
+                        },
+                        groups.iter().map(|s| (s.as_str(), group_label(s))),
+                    );
+                }
+                if page == "paldex"
+                    || page == "details/partner"
+                    || page == "details/active"
+                    || page == "details/fruits"
+                {
+                    crate::breeding_ui::element_picker(ui, &mut self.filter);
+                }
+                if page == "paldex" {
+                    choice(
+                        ui,
+                        "dex-sort",
+                        &mut self.sort,
+                        "编号排序",
+                        [
                             "生命从高到低",
                             "攻击从高到低",
                             "防御从高到低",
                             "工作等级从高到低",
-                        ] {
-                            ui.selectable_value(&mut self.sort, s.into(), s);
-                        }
-                    });
-            }
-            if page == "items" {
-                egui::ComboBox::from_id_salt("item-method")
-                    .selected_text(if self.filter.is_empty() {
-                        "全部获取方式"
-                    } else {
-                        &self.filter
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.filter, String::new(), "全部获取方式");
-                        for k in [
+                        ]
+                        .into_iter()
+                        .map(|s| (s, s)),
+                    );
+                }
+                if ["details/active", "details/passive"].contains(&page) {
+                    egui::ComboBox::from_id_salt("catalog-pal")
+                        .selected_text(if self.pal_filter.is_empty() {
+                            "按帕鲁查看".to_owned()
+                        } else {
+                            d.pal_name(&self.pal_filter).to_owned()
+                        })
+                        .width(170.)
+                        .show_ui(ui, |ui| {
+                            ui.text_edit_singleline(&mut self.pal_query);
+                            ui.selectable_value(&mut self.pal_filter, String::new(), "全部帕鲁");
+                            let q = crate::data::normalize(&self.pal_query);
+                            for p in &d.species {
+                                if crate::data::search(p, &q) {
+                                    ui.selectable_value(
+                                        &mut self.pal_filter,
+                                        text(p, "key").into(),
+                                        format!("#{} {}", text(p, "dex"), text(p, "zh")),
+                                    );
+                                }
+                            }
+                        });
+                }
+                if page == "details/passive" {
+                    choice(
+                        ui,
+                        "passive-scope",
+                        &mut self.scope,
+                        "全部词条",
+                        [
+                            ("random", "可随机出现"),
+                            ("fixed", "有固定携带种"),
+                            ("surgery", "手术可用"),
+                            ("negative", "负阶级"),
+                        ],
+                    );
+                }
+                if page == "details/surgery" {
+                    choice(
+                        ui,
+                        "surgery-scope",
+                        &mut self.scope,
+                        "全部手术",
+                        [
+                            ("owned", "当前可用"),
+                            ("needed", "尚未持有"),
+                            ("coins", "直接付费"),
+                            ("unlock", "解锁植入体"),
+                            ("consume", "耗材植入体"),
+                        ],
+                    );
+                }
+                if page == "items" {
+                    choice(
+                        ui,
+                        "item-method",
+                        &mut self.filter,
+                        "全部获取方式",
+                        [
                             "配方制作",
                             "商人出售",
                             "牧场生产",
@@ -311,261 +447,278 @@ impl Catalog {
                             "敌人掉落",
                             "野外采集",
                             "任务奖励",
-                        ] {
-                            ui.selectable_value(&mut self.filter, k.into(), k);
+                        ]
+                        .into_iter()
+                        .map(|s| (s, s)),
+                    );
+                }
+                if page == "work/facilities" {
+                    let jobs: BTreeSet<String> = entries
+                        .iter()
+                        .flat_map(|e| {
+                            array(&e.value["required"])
+                                .iter()
+                                .chain(array(&e.value["jobs"]).iter())
+                                .filter_map(|r| {
+                                    r.as_str().or_else(|| r[0].as_str()).map(str::to_owned)
+                                })
+                        })
+                        .collect();
+                    choice(
+                        ui,
+                        "facility-job",
+                        &mut self.filter,
+                        "全部工作",
+                        jobs.iter().map(|s| (s.as_str(), s.as_str())),
+                    );
+                }
+                if ["enemies", "neutrals", "merchants"].contains(&page) {
+                    let mut options = vec![("loot", "有掉落物"), ("map", "可地图定位")];
+                    if page == "merchants" {
+                        options.extend([("items", "出售物品"), ("pals", "出售帕鲁")]);
+                    }
+                    choice(ui, "unit-scope", &mut self.scope, "全部单位", options);
+                }
+                if page == "work/expeditions" {
+                    choice(
+                        ui,
+                        "expedition-mode",
+                        &mut self.filter,
+                        "全部难度",
+                        [("普通", "普通"), ("高难", "高难")],
+                    );
+                    let elements: BTreeSet<_> = entries
+                        .iter()
+                        .filter_map(|e| e.value["element"][0].as_str())
+                        .collect();
+                    choice(
+                        ui,
+                        "expedition-element",
+                        &mut self.scope,
+                        "全部加成属性",
+                        elements.iter().map(|s| (*s, *s)),
+                    );
+                }
+                if page == "guide/journals" {
+                    choice(
+                        ui,
+                        "journal-map",
+                        &mut self.scope,
+                        "全部地图",
+                        [("palpagos", "帕洛斯群岛"), ("worldtree", "世界树")],
+                    );
+                }
+                if ui.button("清除筛选").clicked() {
+                    self.query.clear();
+                    self.group.clear();
+                    self.filter.clear();
+                    self.scope.clear();
+                    self.pal_filter.clear();
+                    self.pal_query.clear();
+                    self.tags.clear();
+                    self.sort.clear();
+                }
+            });
+            if page == "details/partner" {
+                let tags: BTreeSet<_> = entries
+                    .iter()
+                    .flat_map(|e| array(&e.value["tags"]).iter().filter_map(Value::as_str))
+                    .collect();
+                ui.horizontal_wrapped(|ui| {
+                    ui.small("技能类型 · 多选匹配任一");
+                    for tag in tags {
+                        let mut enabled = self.tags.contains(tag);
+                        if ui.checkbox(&mut enabled, group_label(tag)).changed() {
+                            if enabled {
+                                self.tags.insert(tag.into());
+                            } else {
+                                self.tags.remove(tag);
+                            }
                         }
-                    });
+                    }
+                });
             }
-            if page == "work/expeditions" {
-                egui::ComboBox::from_id_salt("expedition-difficulty")
-                    .selected_text(if self.filter.is_empty() {
-                        "全部难度"
-                    } else {
-                        &self.filter
-                    })
-                    .show_ui(ui, |ui| {
-                        for s in ["", "普通", "高难"] {
-                            ui.selectable_value(
-                                &mut self.filter,
-                                s.into(),
-                                if s.is_empty() { "全部难度" } else { s },
-                            );
+            if !self.pal_filter.is_empty() {
+                ui.horizontal(|ui| {
+                    d.portrait(ui, &self.pal_filter, 28.);
+                    ui.label(format!(
+                        "当前查看：{}{}",
+                        d.pal_name(&self.pal_filter),
+                        if page == "details/active" {
+                            "的升级技能"
+                        } else {
+                            "的固定词条"
                         }
-                    });
+                    ));
+                });
             }
         });
-        let query = crate::data::normalize(&self.query);
-        let mut matches: Vec<_> = entries
-            .iter()
-            .filter(|e| {
-                (self.group.is_empty()
-                    || e.group == self.group
-                    || page == "paldex"
-                        && array(&e.value["基础属性"]["work"])
-                            .iter()
-                            .any(|r| r[0].as_str() == Some(&self.group))
-                    || array(&e.value["tags"])
-                        .iter()
-                        .any(|v| v.as_str() == Some(&self.group)))
-                    && query.split_whitespace().all(|q| e.needle.contains(q))
-                    && (self.filter.is_empty()
-                        || if page == "paldex" {
-                            array(&e.value["types"])
-                                .iter()
-                                .any(|v| v.as_str() == Some(&self.filter))
-                        } else if page == "items" {
-                            crate::links::has_method(d, &e.value, &self.filter)
-                        } else if page == "work/expeditions" {
-                            (e.value["hard"] == true) == (self.filter == "高难")
-                        } else {
-                            true
-                        })
-                    && loot_item.is_none_or(|(chapter, item)| {
+        let filters = Filters {
+            query: crate::data::normalize(&self.query),
+            group: self.group.clone(),
+            filter: self.filter.clone(),
+            scope: self.scope.clone(),
+            pal: self.pal_filter.clone(),
+            tags: self.tags.clone(),
+            sort: self.sort.clone(),
+        };
+        let match_key = format!(
+            "{page}|{}|{}|{}|{}|{}|{:?}|{loot_item:?}|{surgery}",
+            filters.query, filters.group, filters.filter, filters.scope, filters.pal, filters.tags
+        );
+        if self.match_key != match_key {
+            self.matched = entries
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| matches_filters(d, page, e, &filters, surgery))
+                .filter(|(_, e)| {
+                    loot_item.is_none_or(|(chapter, item)| {
                         e.id.starts_with(&format!("{chapter}/"))
                             && array(&e.value["rows"])
                                 .iter()
                                 .any(|r| r[0].as_str() == Some(item))
                     })
-                    && (page != "work/ranch"
-                        || !wanted.starts_with("item/")
-                        || e.value["tiers"]
-                            .to_string()
-                            .contains(wanted.trim_start_matches("item/")))
-            })
+                })
+                .map(|(i, _)| i)
+                .collect();
+            self.match_key = match_key;
+        }
+        let mut matches: Vec<_> = self
+            .matched
+            .iter()
+            .filter_map(|i| entries.get(*i))
             .collect();
         if page == "paldex" {
-            let stat = match self.sort.as_str() {
+            let key = match self.sort.as_str() {
                 "生命从高到低" => "hp",
                 "攻击从高到低" => "attack",
                 "防御从高到低" => "defense",
                 _ => "",
             };
-            if !stat.is_empty() {
+            if !key.is_empty() {
                 matches.sort_by(|a, b| {
-                    b.value["基础属性"][stat]
+                    b.value["基础属性"][key]
                         .as_f64()
                         .unwrap_or(0.)
-                        .total_cmp(&a.value["基础属性"][stat].as_f64().unwrap_or(0.))
+                        .total_cmp(&a.value["基础属性"][key].as_f64().unwrap_or(0.))
                 });
-            } else if self.sort == "工作等级从高到低" {
-                let level = |e: &Entry| {
-                    array(&e.value["基础属性"]["work"])
-                        .iter()
-                        .filter(|r| self.group.is_empty() || r[0].as_str() == Some(&self.group))
-                        .filter_map(|r| r[1].as_u64())
-                        .max()
-                        .unwrap_or(0)
-                };
-                matches.sort_by_key(|e| std::cmp::Reverse(level(e)));
+            }
+            if self.sort == "工作等级从高到低" {
+                matches.sort_by_key(|e| {
+                    std::cmp::Reverse(
+                        array(&e.value["基础属性"]["work"])
+                            .iter()
+                            .filter(|r| self.group.is_empty() || r[0].as_str() == Some(&self.group))
+                            .filter_map(|r| r[1].as_u64())
+                            .max()
+                            .unwrap_or(0),
+                    )
+                });
             }
         }
-        ui.label(format!("{} 条", matches.len()));
+        let full_grid = [
+            "paldex",
+            "details/active",
+            "details/passive",
+            "details/surgery",
+            "details/fruits",
+            "guide/status",
+        ]
+        .contains(&page);
+        let selected = selected.or_else(|| {
+            if full_grid {
+                None
+            } else {
+                matches.first().copied()
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(format!("{} 条", matches.len())).strong());
+            if page == "details/partner" {
+                ui.weak("按图鉴编号排列");
+            }
+            if selected.is_some() && full_grid && ui.small_button("展开全部列表").clicked() {
+                navigate = Some(format!("#{page}"));
+            }
+        });
+        if matches.is_empty() {
+            ui.label("没有符合条件的条目，清除筛选可查看全部资料。");
+        }
+        let total = ui.available_width();
         let list_width = if selected.is_some() {
-            ui.available_width() * 0.44
+            (total * 0.51).max(260.).min(total - 300.)
         } else {
-            ui.available_width()
+            total
         };
+        let height = ui.available_height();
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
-                Vec2::new(list_width, ui.available_height()),
+                Vec2::new(list_width, height),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
+                    ui.set_width(list_width);
+                    let min_width = if page == "items" {
+                        168.
+                    } else if page == "paldex" {
+                        175.
+                    } else {
+                        218.
+                    };
+                    let cols = ((list_width + 8.) / (min_width + 8.)).floor().max(1.) as usize;
+                    let rows = matches.len().div_ceil(cols);
+                    let width = (list_width - 8. * (cols - 1) as f32) / cols as f32;
                     egui::ScrollArea::vertical()
-                        .id_salt(("catalog-rows", page, &self.query, &self.group, &self.filter))
-                        .show_rows(ui, 56., matches.len(), |ui, range| {
-                            for i in range {
-                                let e = matches[i];
-                                ui.horizontal(|ui| {
-                                    if ["paldex", "details/partner", "work/ranch"].contains(&page) {
-                                        d.portrait(ui, &e.id, 44.);
-                                    } else if page == "items" {
-                                        d.item_icon(ui, &e.id, 36.);
-                                    } else if e.icon.starts_with("assets/") {
-                                        d.image(ui, &e.icon, Vec2::splat(36.));
-                                    }
-                                    if let Some(rank) = e.value["rank"].as_i64() {
-                                        if let Some(icon) = d.get("trait-ranks")
-                                            [rank.unsigned_abs() as usize]
-                                            .as_str()
-                                        {
-                                            d.image(ui, icon, Vec2::splat(16.));
-                                        }
-                                    }
-                                    ui.vertical(|ui| {
-                                        if ui
-                                            .selectable_label(
-                                                selected.map(|s| &s.id) == Some(&e.id),
-                                                RichText::new(&e.name).strong(),
-                                            )
-                                            .clicked()
-                                        {
+                        .id_salt((
+                            "catalog-rows",
+                            page,
+                            &filters.query,
+                            &filters.group,
+                            &filters.filter,
+                            &filters.scope,
+                            &filters.pal,
+                        ))
+                        .auto_shrink([false, false])
+                        .show_rows(ui, 66., rows, |ui, range| {
+                            for row in range {
+                                ui.horizontal_top(|ui| {
+                                    for e in matches.iter().skip(row * cols).take(cols) {
+                                        let response = entry_card(
+                                            ui,
+                                            d,
+                                            page,
+                                            e,
+                                            width,
+                                            selected.is_some_and(|s| s.id == e.id),
+                                        );
+                                        if response.clicked() {
                                             navigate = Some(e.route.clone());
                                         }
-                                        if !e.group.is_empty() {
-                                            ui.small(&e.group);
-                                        } else if let Some(rank) = e.value["rank"].as_i64() {
-                                            ui.small(format!("词条等级 {rank}"));
-                                        }
-                                    });
+                                    }
                                 });
                             }
                         });
                 },
             );
             if let Some(e) = selected {
-                ui.separator();
                 ui.allocate_ui_with_layout(
-                    Vec2::new(ui.available_width(), ui.available_height()),
+                    Vec2::new(ui.available_width(), height),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
+                        ui.set_width(ui.available_width());
                         egui::ScrollArea::vertical()
-                            .id_salt(("catalog-detail", &e.route))
+                            .id_salt(("catalog-detail", page, &e.id))
+                            .auto_shrink([false, false])
                             .show(ui, |ui| {
-                                ui.heading(&e.name);
-                                if ["paldex", "details/partner", "work/ranch"].contains(&page) {
-                                    d.portrait(ui, &e.id, 84.);
-                                    ui.horizontal_wrapped(|ui| {
-                                        for (label, path) in [
-                                            ("配种", "lookup"),
-                                            ("刷新位置", "spawns"),
-                                            ("属性计算", "details/stats"),
-                                            ("捕捉概率", "details/capture"),
-                                            ("伙伴技能", "details/partner"),
-                                        ] {
-                                            if ui.link(label).clicked() {
-                                                navigate = Some(format!("#{path}/{}", e.id));
-                                            }
-                                        }
-                                    });
-                                }
-                                if page == "details/surgery" {
-                                    if !surgery.is_array() {
-                                        *surgery = json!([]);
-                                    }
-                                    let coins = e.value["surgery"]["mode"] == "coins";
-                                    let mut owned = coins
-                                        || array(surgery).iter().any(|v| v.as_str() == Some(&e.id));
-                                    if ui
-                                        .add_enabled(
-                                            !coins,
-                                            egui::Checkbox::new(
-                                                &mut owned,
-                                                if coins {
-                                                    "金币手术：始终可用"
-                                                } else {
-                                                    "已获得此手术台词条"
-                                                },
-                                            ),
-                                        )
-                                        .changed()
-                                    {
-                                        let a = surgery.as_array_mut().unwrap();
-                                        a.retain(|v| v.as_str() != Some(&e.id));
-                                        if owned {
-                                            a.push(json!(e.id));
-                                        }
-                                    }
-                                }
-                                if page == "items" {
-                                    d.item_icon(ui, &e.id, 64.);
-                                    if !array(&e.value["recipes"]).is_empty() {
-                                        self.quantity = self.quantity.max(1);
-                                        ui.horizontal(|ui| {
-                                            ui.label("制作数量");
-                                            ui.add(
-                                                egui::DragValue::new(&mut self.quantity)
-                                                    .range(1..=99999),
-                                            );
-                                        });
-                                        let key =
-                                            format!("{}|{}|{}", e.id, self.quantity, self.choices);
-                                        if key != self.craft_key {
-                                            self.craft_plan = jade_core::plan_item_craft(
-                                                &d.get("item-catalog-data")["items"],
-                                                &e.id,
-                                                self.quantity,
-                                                &self.choices,
-                                            )
-                                            .unwrap_or(Value::Null);
-                                            self.craft_key = key;
-                                        }
-                                        crate::links::craft(
-                                            ui,
-                                            d,
-                                            &self.craft_plan,
-                                            &mut self.choices,
-                                            &mut navigate,
-                                        );
-                                    }
-                                }
-                                if item_shops {
-                                    crate::links::sellers(ui, d, &e.value, &mut navigate);
-                                } else {
-                                    if let Some((_, item)) = loot_item {
-                                        let mut shown = e.value.clone();
-                                        if let Some(rows) = shown["rows"].as_array_mut() {
-                                            rows.retain(|r| r[0].as_str() == Some(item));
-                                        }
-                                        ui.label(format!(
-                                            "当前仅显示 {} 的奖励栏位",
-                                            d.item_name(item)
-                                        ));
-                                        if ui.link("查看完整奖池").clicked() {
-                                            navigate = Some(e.route.clone());
-                                        }
-                                        render_value(ui, d, &shown, 0, &mut navigate);
-                                    } else {
-                                        render_value(ui, d, &e.value, 0, &mut navigate);
-                                    }
-                                    related(ui, d, page, e, &mut navigate);
-                                    crate::links::related(
-                                        ui,
-                                        d,
-                                        page,
-                                        &e.id,
-                                        &e.value,
-                                        &mut navigate,
-                                    );
+                                if let Some(n) = crate::catalog_views::show(
+                                    ui,
+                                    d,
+                                    page,
+                                    e,
+                                    route,
+                                    surgery,
+                                    &mut self.detail,
+                                ) {
+                                    navigate = Some(n);
                                 }
                             });
                     },
@@ -574,6 +727,7 @@ impl Catalog {
         });
         navigate
     }
+
     fn ranch(&mut self, ui: &mut egui::Ui, d: &Data, route: &str) -> Option<String> {
         let mut nav = None;
         let path = route.strip_prefix("#work/ranch/").unwrap_or("");
@@ -677,7 +831,7 @@ impl Catalog {
                         } else {
                             self.ranch_level
                         };
-                        ui.group(|ui| {
+                        crate::design::card(ui).show(ui, |ui| {
                             ui.horizontal_wrapped(|ui| {
                                 d.portrait(ui, key, 44.);
                                 if ui.link(d.pal_name(key)).clicked() {
@@ -777,11 +931,333 @@ pub fn elements(ui: &mut egui::Ui, d: &Data) -> Option<String> {
     ui.ctx().data_mut(|m| m.insert_temp(id, selected));
     nav
 }
+fn search_names(d: &Data, value: &Value, names: &mut BTreeSet<String>) {
+    match value {
+        Value::String(s) if s.len() < 160 => {
+            if let Some((_, name)) = d.resolve(s) {
+                names.insert(name.clone());
+            }
+        }
+        Value::Array(rows) => {
+            for row in rows {
+                search_names(d, row, names);
+            }
+        }
+        Value::Object(fields) => {
+            for (key, v) in fields {
+                if !["icon", "image", "body", "description", "effect", "source"]
+                    .contains(&key.as_str())
+                {
+                    search_names(d, v, names);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod restored_filters_tests {
+    use super::*;
+    #[test]
+    fn original_filters_and_related_name_search() {
+        let mut d = Data::new(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data"),
+            egui::Context::default(),
+        )
+        .unwrap();
+        let start = std::time::Instant::now();
+        while d.pending > 0 && start.elapsed().as_secs() < 10 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            d.poll();
+        }
+        assert_eq!(d.pending, 0);
+        let mut c = Catalog::default();
+        c.rebuild(&d);
+        let none = json!([]);
+        let active = &c.pages["details/active"];
+        let filter = Filters {
+            pal: "SheepBall".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            active
+                .iter()
+                .filter(|e| matches_filters(&d, "details/active", e, &filter, &none))
+                .count(),
+            array(&d.get("pal-details-data")["profiles"]["SheepBall"]["levels"]).len()
+        );
+        let surgeries = &c.pages["details/surgery"];
+        let implant = surgeries
+            .iter()
+            .find(|e| e.value["surgery"]["mode"] == "consume")
+            .unwrap();
+        let owned = Filters {
+            scope: "owned".into(),
+            ..Default::default()
+        };
+        assert!(!matches_filters(
+            &d,
+            "details/surgery",
+            implant,
+            &owned,
+            &none
+        ));
+        assert!(matches_filters(
+            &d,
+            "details/surgery",
+            implant,
+            &owned,
+            &json!([implant.id])
+        ));
+        let coins = surgeries
+            .iter()
+            .find(|e| e.value["surgery"]["mode"] == "coins")
+            .unwrap();
+        assert!(matches_filters(&d, "details/surgery", coins, &owned, &none));
+        let query = Filters {
+            query: "帕鲁球".into(),
+            ..Default::default()
+        };
+        assert!(c.pages["enemies"].iter().any(|e|e.id=="Hunter_Rifle"&&matches_filters(&d,"enemies",e,&query,&none)));
+        assert!(
+            c.pages["merchants"].iter().any(
+                |e| e.id == "SalesPerson" && matches_filters(&d, "merchants", e, &query, &none)
+            )
+        );
+        let pal_shops = Filters {
+            scope: "pals".into(),
+            ..Default::default()
+        };
+        let shops: Vec<_> = c.pages["merchants"]
+            .iter()
+            .filter(|e| matches_filters(&d, "merchants", e, &pal_shops, &none))
+            .collect();
+        assert!(!shops.is_empty());
+        assert!(shops.iter().all(|e| e.value["palStock"].is_object()));
+    }
+}
+fn choice<'a>(
+    ui: &mut egui::Ui,
+    id: &str,
+    value: &mut String,
+    all: &str,
+    options: impl IntoIterator<Item = (&'a str, &'a str)>,
+) {
+    let options: Vec<_> = options.into_iter().collect();
+    let label = options
+        .iter()
+        .find(|(key, _)| *key == value)
+        .map(|(_, label)| *label)
+        .unwrap_or(all);
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(label)
+        .width(145.)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(value, String::new(), all);
+            for (key, label) in options {
+                ui.selectable_value(value, key.into(), label);
+            }
+        });
+}
+fn matches_filters(d: &Data, page: &str, e: &Entry, f: &Filters, surgery: &Value) -> bool {
+    if !f.query.split_whitespace().all(|q| e.needle.contains(q)) {
+        return false;
+    }
+    if !f.group.is_empty()
+        && e.group != f.group
+        && !(page == "paldex"
+            && array(&e.value["基础属性"]["work"])
+                .iter()
+                .any(|r| r[0].as_str() == Some(&f.group)))
+    {
+        return false;
+    }
+    if !f.tags.is_empty()
+        && !array(&e.value["tags"])
+            .iter()
+            .filter_map(Value::as_str)
+            .any(|s| f.tags.contains(s))
+    {
+        return false;
+    }
+    if !f.pal.is_empty() && ["details/active", "details/passive"].contains(&page) {
+        let profile = &d.get("pal-details-data")["profiles"][&f.pal];
+        let present = if page == "details/active" {
+            array(&profile["levels"])
+                .iter()
+                .any(|r| r[1].as_str() == Some(&e.id))
+        } else {
+            array(&profile["fixed"])
+                .iter()
+                .any(|v| v.as_str() == Some(&e.id))
+        };
+        if !present {
+            return false;
+        }
+    }
+    if !f.filter.is_empty() {
+        let matched = match page {
+            "paldex" => array(&e.value["types"])
+                .iter()
+                .any(|v| v.as_str() == Some(&f.filter)),
+            "details/partner" => d.pal(&e.id).is_some_and(|p| {
+                array(&p["types"])
+                    .iter()
+                    .any(|v| v.as_str() == Some(&f.filter))
+            }),
+            "details/active" | "details/fruits" => text(&e.value, "type") == f.filter,
+            "items" => crate::links::has_method(d, &e.value, &f.filter),
+            "work/expeditions" => (e.value["hard"] == true) == (f.filter == "高难"),
+            "work/facilities" => array(&e.value["required"])
+                .iter()
+                .chain(array(&e.value["jobs"]).iter())
+                .any(|r| r.as_str().or_else(|| r[0].as_str()) == Some(&f.filter)),
+            _ => true,
+        };
+        if !matched {
+            return false;
+        }
+    }
+    if !f.scope.is_empty() {
+        let owned = e.value["surgery"]["mode"] == "coins"
+            || array(surgery).iter().any(|v| v.as_str() == Some(&e.id));
+        let matched = match page {
+            "details/passive" => match f.scope.as_str() {
+                "random" => e.value["random"] == true,
+                "negative" => e.value["rank"].as_i64().unwrap_or(0) < 0,
+                "surgery" => e.value["surgery"].is_object(),
+                "fixed" => d.get("pal-details-data")["profiles"]
+                    .as_object()
+                    .is_some_and(|p| {
+                        p.values()
+                            .any(|p| array(&p["fixed"]).iter().any(|v| v.as_str() == Some(&e.id)))
+                    }),
+                _ => true,
+            },
+            "details/surgery" => match f.scope.as_str() {
+                "owned" => owned,
+                "needed" => !owned,
+                mode => text(&e.value["surgery"], "mode") == mode,
+            },
+            "guide/journals" => text(&e.value, "map") == f.scope,
+            "work/expeditions" => e.value["element"][0].as_str() == Some(&f.scope),
+            "enemies" | "neutrals" | "merchants" => match f.scope.as_str() {
+                "loot" => {
+                    !array(&e.value["drops"]).is_empty()
+                        || array(&e.value["dropTiers"])
+                            .iter()
+                            .any(|tier| !array(&tier["drops"]).is_empty())
+                }
+                "map" => !array(&e.value["points"]).is_empty(),
+                "items" => !array(&e.value["shops"]).is_empty(),
+                "pals" => e.value["palStock"].is_object(),
+                _ => true,
+            },
+            _ => true,
+        };
+        if !matched {
+            return false;
+        }
+    }
+    true
+}
+fn entry_card(
+    ui: &mut egui::Ui,
+    d: &Data,
+    page: &str,
+    e: &Entry,
+    width: f32,
+    selected: bool,
+) -> egui::Response {
+    let p = crate::design::palette(ui.ctx());
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 66.), egui::Sense::click());
+    ui.painter()
+        .rect_filled(rect, 7, if selected { p.selected } else { p.surface });
+    ui.painter().rect_stroke(
+        rect,
+        7,
+        egui::Stroke::new(
+            1.,
+            if selected || response.hovered() {
+                p.accent
+            } else {
+                p.line.gamma_multiply(0.6)
+            },
+        ),
+        egui::StrokeKind::Inside,
+    );
+    let mut cell = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt((&e.route, "card"))
+            .max_rect(rect.shrink(6.))
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    cell.set_clip_rect(rect.intersect(ui.clip_rect()));
+    if ["paldex", "details/partner"].contains(&page) {
+        d.portrait(&mut cell, &e.id, 42.);
+    } else if page == "items" {
+        d.item_icon(&mut cell, &e.id, 32.);
+    } else if !e.icon.is_empty() {
+        d.image(&mut cell, &e.icon, Vec2::splat(32.));
+    } else if let Some(rank) = e.value["rank"].as_i64() {
+        if let Some(icon) = d.get("trait-ranks")[rank.unsigned_abs() as usize].as_str() {
+            d.image(&mut cell, icon, Vec2::splat(22.));
+        }
+    }
+    cell.vertical(|ui| {
+        let title = if page == "details/partner" {
+            d.pal(&e.id)
+                .map(|p| format!("#{} {}", text(p, "dex"), text(p, "zh")))
+                .unwrap_or_else(|| e.name.clone())
+        } else {
+            e.name.clone()
+        };
+        ui.add(egui::Label::new(RichText::new(title).size(14.).strong()).truncate());
+        let summary = if page == "details/partner" {
+            text(&e.value, "name").to_owned()
+        } else if page == "paldex" {
+            format!(
+                "#{}  {}",
+                text(&e.value, "dex"),
+                array(&e.value["types"])
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(group_label)
+                    .collect::<Vec<_>>()
+                    .join(" · ")
+            )
+        } else {
+            crate::catalog_views::summary(page, &e.value)
+        };
+        ui.add(egui::Label::new(RichText::new(summary).size(11.).color(p.muted)).truncate());
+    });
+    response
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(format!(
+            "{}\n{}",
+            e.name,
+            crate::catalog_views::summary(page, &e.value)
+        ))
+}
 fn group_label(s: &str) -> &str {
     match s {
         "combat" => "战斗",
         "work" => "工作",
-        "travel" => "移动",
+        "travel" => "骑乘与移动",
+        "explore" => "探索与负重",
+        "loot" => "掉落与垂钓",
+        "catch" => "捕捉",
+        "care" => "支援与恢复",
+        "neutral" => "无",
+        "fire" => "火",
+        "water" => "水",
+        "grass" => "草",
+        "electric" => "雷",
+        "ice" => "冰",
+        "ground" => "地",
+        "dark" => "暗",
+        "dragon" => "龙",
         "ride" => "骑乘",
         "support" => "辅助",
         "ranch" => "牧场",
@@ -1034,7 +1510,31 @@ pub fn render_value(
                     } else {
                         ui.horizontal_wrapped(|ui| {
                             ui.strong(format!("{}：", label(key)));
-                            if ["id","key","code","name","zh","en","title","category","group","region","summary","body","text","description","purpose","note"].contains(&key.as_str())&&value.is_string(){ui.add(egui::Label::new(value.as_str().unwrap()).wrap());}else{render_value(ui, d, value, depth + 1, nav);}
+                            if [
+                                "id",
+                                "key",
+                                "code",
+                                "name",
+                                "zh",
+                                "en",
+                                "title",
+                                "category",
+                                "group",
+                                "region",
+                                "summary",
+                                "body",
+                                "text",
+                                "description",
+                                "purpose",
+                                "note",
+                            ]
+                            .contains(&key.as_str())
+                                && value.is_string()
+                            {
+                                ui.add(egui::Label::new(value.as_str().unwrap()).wrap());
+                            } else {
+                                render_value(ui, d, value, depth + 1, nav);
+                            }
                         });
                     }
                 });

@@ -272,7 +272,7 @@ fn item_related(ui: &mut egui::Ui, d: &Data, id: &str, v: &Value, nav: &mut Opti
         }
     }
 }
-fn item_routes(d: &Data, id: &str, v: &Value) -> BTreeSet<(String, String)> {
+pub(crate) fn item_routes(d: &Data, id: &str, v: &Value) -> BTreeSet<(String, String)> {
     let book = d.get("item-catalog-data");
     let mut refs: BTreeSet<(String, String)> = BTreeSet::new();
     for (field, title) in [
@@ -459,7 +459,12 @@ fn item_routes(d: &Data, id: &str, v: &Value) -> BTreeSet<(String, String)> {
     refs
 }
 
-fn context_routes(d: &Data, page: &str, id: &str, v: &Value) -> BTreeSet<(String, String)> {
+pub(crate) fn context_routes(
+    d: &Data,
+    page: &str,
+    id: &str,
+    v: &Value,
+) -> BTreeSet<(String, String)> {
     let mut refs = BTreeSet::new();
     if page == "guide/quests" {
         let quests = array(&d.get("adventure-data")["quests"]);

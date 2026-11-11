@@ -1,0 +1,119 @@
+{
+  "cpus": 32,
+  "affinity": "0xffffffff",
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "beta1Sha256": "fefe1b89496f3526ab1814d6b6ff51dd20669e76ad00aa5d61c86845e662a4c2",
+  "beta2Sha256": "1fde1b25f494b24e3f2891b64f737e60695c78796686337d64a026960bcecee0",
+  "samples": [
+    {
+      "variant": "beta2",
+      "round": 1,
+      "startupUiMs": 405.662353515625,
+      "startupCaptureMs": 591.00927734375,
+      "mapReadyMs": 54.830400000000004,
+      "dragCpuMedianMs": 1.5099,
+      "dragCpuP95Ms": 2.0723
+    },
+    {
+      "variant": "beta1",
+      "round": 1,
+      "startupUiMs": 355.580810546875,
+      "startupCaptureMs": 547.625244140625,
+      "mapReadyMs": 54.3335,
+      "dragCpuMedianMs": 0.9297,
+      "dragCpuP95Ms": 1.2699
+    },
+    {
+      "variant": "beta1",
+      "round": 2,
+      "startupUiMs": 365.8837890625,
+      "startupCaptureMs": 544.897216796875,
+      "mapReadyMs": 50.9185,
+      "dragCpuMedianMs": 0.9176,
+      "dragCpuP95Ms": 1.2542
+    },
+    {
+      "variant": "beta2",
+      "round": 2,
+      "startupUiMs": 398.44677734375,
+      "startupCaptureMs": 581.689697265625,
+      "mapReadyMs": 72.78460000000001,
+      "dragCpuMedianMs": 1.5448,
+      "dragCpuP95Ms": 3.0254000000000003
+    },
+    {
+      "variant": "beta2",
+      "round": 3,
+      "startupUiMs": 347.8955078125,
+      "startupCaptureMs": 528.793212890625,
+      "mapReadyMs": 56.2731,
+      "dragCpuMedianMs": 1.1885000000000001,
+      "dragCpuP95Ms": 2.1901
+    },
+    {
+      "variant": "beta1",
+      "round": 3,
+      "startupUiMs": 364.83642578125,
+      "startupCaptureMs": 545.455078125,
+      "mapReadyMs": 64.0926,
+      "dragCpuMedianMs": 1.3272,
+      "dragCpuP95Ms": 1.7018
+    },
+    {
+      "variant": "beta1",
+      "round": 4,
+      "startupUiMs": 401.39208984375,
+      "startupCaptureMs": 583.0546875,
+      "mapReadyMs": 57.549099999999996,
+      "dragCpuMedianMs": 1.2141000000000002,
+      "dragCpuP95Ms": 2.064
+    },
+    {
+      "variant": "beta2",
+      "round": 4,
+      "startupUiMs": 360.224853515625,
+      "startupCaptureMs": 542.705810546875,
+      "mapReadyMs": 63.474500000000006,
+      "dragCpuMedianMs": 1.0541,
+      "dragCpuP95Ms": 2.0461
+    },
+    {
+      "variant": "beta2",
+      "round": 5,
+      "startupUiMs": 372.2587890625,
+      "startupCaptureMs": 553.2109375,
+      "mapReadyMs": 70.4996,
+      "dragCpuMedianMs": 1.5385,
+      "dragCpuP95Ms": 1.971
+    },
+    {
+      "variant": "beta1",
+      "round": 5,
+      "startupUiMs": 431.879638671875,
+      "startupCaptureMs": 637.744140625,
+      "mapReadyMs": 67.4864,
+      "dragCpuMedianMs": 0.9298000000000001,
+      "dragCpuP95Ms": 1.5426000000000002
+    }
+  ],
+  "notes": [
+    "One excluded warm-up per variant; 5 alternating warm launches on one PC.",
+    "Startup UI uses native second UI pass; capture is a GPU screenshot callback upper bound, not monitor latency.",
+    "Map opens after the same 5-second idle; 90 drag frames at 4x zoom.",
+    "Two logical cores on the same PC do not simulate an older disk or GPU."
+  ],
+  "beta1": {
+    "startupUiMs": 365.8837890625,
+    "startupCaptureMs": 547.625244140625,
+    "mapReadyMs": 57.549099999999996,
+    "dragCpuMedianMs": 0.9298000000000001,
+    "dragCpuP95Ms": 1.5426000000000002
+  },
+  "beta2": {
+    "startupUiMs": 372.2587890625,
+    "startupCaptureMs": 553.2109375,
+    "mapReadyMs": 63.474500000000006,
+    "dragCpuMedianMs": 1.5099,
+    "dragCpuP95Ms": 2.0723
+  }
+}
