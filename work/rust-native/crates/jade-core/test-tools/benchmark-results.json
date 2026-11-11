@@ -1,0 +1,74 @@
+{
+  "seedHash": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "palCount": 467,
+  "speciesCount": 300,
+  "pairCount": 44552,
+  "scope": "in-process algorithms only; excludes file read/parse, UI paint, thread IPC and Rust process startup; two warmups, five samples each; Node vs release Rust",
+  "reports": [
+    {
+      "name": "467只仓库可配子代",
+      "jsMedianMs": 17.1712,
+      "rustMedianMs": 5.490799999999999,
+      "jsSamplesMs": [
+        16.658299999999997,
+        17.009500000000003,
+        17.1712,
+        17.269300000000044,
+        17.316900000000004
+      ],
+      "rustSamplesMs": [
+        5.3986,
+        5.4087,
+        5.490799999999999,
+        5.5362,
+        5.6397
+      ],
+      "resultIdentical": true,
+      "resultCount": 258
+    },
+    {
+      "name": "467只仓库四词条阿努比斯",
+      "jsMedianMs": 6.814300000000003,
+      "rustMedianMs": 3.1373,
+      "jsSamplesMs": [
+        6.584600000000023,
+        6.6317000000000235,
+        6.814300000000003,
+        6.966399999999965,
+        8.059200000000033
+      ],
+      "rustSamplesMs": [
+        3.0986,
+        3.1353,
+        3.1373,
+        3.3613,
+        3.3812
+      ],
+      "resultIdentical": true,
+      "status": "ok",
+      "generations": 5
+    },
+    {
+      "name": "467只仓库空词条新棉悠悠",
+      "jsMedianMs": 2.5276999999999816,
+      "rustMedianMs": 2.4103000000000003,
+      "jsSamplesMs": [
+        2.4943999999999846,
+        2.514700000000005,
+        2.5276999999999816,
+        2.801400000000001,
+        3.175299999999993
+      ],
+      "rustSamplesMs": [
+        2.3029,
+        2.3301,
+        2.4103000000000003,
+        2.5146,
+        2.6406
+      ],
+      "resultIdentical": true,
+      "status": "ok",
+      "generations": 1
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[package]
+name = "jade-app"
+version = "2.0.0-beta.1"
+edition = "2024"
+license = "GPL-3.0-only"
+
+[[bin]]
+name = "Jade-Palworld-Rust"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "=0.33.3", default-features = false, features = ["default_fonts", "glow", "accesskit"] }
+egui_extras = { version = "=0.33.3", features = ["file", "image", "svg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "ico"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+sha2 = "0.10"
+base64 = "0.22"
+unicode-normalization = "0.1"
+rfd = "0.15"
+webbrowser = "1"
+ureq = { version = "3", features = ["json"] }
+zip = { version = "2.4", default-features = false, features = ["deflate"] }
+jade-core = { path = "../jade-core" }
+jade-saves = { path = "../jade-saves" }

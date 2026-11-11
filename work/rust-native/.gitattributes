@@ -1,0 +1,4 @@
+# Preserve upstream license/source formatting verbatim.
+licenses/** -whitespace
+source-dependencies/** -whitespace
+crates/jade-saves/vendor/** -whitespace

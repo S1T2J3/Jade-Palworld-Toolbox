@@ -1,0 +1,4 @@
+accesskit_windows 0.29.2
+License: MIT OR Apache-2.0
+Repository: https://github.com/AccessKit/accesskit
+Package: https://crates.io/crates/accesskit_windows/0.29.2

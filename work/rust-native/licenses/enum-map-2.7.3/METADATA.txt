@@ -1,0 +1,4 @@
+enum-map 2.7.3
+License: MIT OR Apache-2.0
+Repository: https://codeberg.org/xfix/enum-map
+Package: https://crates.io/crates/enum-map/2.7.3

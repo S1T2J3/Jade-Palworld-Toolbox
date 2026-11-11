@@ -1,0 +1,51 @@
+{
+  "baseSha256": "fefe1b89496f3526ab1814d6b6ff51dd20669e76ad00aa5d61c86845e662a4c2",
+  "realNativeUpdater": true,
+  "privateWin32Desktops": true,
+  "reports": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "brokenNewExecutable": false,
+      "helperExitCode": 0,
+      "elapsedMs": 2677.5371999829076,
+      "message": "已安装 Rust 测试版 2.0.0-beta.1。",
+      "allPackageHashesVerified": true,
+      "palCountPreserved": 467,
+      "testDirectory": "<workspace>\\work\\qa-rust\\update-immediate-9762747732"
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "brokenNewExecutable": false,
+      "helperExitCode": 0,
+      "elapsedMs": 3240.712800004985,
+      "message": "已安装 Rust 测试版 2.0.0-beta.1。",
+      "allPackageHashesVerified": true,
+      "palCountPreserved": 467,
+      "testDirectory": "<workspace>\\work\\qa-rust\\update-deferred-0d836e00ed"
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "brokenNewExecutable": true,
+      "helperExitCode": 1,
+      "elapsedMs": 2291.48279997753,
+      "message": "该版本的 %1 与你运行的 Windows 版本不兼容。请查看计算机的系统信息，然后联系软件发布者。 (os error 216)，已自动还原旧版本。更新备份保存在 <workspace>\\work\\qa-rust\\update-rollback-2b9b5090d2\\profile\\updates\\rollback-f98dcfd1-045d-447c-9d06-98d9f5b265da。",
+      "allPackageHashesVerified": true,
+      "palCountPreserved": 467,
+      "testDirectory": "<workspace>\\work\\qa-rust\\update-rollback-2b9b5090d2"
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "elapsedMs": 835.9955999767408,
+      "message": "请先关闭其它 Rust 测试版窗口，再安装更新。更新文件已保留。",
+      "allPackageHashesVerified": true,
+      "existingWindowStillRunning": true,
+      "pendingPreserved": true,
+      "testDirectory": "<workspace>\\work\\qa-rust\\update-other-window-a09b319627"
+    }
+  ]
+}

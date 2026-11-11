@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+# Explicit parent paths also include their descendants in Cargo's exclusion
+# check. A one-level glob lets the vendored dependency below remain excluded.
+members = ["crates/*"]
+exclude = ["crates/jade-saves/vendor/uesave"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

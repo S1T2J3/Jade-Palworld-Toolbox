@@ -1,0 +1,4 @@
+gl_generator 0.14.0
+License: Apache-2.0
+Repository: https://github.com/brendanzab/gl-rs/
+Package: https://crates.io/crates/gl_generator/0.14.0

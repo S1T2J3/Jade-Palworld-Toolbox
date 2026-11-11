@@ -1,0 +1,4 @@
+egui_glow 0.33.3
+License: MIT OR Apache-2.0
+Repository: https://github.com/emilk/egui/tree/main/crates/egui_glow
+Package: https://crates.io/crates/egui_glow/0.33.3

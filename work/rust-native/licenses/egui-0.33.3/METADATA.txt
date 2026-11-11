@@ -1,0 +1,4 @@
+egui 0.33.3
+License: MIT OR Apache-2.0
+Repository: https://github.com/emilk/egui
+Package: https://crates.io/crates/egui/0.33.3

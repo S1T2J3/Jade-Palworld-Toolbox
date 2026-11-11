@@ -1,0 +1,57 @@
+{
+  "case": "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh",
+  "installerExecuted": false,
+  "registryAndShortcutsModified": false,
+  "passed": true,
+  "version": "2.0.0-beta.1",
+  "fileCount": 2124,
+  "packageBytes": 34072836,
+  "archiveSha256": "b12e08a2a31a24803cc58b2eece5710fb3802ff7f14849d613dc78166e043a66",
+  "installerSha256": "26ee9aef79845886647b88fe5a7f540f5a9005bc6b0adda606ef9db22a5cc520",
+  "archiveBytes": 16898684,
+  "installerBytes": 16682497,
+  "imports": [
+    "api-ms-win-core-synch-l1-2-0.dll",
+    "advapi32.dll",
+    "bcrypt.dll",
+    "dwmapi.dll",
+    "gdi32.dll",
+    "imm32.dll",
+    "ntdll.dll",
+    "opengl32.dll",
+    "uxtheme.dll",
+    "ws2_32.dll",
+    "KERNEL32.dll",
+    "msvcrt.dll",
+    "ntdll.dll",
+    "USER32.dll",
+    "bcryptprimitives.dll",
+    "shlwapi.dll",
+    "ntdll.dll",
+    "oleaut32.dll",
+    "gdi32.dll",
+    "ole32.dll",
+    "uiautomationcore.dll",
+    "shell32.dll"
+  ],
+  "unpacker": {
+    "source": "https://github.com/jrathlev/InnoUnpacker-Windows-GUI/tree/master/innounp-2",
+    "version": "2.71.3",
+    "sha256": "ab58400460cfda503ec88702dd3d82f6ee207b28e0548c9f8861ef008f85b644"
+  },
+  "processId": 19352,
+  "window": {
+    "path": "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh\\unpacked\\{app}\\Jade-Palworld-Rust.exe",
+    "osOnlyPath": "C:\\WINDOWS\\System32;C:\\WINDOWS",
+    "publicFixtureRecords": 467,
+    "nativeReport": "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh\\native-window.json",
+    "screenshots": [
+      "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh\\native-scene-00-ready.png",
+      "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh\\native-scene-01-ready.png",
+      "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh\\native-scene-02-ready.png",
+      "<workspace>\\work\\qa-rust\\package-qa-2bsj9euh\\native-scene-03-ready.png"
+    ],
+    "firstPaintMs": 665.035400390625,
+    "dataErrors": []
+  }
+}

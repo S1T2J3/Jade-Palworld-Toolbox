@@ -1,0 +1,187 @@
+{
+  "metadata": {
+    "fixture": "<workspace>\\work\\qa-v114\\terminal-e2e-0i8lb_ym\\records.json",
+    "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+    "inventoryCount": 467,
+    "stableFastSha256": "af1bd6c5496aa547d8a84617936a58176eb6e919e40ce7811c914ba120947f51",
+    "stableMainSha256": "ca9dbda032a6fdd7475392be69e120aa0dee7ded499b9e1049dc6a91f3a4c3db",
+    "nativeSha256": "fefe1b89496f3526ab1814d6b6ff51dd20669e76ad00aa5d61c86845e662a4c2",
+    "nativeBuiltAt": 1794424021.372476,
+    "notes": [
+      "Installed warm launch: package extraction and first profile initialization excluded. One uncounted warm-up per variant.",
+      "Same public fixture; private desktop, no live game save. Input sent only inside test app.",
+      "Native firstPaintCapture is GPU screenshot callback upper bound; Gecko firstPresented is animation-frame callback after initial render callback. These are distinct presentation proxies, not measured monitor photon latency.",
+      "4x zoom drag uses native egui raw input and trusted Gecko mouse events. Hidden-window frame cadence can differ by backend; UI CPU and frame intervals are not interchangeable.",
+      "Two-CPU affinity is a scheduling constraint on the same high-end PC; it does not model a slow disk/GPU."
+    ]
+  },
+  "hardware": {
+    "os": {
+      "Caption": "Microsoft Windows 11 专业工作站版",
+      "Version": "10.0.26200",
+      "BuildNumber": "26200",
+      "TotalVisibleMemorySize": 32658908
+    },
+    "cpu": {
+      "Name": "AMD Ryzen 9 9950X3D 16-Core Processor          ",
+      "NumberOfCores": 16,
+      "NumberOfLogicalProcessors": 32
+    },
+    "gpu": [
+      {
+        "Name": "MuMu Virtual Display Adapter",
+        "DriverVersion": "20.36.41.498"
+      },
+      {
+        "Name": "NVIDIA GeForce RTX 5090",
+        "DriverVersion": "32.0.16.1742"
+      },
+      {
+        "Name": "AMD Radeon(TM) Graphics",
+        "DriverVersion": "32.0.21045.16010"
+      }
+    ],
+    "timestamp": "2026-11-11T19:04:21.9447969Z"
+  },
+  "results": {
+    "cpu32": {
+      "summary": {
+        "gecko": {
+          "startupUiMs": {
+            "medianMs": 605.154541015625,
+            "minMs": 580.241943359375,
+            "maxMs": 693.449462890625,
+            "p95Ms": 693.449462890625,
+            "samples": 5
+          },
+          "startupPresentedMs": {
+            "medianMs": 610.154541015625,
+            "minMs": 584.241943359375,
+            "maxMs": 697.449462890625,
+            "p95Ms": 697.449462890625,
+            "samples": 5
+          },
+          "mapReadyMs": {
+            "medianMs": 284,
+            "minMs": 271,
+            "maxMs": 288,
+            "p95Ms": 288,
+            "samples": 5
+          }
+        },
+        "native": {
+          "startupUiMs": {
+            "medianMs": 342.52294921875,
+            "minMs": 337.95751953125,
+            "maxMs": 362.790771484375,
+            "p95Ms": 362.790771484375,
+            "samples": 5
+          },
+          "startupPresentedMs": {
+            "medianMs": 512.65478515625,
+            "minMs": 511.13818359375,
+            "maxMs": 533.7177734375,
+            "p95Ms": 533.7177734375,
+            "samples": 5
+          },
+          "mapReadyMs": {
+            "medianMs": 52.456,
+            "minMs": 50.202200000000005,
+            "maxMs": 74.0081,
+            "p95Ms": 74.0081,
+            "samples": 5
+          }
+        }
+      },
+      "uiPreparationReductionPercent": 43.4,
+      "mapReadyReductionPercent": 81.53,
+      "nativeDragCpuMedianMs": 0.967,
+      "nativeDragCpuP95MedianMs": 1.5196,
+      "nativeDragFrameP95MedianMs": 4.7519,
+      "geckoDragFrameP95MedianMs": 13,
+      "nativePreloadMedianMs": 1389.1623,
+      "nativeCaptureOverheadMedianMs": 171.361328125,
+      "warehouseSha256": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "nativeDragFrameCount": 450,
+      "sourcePoints": 12942,
+      "assertionsPassed": true
+    },
+    "cpu2": {
+      "summary": {
+        "gecko": {
+          "startupUiMs": {
+            "medianMs": 1051.204345703125,
+            "minMs": 955.810546875,
+            "maxMs": 1052.207763671875,
+            "p95Ms": 1052.207763671875,
+            "samples": 5
+          },
+          "startupPresentedMs": {
+            "medianMs": 1055.204345703125,
+            "minMs": 982.810546875,
+            "maxMs": 1097.109130859375,
+            "p95Ms": 1097.109130859375,
+            "samples": 5
+          },
+          "mapReadyMs": {
+            "medianMs": 436,
+            "minMs": 408,
+            "maxMs": 467,
+            "p95Ms": 467,
+            "samples": 5
+          }
+        },
+        "native": {
+          "startupUiMs": {
+            "medianMs": 357.71484375,
+            "minMs": 333.40673828125,
+            "maxMs": 451.78125,
+            "p95Ms": 451.78125,
+            "samples": 5
+          },
+          "startupPresentedMs": {
+            "medianMs": 364.385009765625,
+            "minMs": 344.955078125,
+            "maxMs": 457.411376953125,
+            "p95Ms": 457.411376953125,
+            "samples": 5
+          },
+          "mapReadyMs": {
+            "medianMs": 63.57690000000001,
+            "minMs": 54.9128,
+            "maxMs": 70.81519999999999,
+            "p95Ms": 70.81519999999999,
+            "samples": 5
+          }
+        }
+      },
+      "uiPreparationReductionPercent": 65.97,
+      "mapReadyReductionPercent": 85.42,
+      "nativeDragCpuMedianMs": 1.0464,
+      "nativeDragCpuP95MedianMs": 1.4556,
+      "nativeDragFrameP95MedianMs": 4.7784,
+      "geckoDragFrameP95MedianMs": 18,
+      "nativePreloadMedianMs": 1427.2776000000001,
+      "nativeCaptureOverheadMedianMs": 6.79443359375,
+      "warehouseSha256": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "nativeDragFrameCount": 450,
+      "sourcePoints": 12942,
+      "assertionsPassed": true
+    }
+  },
+  "affinityVerification": [
+    {
+      "pid": 68052,
+      "allowedMask": "0x3",
+      "logicalCpus": 2,
+      "systemMask": "0xffffffff"
+    }
+  ],
+  "metricDefinitions": {
+    "startupUiMs": "Launch request to Gecko first requestAnimationFrame callback following first 30 result rows; native to end of second egui UI pass. Code execution/render preparation, not proven photon latency; egui may perform layout passes before swap.",
+    "startupPresentedMs": "Different conservative presentation proxies: Gecko next animation-frame callback; native first OpenGL screenshot event received after GPU readback. Do not treat as identical endpoints or report percentage speedup from these.",
+    "mapReadyMs": "After 5 seconds idle from home, programmatic map navigation to terrain ready and two subsequent rendering opportunities (native waits 3 UI passes). Includes first native pin index construction. Backend frame scheduling differs.",
+    "drag": "450 frames per variant/configuration at 4x zoom; each run 90 native raw-input / Gecko trusted pointer movements. Native CPU excludes PNG encoding; hidden-desktop frame intervals are not monitor FPS or physical input latency.",
+    "cpu2": "The same Ryzen 9950X3D and GPUs with process affinity limited to 2 logical CPUs, not an actual low-end PC. This limit can change driver scheduling and need not monotonically increase every startup metric."
+  }
+}

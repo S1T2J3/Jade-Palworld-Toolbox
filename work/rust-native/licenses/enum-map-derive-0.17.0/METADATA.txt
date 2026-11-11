@@ -1,0 +1,4 @@
+enum-map-derive 0.17.0
+License: MIT OR Apache-2.0
+Repository: https://codeberg.org/xfix/enum-map
+Package: https://crates.io/crates/enum-map-derive/0.17.0

@@ -1,0 +1,4 @@
+oozextract 0.5.7
+License: MIT
+Repository: https://github.com/lvlvllvlvllvlvl/oozextract
+Package: https://crates.io/crates/oozextract/0.5.7

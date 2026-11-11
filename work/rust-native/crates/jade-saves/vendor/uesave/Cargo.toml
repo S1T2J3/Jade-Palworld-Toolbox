@@ -1,0 +1,30 @@
+[workspace]
+# This is a vendored dependency, not a Jade product/test workspace member.
+
+[package]
+name = "uesave"
+version = "0.7.1"
+edition = "2021"
+license = "MIT"
+authors = ["trumank", "oMaN-Rod and contributors"]
+repository = "https://github.com/oMaN-Rod/uesave-rs"
+
+[features]
+default = []
+tracing = ["dep:tracing"]
+cli = ["dep:serde_json"]
+gvas-json = ["dep:serde_json"]
+
+[dependencies]
+byteorder = "1.5"
+flate2 = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+indexmap = { version = "2", features = ["serde"] }
+bitflags = "2"
+tracing = { version = "0.1", optional = true }
+serde_json = { version = "1", optional = true, features = ["float_roundtrip"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("oodle"))'] }
+
