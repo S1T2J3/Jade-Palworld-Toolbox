@@ -92,7 +92,9 @@ function initItemCatalog({root, data, openMapPoint, navigate, itemIcon = () => '
     if (img.tagName === 'IMG' && img.closest('.ic-icon')) img.parentElement.textContent = '◇';
   },true);
   function renderMore() {
-    const batch = matches.slice(shown, shown + 72);
+    // The list viewport shows far fewer than 72 rows. Defer off-screen DOM;
+    // scrolling or the existing More button still exposes the entire catalog.
+    const batch = matches.slice(shown, shown + (shown===0 ? 24 : 72));
     list.insertAdjacentHTML('beforeend',batch.map(i => '<a class="ic-choice" href="' + escape(route(i.id)) +
       '" data-item="' + escape(i.id) + '" aria-current="' + (i.id === selected) + '">' + icon(i) + '<span class="ic-choice-name">' +
       escape(i.name) + '<small>' + escape(i.category) + (ranks[i.rarity] ? ' · ' + ranks[i.rarity] : '') + '</small></span></a>').join(''));
@@ -404,6 +406,8 @@ function initItemCatalog({root, data, openMapPoint, navigate, itemIcon = () => '
   scroll.addEventListener('scroll',() => {
     if (shown < matches.length && scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 30) renderMore();
   },{passive:true});
-  filterList(); show();
+  // The router immediately supplies the requested item after construction.
+  // Build the browser once; avoid rendering the default detail before a deep link.
+  filterList();
   return {show};
 }

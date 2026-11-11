@@ -41,7 +41,8 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       this.release(doc,request);
       return;
     }
-    if (event.target!==doc || !doc.getElementById("world-dialog")?.open) return;
+    if (event.target!==doc) return;
+    const worldDialog=doc.getElementById("world-dialog"),dialogOpen=worldDialog?.open===true;
     const report=(type,result)=>{
       const e=doc.createEvent("CustomEvent");
       e.initCustomEvent(type,false,false,JSON.stringify(result));doc.dispatchEvent(e);
@@ -51,6 +52,10 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       try {request=JSON.parse(event.detail);}catch{return;}
       if(typeof request?.requestId!=="string" || !request.requestId || request.requestId.length>100 ||
         typeof request.gameId!=="string" || !/^pal-[a-f0-9]{64}$/.test(request.gameId)) return;
+      // An asynchronous read may follow a user-started scan after activation has
+      // expired. Outside the dialog it can only use a world found by that scan;
+      // the parent also resolves its ID against the native discovery results.
+      if(!dialogOpen && !this.detectedGames?.has(request.gameId)) return;
       const query={gameId:request.gameId};
       this.sendQuery("PalAtlas:ReadTerminal",query)
         .then(result=>report("pal-terminal-result",{...result,...query,requestId:request.requestId}))
@@ -63,9 +68,11 @@ export class PalAtlasHostChild extends JSWindowActorChild {
       try {request=JSON.parse(event.detail);}catch{return;}
       if(!["auto","folder"].includes(request?.mode) ||
          !(Number.isSafeInteger(request.requestId) || (typeof request.requestId==="string" && request.requestId.length<=100))) return;
+      if(!dialogOpen && request.mode!=="auto") return;
       this.readWorlds(doc,request,result=>report("pal-game-saves-result",{...result,requestId:request.requestId}));
       return;
     }
+    if(!dialogOpen) return;
     if (event.type==="pal-new-window") this.sendAsyncMessage("PalAtlas:NewWindow");
     if (event.type==="pal-open-legacy") {
       this.sendQuery("PalAtlas:Legacy").catch(()=>report("pal-backup-result",{state:"error",text:"未能打开旧版迁移窗口。请在原浏览器中打开原手册并导出全部世界。"}));
@@ -82,15 +89,20 @@ export class PalAtlasHostChild extends JSWindowActorChild {
   }
   async readWorlds(doc,{mode,requestId},report) {
     const dialog=doc.getElementById("world-dialog");
-    const current=()=>this.document===doc && dialog.open && dialog.dataset.gameScanRequest===String(requestId);
+    const background=!dialog?.open;
+    const current=()=>this.document===doc && (background || dialog.open) && dialog.dataset.gameScanRequest===String(requestId);
     try {
       const result=await this.sendQuery("PalAtlas:ReadGameSaves",{mode});
       if (!current()) return;
-      if (mode==="auto" && result.state==="ok" && result.saves.length===0 && result.defaultDirectoryExists) {
+      this.detectedGames=new Set(result.state==="ok"?result.saves.map(world=>world.id):[]);
+      if (!background && mode==="auto" && result.state==="ok" && result.saves.length===0 && result.defaultDirectoryExists) {
         report({...result,pickingDefault:true});
         if (!current()) return;
         const picked=await this.sendQuery("PalAtlas:ReadGameSaves",{mode:"default-folder"});
-        if (current()) report(picked);
+        if (current()) {
+          this.detectedGames=new Set(picked.state==="ok"?picked.saves.map(world=>world.id):[]);
+          report(picked);
+        }
       } else report(result);
     } catch {
       if (current()) report({state:"error",message:"未能读取游戏存档。请重试。"});
