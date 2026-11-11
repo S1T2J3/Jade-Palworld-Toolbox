@@ -416,7 +416,6 @@ fn map_tools(ui: &mut egui::Ui, state: &mut MapState) {
     if !clip.is_positive() {
         return;
     }
-    let p = crate::design::palette(ui.ctx());
     let mut tools = ui.new_child(
         egui::UiBuilder::new()
             .id_salt("map-floating-tools")
@@ -428,23 +427,15 @@ fn map_tools(ui: &mut egui::Ui, state: &mut MapState) {
     );
     tools.spacing_mut().item_spacing = Vec2::new(0., 2.);
     tools.spacing_mut().button_padding = Vec2::splat(4.);
-    for (label, help) in [("＋", "放大"), ("−", "缩小"), ("全图", "查看全图")] {
-        if tools
-            .add_sized(
-                [34., 34.],
-                egui::Button::new(egui::RichText::new(label).size(if label == "全图" {
-                    12.
-                } else {
-                    20.
-                }))
-                .fill(p.surface),
-            )
-            .on_hover_text(help)
-            .clicked()
-        {
+    for (label, name, help) in [
+        ("plus", "plus", "放大"),
+        ("minus", "minimize", "缩小"),
+        ("reset", "worldmap", "查看全图"),
+    ] {
+        if crate::design::icon_button(&mut tools, name, help).clicked() {
             match label {
-                "＋" => state.zoom = (state.zoom * 1.5).min(32.),
-                "−" => state.zoom = (state.zoom / 1.5).max(1.),
+                "plus" => state.zoom = (state.zoom * 1.5).min(32.),
+                "minus" => state.zoom = (state.zoom / 1.5).max(1.),
                 _ => reset_camera(state),
             }
         }
@@ -498,7 +489,7 @@ fn floating_detail(
             ui.set_width(289.);
             ui.horizontal(|ui| {
                 ui.strong(format!("附近 {} 处点位", state.cluster.len()));
-                if ui.small_button("×").clicked() {
+                if crate::design::small_icon_button(ui, "close", "关闭").clicked() {
                     state.cluster.clear();
                 }
             });
@@ -537,7 +528,7 @@ fn floating_detail(
                     .color(crate::design::palette(ui.ctx()).muted),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.small_button("×").on_hover_text("关闭详情").clicked() {
+                if crate::design::small_icon_button(ui, "close", "关闭详情").clicked() {
                     state.selected.clear();
                 }
             });
@@ -634,7 +625,7 @@ fn point_row(
                 )),
         );
         check.spacing_mut().interact_size = Vec2::splat(18.);
-        if check.checkbox(&mut checked, "").changed() {
+        if crate::design::checkbox(&mut check, &mut checked, "").changed() {
             changed = Some(checked);
         }
         x += 24.;
@@ -701,7 +692,7 @@ fn coordinate_tools(ui: &mut egui::Ui, state: &mut MapState) {
             }
         }
     });
-    if ui.button("输入坐标添加").clicked() {
+    if crate::design::action(ui, "plus", "输入坐标添加").clicked() {
         state.editor = Some(Editor {
             id: String::new(),
             name: String::new(),
@@ -1084,7 +1075,7 @@ fn details(
         ui.label(&p.detail);
     }
     let mut done = done_set(notes).contains(&p.id);
-    if ui.checkbox(&mut done, "已完成").changed() {
+    if crate::design::checkbox(ui, &mut done, "已完成").changed() {
         set_done(notes, &p.id, done);
     }
     let key = text(&p.raw, "palKey");
@@ -1170,7 +1161,7 @@ fn details(
     }
     if p.category == "custom" {
         ui.horizontal(|ui| {
-            if ui.button("编辑点位").clicked() {
+            if crate::design::action(ui, "edit", "编辑点位").clicked() {
                 state.editor = Some(Editor {
                     id: p.id.clone(),
                     name: p.name.clone(),
@@ -1180,14 +1171,14 @@ fn details(
                     error: String::new(),
                 });
             }
-            if ui.button("删除点位").clicked() {
+            if crate::design::action(ui, "trash", "删除点位").clicked() {
                 state.delete_confirm = true;
             }
         });
         if state.delete_confirm {
             ui.label("确认删除这个自定义点位？");
             ui.horizontal(|ui| {
-                if ui.button("确认删除").clicked() {
+                if crate::design::action(ui, "trash", "确认删除").clicked() {
                     if let Some(a) = notes["custom"].as_array_mut() {
                         a.retain(|v| text(v, "id") != p.id);
                     }
@@ -1195,7 +1186,7 @@ fn details(
                     state.selected.clear();
                     state.delete_confirm = false;
                 }
-                if ui.button("取消").clicked() {
+                if crate::design::action(ui, "close", "取消").clicked() {
                     state.delete_confirm = false;
                 }
             });
@@ -1241,8 +1232,8 @@ fn edit_window(ctx: &egui::Context, state: &mut MapState, notes: &mut Value) {
             ui.colored_label(Color32::LIGHT_RED, &editor.error);
         }
         ui.horizontal(|ui| {
-            save = ui.button("保存点位").clicked();
-            close = ui.button("取消").clicked();
+            save = crate::design::action(ui, "save", "保存点位").clicked();
+            close = crate::design::action(ui, "close", "取消").clicked();
         });
     });
     if save {
@@ -1309,13 +1300,16 @@ pub fn show(
         map_header(ui, state);
         ui.menu_button("坐标定位", |ui| coordinate_tools(ui, state));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui
-                .button(if state.picking {
+            if crate::design::action(
+                ui,
+                if state.picking { "close" } else { "plus" },
+                if state.picking {
                     "取消选点"
                 } else {
-                    "＋ 添加点位"
-                })
-                .clicked()
+                    "添加点位"
+                },
+            )
+            .clicked()
             {
                 state.picking = !state.picking;
             }
@@ -1698,7 +1692,7 @@ pub fn show_spawns(
                         ui.set_width(274.);
                         ui.horizontal(|ui| {
                             ui.strong(&p.name);
-                            if ui.small_button("×").clicked() {
+                            if crate::design::small_icon_button(ui, "close", "关闭").clicked() {
                                 state.selected.clear();
                             }
                         });

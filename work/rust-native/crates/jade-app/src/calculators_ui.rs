@@ -44,6 +44,7 @@ pub struct Calculators {
     relic_category: String,
     relic_route: String,
     suitability_route: String,
+    suitability_dark: bool,
     active_page: String,
     page_inputs: std::collections::HashMap<String, SharedInput>,
     work_relevant: bool,
@@ -98,6 +99,7 @@ impl Default for Calculators {
             relic_category: String::new(),
             relic_route: String::new(),
             suitability_route: String::new(),
+            suitability_dark: false,
             active_page: String::new(),
             page_inputs: std::collections::HashMap::new(),
             work_relevant: true,
@@ -231,8 +233,8 @@ impl Calculators {
                 number_field(ui, "浓缩星级", &mut self.stars, 0..=4);
                 number_field(ui, "信赖等级", &mut self.trust, 0..=10);
                 ui.vertical(|ui| {
-                    ui.checkbox(&mut self.alpha, "头目 / 稀有个体");
-                    ui.checkbox(&mut self.awaken, "已觉醒");
+                    crate::design::checkbox(ui, &mut self.alpha, "头目 / 稀有个体");
+                    crate::design::checkbox(ui, &mut self.awaken, "已觉醒");
                 });
             });
             ui.add_space(10.);
@@ -305,7 +307,7 @@ impl Calculators {
                     number(&result["factor"])
                 ));
             }
-            if ui.link("查看远征要求与奖励 →").clicked() {
+            if crate::design::action(ui, "compass", "查看远征要求与奖励").clicked() {
                 *nav = Some("#work/expeditions".into());
             }
         });
@@ -327,7 +329,7 @@ impl Calculators {
                     if trait_badge(ui, d, &key).clicked() {
                         *nav = Some(format!("#details/passive/trait/{key}"));
                     }
-                    if ui.small_button("×").clicked() {
+                    if crate::design::small_icon_button(ui, "close", "移除此词条").clicked() {
                         self.traits.retain(|k| k != &key);
                     }
                 }
@@ -422,7 +424,7 @@ impl Calculators {
             ui.label("计划投球数");
             ui.add(egui::DragValue::new(&mut self.throws).range(1..=999));
         });
-        ui.collapsing("异常状态与额外加成",|ui|{ui.horizontal_wrapped(|ui|{egui::ComboBox::from_id_salt("capture-status").selected_text(status_name(&self.status)).show_ui(ui,|ui|{for key in ["","burn","wet","freeze","shock","mud","ivy","blind"]{ui.selectable_value(&mut self.status,key.into(),status_name(key));}});ui.checkbox(&mut self.poison,"中毒");ui.checkbox(&mut self.trap,"被捕兽夹困住");ui.checkbox(&mut self.critical,"帕鲁球命中弱点");ui.label("已生效伙伴捕获加成");ui.add(egui::DragValue::new(&mut self.partner).range(0..=25));});
+        ui.collapsing("异常状态与额外加成",|ui|{ui.horizontal_wrapped(|ui|{egui::ComboBox::from_id_salt("capture-status").selected_text(status_name(&self.status)).show_ui(ui,|ui|{for key in ["","burn","wet","freeze","shock","mud","ivy","blind"]{ui.selectable_value(&mut self.status,key.into(),status_name(key));}});crate::design::checkbox(ui, &mut self.poison,"中毒");crate::design::checkbox(ui, &mut self.trap,"被捕兽夹困住");crate::design::checkbox(ui, &mut self.critical,"帕鲁球命中弱点");ui.label("已生效伙伴捕获加成");ui.add(egui::DragValue::new(&mut self.partner).range(0..=25));});
             if ui.link("异常状态说明").clicked(){*nav=Some(format!("#guide/status/{}",if self.status.is_empty()&&self.poison{"poison"}else{&self.status}));}
             ui.label("念影喵背击、雪绵啾冻结和蒲蒲飞芽缠绕的伙伴技能需满足对应条件。按已生效的加成填写，每只 +1～+5。");
         });
@@ -621,7 +623,22 @@ impl Calculators {
                 ("dex", "帕鲁图鉴"),
                 ("warehouse", "当前世界仓库"),
             ] {
-                ui.selectable_value(&mut self.work_origin, id.into(), label);
+                let icon = match id {
+                    "manual" => "edit",
+                    "dex" => "paldex",
+                    _ => "warehouse",
+                };
+                let image = egui::Image::new(crate::design::icon_source(icon))
+                    .fit_to_exact_size(egui::Vec2::splat(16.))
+                    .tint(crate::design::palette(ui.ctx()).accent);
+                if ui
+                    .add(
+                        egui::Button::image_and_text(image, label).selected(self.work_origin == id),
+                    )
+                    .clicked()
+                {
+                    self.work_origin = id.into();
+                }
             }
             if previous != self.work_origin {
                 self.work_source.clear();
@@ -762,7 +779,7 @@ impl Calculators {
                 egui::DragValue::new(&mut self.work_level)
                     .range(0..=array(&data["levels"][&self.job]).len()),
             );
-            if ui.button("选择被动词条").clicked() {
+            if crate::design::action(ui, "list", "选择被动词条").clicked() {
                 self.picker = true;
             }
         });
@@ -786,7 +803,7 @@ impl Calculators {
                 if trait_badge(ui, d, &key).clicked() {
                     *nav = Some(format!("#details/passive/trait/{key}"));
                 }
-                if ui.small_button("×").on_hover_text("移除此词条").clicked() {
+                if crate::design::icon_button(ui, "close", "移除此词条").clicked() {
                     self.traits.retain(|v| v != &key);
                 }
             }
@@ -963,7 +980,7 @@ impl Calculators {
             }
         }
         ui.add_space(10.);
-        if ui.link("查看工作类伙伴技能 →").clicked() {
+        if crate::design::action(ui, "branch", "查看工作类伙伴技能").clicked() {
             *nav = Some("#details/partner/work".into());
         }
         crate::design::section(ui, "各等级基础值");
@@ -1038,66 +1055,24 @@ impl Calculators {
                         self.job = job.into();
                     }
                 }
-            }
-        }
-        let mut nav = None;
-        ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("job")
-                .selected_text(&self.job)
-                .show_ui(ui, |ui| {
-                    if let Some(jobs) = d.get("work-efficiency-data")["levels"].as_object() {
-                        for job in jobs.keys() {
-                            ui.selectable_value(&mut self.job, job.clone(), job);
-                        }
-                    }
-                });
-            ui.text_edit_singleline(&mut self.query);
-            if !self.query.is_empty() && ui.button("清除筛选").clicked() {
+            } else {
                 self.query.clear();
             }
-        });
-        let mut rows: Vec<_> = d
-            .species
-            .iter()
-            .enumerate()
-            .filter_map(|(i, p)| {
-                let key = text(p, "key");
-                let profile = &d.get("paldex-index-data")["profiles"][key];
-                let level = array(&profile["work"])
-                    .iter()
-                    .find(|x| x[0].as_str() == Some(&self.job))
-                    .and_then(|x| x[1].as_u64())
-                    .unwrap_or(0);
-                if level > 0 && (self.query.is_empty() || text(p, "zh").contains(&self.query)) {
-                    Some((i, p, level, profile))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        rows.sort_by_key(|(i, _, level, _)| (std::cmp::Reverse(*level), *i));
-        egui::ScrollArea::vertical().show_rows(ui, 52., rows.len(), |ui, range| {
-            for i in range {
-                let (_, p, level, profile) = rows[i];
-                ui.horizontal(|ui| {
-                    d.portrait(ui, text(p, "key"), 38.);
-                    if ui.link(text(p, "zh")).clicked() {
-                        nav = Some(format!("#paldex/{}", text(p, "key")));
-                    }
-                    ui.strong(format!("{} {level}", self.job));
-                    if array(&p["types"]).iter().any(|t| t == "dark") {
-                        ui.label("☾ 暗系");
-                    }
-                    if profile["nocturnal"] == true {
-                        ui.label("夜间工作");
-                    }
-                    if ui.link("计算效率").clicked() {
-                        nav = Some(format!("#work/efficiency/{}/{}", text(p, "key"), self.job));
-                    }
-                });
-            }
-        });
-        nav
+        }
+        let context = route
+            .trim_start_matches('#')
+            .split('/')
+            .nth(2)
+            .map(decode)
+            .filter(|key| d.pal(key).is_some());
+        crate::work_views::suitability(
+            ui,
+            d,
+            &mut self.job,
+            &mut self.query,
+            &mut self.suitability_dark,
+            context.as_deref(),
+        )
     }
 }
 fn number_field(

@@ -105,7 +105,13 @@ pub struct UpdateState {
     pub status: String,
     progress: Option<(u64, u64)>,
     notices: Vec<Notice>,
+    local_notices_seeded: bool,
+    remote_notices_loaded: bool,
     popup: Option<Notice>,
+    popup_shown: bool,
+    popup_pass: Option<u64>,
+    open_notices: HashSet<String>,
+    last_checked: Option<Instant>,
     pending: Option<Pending>,
     install_prompt: bool,
 }
@@ -129,7 +135,35 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"修复地图拖动时点位重新聚类、图标前后遮挡跳变的问题；补齐敌人头像、技能与果实、采集与生产等图片。修复仓库多词条卡片布局，完善工作效率词条等级图与全局搜索。测试版独立保存数据，可沿用现有 Rust 测试版档案。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],popup:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"恢复顶部页签、窗口关闭等矢量按钮、公告双卡和自动已阅弹窗、牧场图片与反查、工作适应性等级排行；修正被动与手术台词条图的大小、颜色和负阶级方向，补上可配子代父母头像及箭头。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+    }
+    /// Bundled notices arrive on the data worker. Seed them exactly once when
+    /// ready, retaining this version's fallback if an older package feed omits it.
+    /// A successful remote response always takes precedence over bundled data.
+    pub fn seed_local_notices(&mut self, value: &Value) {
+        if self.local_notices_seeded || self.remote_notices_loaded {
+            return;
+        }
+        let Some(rows) = value.get("announcements").filter(|rows| rows.is_array()) else {
+            return;
+        };
+        let Ok(mut notices) = serde_json::from_value::<Vec<Notice>>(rows.clone()) else {
+            return;
+        };
+        deduplicate_notices(&mut notices);
+        let current_id = format!("rust-release-{VERSION}");
+        if !notices.iter().any(|notice| notice.id == current_id) {
+            if let Some(current) = self
+                .notices
+                .iter()
+                .find(|notice| notice.id == current_id)
+                .cloned()
+            {
+                notices.insert(0, current);
+            }
+        }
+        self.notices = notices;
+        self.local_notices_seeded = true;
     }
     fn check(&mut self, ctx: &egui::Context) {
         if self.busy {
@@ -195,8 +229,11 @@ impl UpdateState {
             match event {
                 Event::Checked(result, notices) => {
                     self.busy = false;
+                    self.last_checked = Some(Instant::now());
                     if !notices.is_empty() {
-                        self.notices = notices
+                        self.notices = notices;
+                        deduplicate_notices(&mut self.notices);
+                        self.remote_notices_loaded = true;
                     }
                     match result {
                         Ok(Some(release)) => {
@@ -236,58 +273,29 @@ impl UpdateState {
         if self.busy {
             ctx.request_repaint_after(Duration::from_millis(150));
         }
-        if !state["readAnnouncements"].is_array() {
-            state["readAnnouncements"] = json!([])
-        }
-        if self.popup.is_none() {
-            if let Some(n) = self.notices.iter().find(|n| {
-                n.popup
-                    && !state["readAnnouncements"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .any(|id| id.as_str() == Some(&n.id))
-            }) {
-                self.popup = Some(n.clone());
-                state["readAnnouncements"]
-                    .as_array_mut()
-                    .unwrap()
-                    .push(json!(n.id));
-            }
-        }
-        if let Some(notice) = self.popup.clone() {
-            let mut open = true;
-            egui::Window::new(&notice.title)
-                .id(egui::Id::new("rust-announcement-popup"))
-                .collapsible(false)
-                .resizable(true)
-                .default_width(480.0)
-                .open(&mut open)
-                .show(ctx, |ui| {
-                    ui.label(&notice.published_at);
-                    egui::ScrollArea::vertical()
-                        .max_height(400.0)
-                        .show(ui, |ui| {
-                            ui.label(&notice.body);
-                        });
-                    ui.small("本公告已自动标记为已阅。");
-                    if ui.button("知道了").clicked() {
-                        self.popup = None;
-                    }
-                });
-            if !open {
-                self.popup = None
-            }
+        self.queue_announcement(state);
+        if !self.install_prompt {
+            self.show_notice_popup(ctx);
         }
         let mut action = None;
         if self.install_prompt {
-            let mut open = true;
-            egui::Window::new("更新已准备好")
-                .id(egui::Id::new("rust-update-install-prompt"))
-                .collapsible(false)
-                .resizable(false)
-                .open(&mut open)
+            let mut close = false;
+            let palette = crate::design::palette(ctx);
+            let modal = egui::Modal::new(egui::Id::new("rust-update-install-prompt"))
+                .frame(
+                    egui::Frame::new()
+                        .fill(palette.surface)
+                        .stroke(egui::Stroke::new(1., palette.line))
+                        .corner_radius(12)
+                        .inner_margin(18),
+                )
                 .show(ctx, |ui| {
+                    ui.set_width(490f32.min(ctx.content_rect().width() - 64.));
+                    if crate::design::dialog_header(ui, "download", "安装更新并重启？").clicked()
+                    {
+                        close = true;
+                    }
+                    ui.add_space(10.);
                     ui.label(format!(
                         "Rust 测试版 {} 已下载并校验通过。",
                         self.pending
@@ -296,21 +304,23 @@ impl UpdateState {
                             .unwrap_or("")
                     ));
                     ui.label("现在安装并重启应用吗？");
-                    ui.horizontal(|ui| {
-                        if ui.button("是，安装并重启").clicked() {
+                    ui.add_space(10.);
+                    ui.horizontal_wrapped(|ui| {
+                        if crate::design::action(ui, "restart", "是，安装并重启").clicked() {
                             match begin_install(&self.root, &self.exe) {
                                 Ok(()) => action = Some(UpdateAction::Restart),
                                 Err(e) => self.status = e,
                             }
                             self.install_prompt = false;
                         }
-                        if ui.button("否，下次启动时安装").clicked() {
+                        if crate::design::action(ui, "close", "否，下次启动时安装").clicked()
+                        {
                             self.install_prompt = false;
                             self.status = "更新已保留，将在下次启动时安装。".into();
                         }
                     });
                 });
-            if !open {
+            if close || modal.should_close() {
                 self.install_prompt = false;
                 self.status = "更新已保留，将在下次启动时安装。".into();
             }
@@ -318,73 +328,369 @@ impl UpdateState {
         action
     }
     pub fn show(&mut self, ui: &mut egui::Ui, state: &mut Value) -> Option<UpdateAction> {
-        ui.heading("公告与更新");
-        ui.label(format!("Jade · 幻兽帕鲁工具箱 Rust 原生测试版 {VERSION}"));
-        ui.label("测试版仅接收 Rust 测试通道更新，不会替换正式版。");
-        let mut check = state["autoCheckUpdates"] != false;
-        let mut download = state["autoDownload"] == true;
-        if ui.checkbox(&mut check, "启动后检查测试版更新").changed() {
-            state["autoCheckUpdates"] = json!(check)
-        }
-        if ui
-            .checkbox(&mut download, "自动下载更新（优先增量下载）")
-            .changed()
-        {
-            state["autoDownload"] = json!(download)
-        }
-        ui.label(&self.status);
-        if let Some((done, total)) = self.progress {
-            ui.add(
-                egui::ProgressBar::new(if total > 0 {
-                    done as f32 / total as f32
+        egui::ScrollArea::vertical()
+            .id_salt("release-center-scroll")
+            .show(ui, |ui| {
+                if ui.available_width() >= 850. {
+                    let width = (ui.available_width() - 18.) / 2.2;
+                    ui.horizontal_top(|ui| {
+                        ui.spacing_mut().item_spacing.x = 18.;
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(width * 1.2, 0.),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                self.notices_card(ui, state, width * 1.2);
+                            },
+                        );
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(width, 0.),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                self.updates_card(ui, state, width);
+                            },
+                        );
+                    });
                 } else {
-                    0.0
-                })
-                .text(format!(
-                    "{:.1} / {:.1} MB",
-                    done as f64 / 1e6,
-                    total as f64 / 1e6
-                )),
-            );
-        }
-        ui.horizontal(|ui| {
-            if ui
-                .add_enabled(!self.busy, egui::Button::new("检查更新"))
-                .clicked()
-            {
-                self.check(ui.ctx())
-            }
-            if self.latest.is_some()
-                && ui
-                    .add_enabled(!self.busy, egui::Button::new("下载更新"))
-                    .clicked()
-            {
-                self.download(ui.ctx())
-            }
-            if self.pending.is_some() && ui.button("安装已下载的更新").clicked() {
-                self.install_prompt = true;
-            }
-        });
-        if let Some(release) = &self.latest {
-            ui.hyperlink_to(
-                format!("测试版 {} 发布页", release.manifest.version),
-                &release.url,
-            );
-            ui.collapsing("更新说明", |ui| {
-                ui.label(&release.notes);
+                    let width = ui.available_width();
+                    self.notices_card(ui, state, width);
+                    ui.add_space(12.);
+                    self.updates_card(ui, state, width);
+                }
             });
-        }
-        ui.separator();
-        for notice in &self.notices {
-            ui.group(|ui| {
-                ui.strong(&notice.title);
-                ui.small(&notice.published_at);
-                ui.label(&notice.body);
-            });
-        }
+        // A notice opened from this screen must also work in an offline/QA run
+        // where the background update poller is intentionally not executed.
+        self.show_notice_popup(ui.ctx());
         None
     }
+    fn queue_announcement(&mut self, state: &mut Value) {
+        if self.popup.is_some()
+            || self.popup_shown
+            || self.install_prompt
+            || state["announcementPopups"] == false
+        {
+            return;
+        }
+        if let Some(notice) = self
+            .notices
+            .iter()
+            .find(|n| n.popup && !notice_read(state, &n.id))
+            .cloned()
+        {
+            mark_notice_read(state, &notice.id);
+            self.popup = Some(notice);
+            self.popup_shown = true;
+        }
+    }
+    /// The original notice dialog has its own heading and a real close icon.
+    /// Keep one draw per egui pass when both the app poller and this page run.
+    pub fn show_notice_popup(&mut self, ctx: &egui::Context) {
+        let Some(notice) = self.popup.clone() else {
+            return;
+        };
+        if self.install_prompt || self.popup_pass == Some(ctx.cumulative_pass_nr()) {
+            return;
+        }
+        self.popup_pass = Some(ctx.cumulative_pass_nr());
+        let palette = crate::design::palette(ctx);
+        let mut close = false;
+        let modal = egui::Modal::new(egui::Id::new("rust-announcement-popup"))
+            .frame(
+                egui::Frame::new()
+                    .fill(palette.surface)
+                    .stroke(egui::Stroke::new(1., palette.line))
+                    .corner_radius(12)
+                    .inner_margin(20),
+            )
+            .show(ctx, |ui| {
+                ui.set_width(580f32.min(ctx.content_rect().width() - 72.).max(240.));
+                let response = crate::design::dialog_header(ui, "bell", &notice.title);
+                update_test_rect(ui, "notice-close", &response);
+                if response.clicked() {
+                    close = true;
+                }
+                let date = notice_date(&notice.published_at);
+                if !date.is_empty() {
+                    ui.add_space(5.);
+                    ui.weak(date);
+                }
+                ui.add_space(12.);
+                egui::ScrollArea::vertical()
+                    .id_salt(("notice-body", &notice.id))
+                    .max_height((ctx.content_rect().height() * 0.62 - 130.).clamp(100., 460.))
+                    .show(ui, |ui| {
+                        ui.label(&notice.body);
+                    });
+                ui.add_space(12.);
+                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.small("本公告已自动标记为已阅。");
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let response = crate::design::action(ui, "check", "知道了");
+                        update_test_rect(ui, "notice-confirm", &response);
+                        if response.clicked() {
+                            close = true;
+                        }
+                    });
+                });
+            });
+        if close || modal.should_close() {
+            self.popup = None;
+        }
+    }
+    fn notices_card(&mut self, ui: &mut egui::Ui, state: &mut Value, width: f32) {
+        crate::design::card(ui).inner_margin(18).show(ui, |ui| {
+            ui.set_width((width - 36.).max(180.));
+            ui.horizontal_wrapped(|ui| {
+                crate::design::icon(ui, "bell", 21.);
+                ui.label(egui::RichText::new("公告").size(20.).strong());
+                let unread = self.unread_count(state);
+                if unread > 0 {
+                    crate::design::badge(ui, format!("{unread} 条未读"));
+                    let response = crate::design::action(ui, "check", "全部标为已读");
+                    update_test_rect(ui, "notice-read-all", &response);
+                    if response.clicked() {
+                        for notice in &self.notices {
+                            mark_notice_read(state, &notice.id);
+                        }
+                    }
+                }
+            });
+            ui.add_space(8.);
+            let mut popups = state["announcementPopups"] != false;
+            let response = crate::design::checkbox(ui, &mut popups, "弹窗提醒重要公告");
+            update_test_rect(ui, "notice-popup-setting", &response);
+            if response.changed() {
+                state["announcementPopups"] = json!(popups);
+                if !popups {
+                    self.popup = None;
+                }
+            }
+            ui.small("关闭后，重要公告仍可在这里查看。");
+            if self.notices.is_empty() {
+                ui.add_space(12.);
+                ui.weak("暂时没有公告，检查更新可获取最新内容。");
+            }
+            for notice in self.notices.clone() {
+                ui.add_space(8.);
+                ui.separator();
+                ui.add_space(5.);
+                let open = self.open_notices.contains(&notice.id);
+                let unread = !notice_read(state, &notice.id);
+                ui.horizontal_top(|ui| {
+                    let width = (ui.available_width() - if unread { 55. } else { 0. }).max(100.);
+                    let response = notice_heading(ui, &notice.title, open, width);
+                    update_test_rect(ui, &format!("notice-heading:{}", notice.id), &response);
+                    if response.clicked() {
+                        if open {
+                            self.open_notices.remove(&notice.id);
+                        } else {
+                            self.open_notices.insert(notice.id.clone());
+                            mark_notice_read(state, &notice.id);
+                        }
+                    }
+                    if unread {
+                        crate::design::badge(ui, "未读");
+                    }
+                });
+                let date = notice_date(&notice.published_at);
+                if !date.is_empty() {
+                    ui.weak(date);
+                }
+                if self.open_notices.contains(&notice.id) {
+                    ui.add_space(6.);
+                    ui.label(&notice.body);
+                    let response = crate::design::action(ui, "bell", "弹窗查看");
+                    update_test_rect(ui, &format!("notice-popup:{}", notice.id), &response);
+                    if response.clicked() {
+                        mark_notice_read(state, &notice.id);
+                        self.popup = Some(notice.clone());
+                        self.popup_shown = true;
+                    }
+                }
+            }
+        });
+    }
+    fn updates_card(&mut self, ui: &mut egui::Ui, state: &mut Value, width: f32) {
+        crate::design::card(ui).inner_margin(18).show(ui, |ui| {
+            ui.set_width((width - 36.).max(180.));
+            ui.horizontal_wrapped(|ui| {
+                crate::design::icon(ui, "download", 21.);
+                ui.label(egui::RichText::new("软件更新").size(20.).strong());
+                ui.weak(format!("当前版本 v{VERSION}"));
+            });
+            ui.add_space(10.);
+            ui.label(&self.status);
+            if let Some(last) = self.last_checked {
+                let age = last.elapsed().as_secs();
+                ui.small(if age < 60 {
+                    "上次检查：刚刚".to_owned()
+                } else {
+                    format!("上次检查：{} 分钟前", age / 60)
+                });
+            }
+            if let Some((done, total)) = self.progress {
+                ui.add(
+                    egui::ProgressBar::new(if total > 0 {
+                        done as f32 / total as f32
+                    } else {
+                        0.
+                    })
+                    .text(format!(
+                        "{:.1} / {:.1} MB",
+                        done as f64 / 1e6,
+                        total as f64 / 1e6
+                    )),
+                );
+            }
+            ui.add_space(7.);
+            ui.horizontal_wrapped(|ui| {
+                ui.add_enabled_ui(!self.busy, |ui| {
+                    let response = crate::design::action(ui, "refresh", "检查更新");
+                    update_test_rect(ui, "update-check", &response);
+                    if response.clicked() {
+                        self.check(ui.ctx());
+                    }
+                });
+                if self.latest.is_some() {
+                    ui.add_enabled_ui(!self.busy, |ui| {
+                        let response = crate::design::action(ui, "download", "下载更新");
+                        update_test_rect(ui, "update-download", &response);
+                        if response.clicked() {
+                            self.download(ui.ctx());
+                        }
+                    });
+                }
+                if self.pending.is_some() {
+                    let response = crate::design::action(ui, "restart", "立即安装并重启");
+                    update_test_rect(ui, "update-install", &response);
+                    if response.clicked() {
+                        self.install_prompt = true;
+                    }
+                }
+            });
+            ui.add_space(10.);
+            ui.separator();
+            ui.add_space(5.);
+            let mut check = state["autoCheckUpdates"] != false;
+            let response = crate::design::checkbox(ui, &mut check, "启动后检查测试版更新");
+            update_test_rect(ui, "update-auto-check", &response);
+            if response.changed() {
+                state["autoCheckUpdates"] = json!(check);
+            }
+            let mut download = state["autoDownload"] == true;
+            let response = crate::design::checkbox(ui, &mut download, "自动下载更新");
+            update_test_rect(ui, "update-auto-download", &response);
+            if response.changed() {
+                state["autoDownload"] = json!(download);
+            }
+            ui.small("打开工具箱后会在后台检查更新，优先下载增量包，下载完成后询问是否立即重启。");
+            if let Some(release) = &self.latest {
+                ui.add_space(10.);
+                egui::CollapsingHeader::new("版本说明")
+                    .id_salt("rust-release-notes")
+                    .show(ui, |ui| {
+                        ui.label(&release.notes);
+                    });
+            }
+            ui.add_space(10.);
+            let url = self
+                .latest
+                .as_ref()
+                .map(|r| r.url.as_str())
+                .unwrap_or("https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases");
+            let response =
+                crate::design::action(ui, "external", "查看 GitHub 发布页").on_hover_text(url);
+            update_test_rect(ui, "update-release-link", &response);
+            if response.clicked() {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+            }
+            ui.add_space(5.);
+            ui.small("Rust 测试版使用独立更新通道。");
+        });
+    }
 }
+
+fn deduplicate_notices(notices: &mut Vec<Notice>) {
+    let mut seen = HashSet::new();
+    notices.retain(|notice| !notice.id.trim().is_empty() && seen.insert(notice.id.clone()));
+}
+fn notice_read(state: &Value, id: &str) -> bool {
+    state["readAnnouncements"]
+        .as_array()
+        .is_some_and(|ids| ids.iter().any(|v| v.as_str() == Some(id)))
+}
+fn notice_heading(ui: &mut egui::Ui, title: &str, open: bool, width: f32) -> egui::Response {
+    let palette = crate::design::palette(ui.ctx());
+    let title = ui.painter().layout(
+        title.to_owned(),
+        egui::FontId::proportional(15.),
+        palette.ink,
+        (width - 27.).max(60.),
+    );
+    let height = (title.size().y + 10.).max(34.);
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::click());
+    if response.hovered() {
+        ui.painter().rect_filled(rect, 5, palette.soft);
+    }
+    egui::Image::new(crate::design::icon_source(if open {
+        "down"
+    } else {
+        "right"
+    }))
+    .tint(palette.accent)
+    .paint_at(
+        ui,
+        egui::Rect::from_center_size(
+            egui::pos2(rect.left() + 9., rect.top() + 17.),
+            egui::Vec2::splat(14.),
+        ),
+    );
+    ui.painter().galley(
+        egui::pos2(rect.left() + 25., rect.top() + 5.),
+        title,
+        palette.ink,
+    );
+    response.on_hover_cursor(egui::CursorIcon::PointingHand)
+}
+fn mark_notice_read(state: &mut Value, id: &str) {
+    if !state["readAnnouncements"].is_array() {
+        state["readAnnouncements"] = json!([]);
+    }
+    if !notice_read(state, id) {
+        state["readAnnouncements"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(id));
+    }
+}
+fn notice_date(value: &str) -> String {
+    let Some(day) = value.get(..10) else {
+        return String::new();
+    };
+    let b = day.as_bytes();
+    if b.len() == 10
+        && b[4] == b'-'
+        && b[7] == b'-'
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
+    {
+        format!("{}年{}月{}日", &day[..4], &day[5..7], &day[8..10])
+    } else {
+        String::new()
+    }
+}
+#[cfg(test)]
+fn update_test_rect(ui: &egui::Ui, key: &str, response: &egui::Response) {
+    ui.ctx().data_mut(|d| {
+        d.insert_temp(
+            egui::Id::new(format!("update-control:{key}")),
+            response.rect,
+        )
+    });
+}
+#[cfg(not(test))]
+fn update_test_rect(_: &egui::Ui, _: &str, _: &egui::Response) {}
 
 fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
@@ -1294,6 +1600,220 @@ mod tests {
             version: "2.0.0-beta.2".into(),
             files,
         }
+    }
+    #[test]
+    fn local_notice_seed_waits_for_data_and_preserves_current_version() {
+        let root = dir();
+        let mut updates = UpdateState::new(root.clone(), root.join(EXE));
+        let current = format!("rust-release-{VERSION}");
+        updates.seed_local_notices(&Value::Null);
+        assert!(!updates.local_notices_seeded);
+        let old = json!({"id":"previous","title":"旧版本公告","body":"本地历史内容","popup":true});
+        updates.seed_local_notices(&json!({"announcements":[old.clone(),old]}));
+        assert!(updates.local_notices_seeded);
+        assert_eq!(updates.notices.len(), 2);
+        assert_eq!(updates.notices[0].id, current);
+        assert_eq!(updates.notices[1].id, "previous");
+        updates.seed_local_notices(
+            &json!({"announcements":[{"id":"other","title":"另一个公告","body":"不会重复加载"}]}),
+        );
+        assert_eq!(updates.notices.len(), 2);
+        assert_eq!(updates.notices[1].id, "previous");
+
+        let mut existing = UpdateState::new(root.clone(), root.join(EXE));
+        existing.seed_local_notices(&json!({"announcements":[
+            {"id":current,"title":"随包本版公告","body":"完整的随包正文","publishedAt":"2026-11-11T12:00:00Z"},
+            {"id":format!("rust-release-{VERSION}"),"title":"重复本版","body":"不应覆盖第一条"}
+        ]}));
+        assert_eq!(existing.notices.len(), 1);
+        assert_eq!(existing.notices[0].title, "随包本版公告");
+        assert_eq!(existing.notices[0].body, "完整的随包正文");
+        let _ = fs::remove_dir_all(root);
+    }
+    #[test]
+    fn remote_notice_response_is_not_overwritten_by_late_local_data() {
+        let root = dir();
+        let (mut updates, mut state) = notice_ui_state(&root);
+        state["announcementPopups"] = json!(false);
+        let remote = Notice {
+            id: "remote-newest".into(),
+            title: "网络新公告".into(),
+            body: "远端最新内容".into(),
+            published_at: "2026-11-11T12:00:00Z".into(),
+            popup: true,
+        };
+        let (sender, receiver) = mpsc::channel();
+        updates.channel = Some(receiver);
+        sender
+            .send(Event::Checked(Ok(None), vec![remote.clone(), remote]))
+            .unwrap();
+        let ctx = egui::Context::default();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            updates.tick(ctx, &mut state);
+        });
+        assert!(updates.remote_notices_loaded);
+        assert_eq!(updates.notices.len(), 1);
+        assert_eq!(updates.notices[0].id, "remote-newest");
+        updates.seed_local_notices(&json!({"announcements":[{"id":"bundled-old","title":"旧本地公告","body":"不得覆盖网络最新公告"}]}));
+        assert_eq!(updates.notices.len(), 1);
+        assert_eq!(updates.notices[0].id, "remote-newest");
+        assert_eq!(updates.notices[0].body, "远端最新内容");
+        let _ = fs::remove_dir_all(root);
+    }
+    fn notice_ui_state(root: &Path) -> (UpdateState, Value) {
+        let mut updates = UpdateState::new(root.to_path_buf(), root.join(EXE));
+        updates.checked = true;
+        updates.notices = vec![
+            Notice {
+                id: "new".into(),
+                title: "本次更新公告".into(),
+                body: "第一段公告内容。\n\n第二段保留换行。".into(),
+                published_at: "2026-11-11T12:00:00Z".into(),
+                popup: true,
+            },
+            Notice {
+                id: "old".into(),
+                title: "上一次更新公告".into(),
+                body: "此前版本说明。".into(),
+                published_at: "2026-11-10T12:00:00Z".into(),
+                popup: true,
+            },
+        ];
+        (
+            updates,
+            json!({"autoCheckUpdates":false,"autoDownload":false,"readAnnouncements":[]}),
+        )
+    }
+    fn notice_ui_frame(
+        ctx: &egui::Context,
+        updates: &mut UpdateState,
+        state: &mut Value,
+        events: Vec<egui::Event>,
+        size: egui::Vec2,
+    ) {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                events,
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    updates.show(ui, state);
+                });
+            },
+        );
+    }
+    fn notice_ui_click(
+        ctx: &egui::Context,
+        updates: &mut UpdateState,
+        state: &mut Value,
+        key: &str,
+        size: egui::Vec2,
+    ) {
+        for _ in 0..2 {
+            notice_ui_frame(ctx, updates, state, vec![], size);
+        }
+        let rect = ctx
+            .data(|d| d.get_temp::<egui::Rect>(egui::Id::new(format!("update-control:{key}"))))
+            .unwrap_or_else(|| panic!("missing notice control {key}"));
+        assert!(rect.is_positive(), "invisible control {key}");
+        let pos = rect.center();
+        for pressed in [true, false] {
+            notice_ui_frame(
+                ctx,
+                updates,
+                state,
+                vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+                size,
+            );
+        }
+    }
+    #[test]
+    fn notice_center_native_controls_open_read_reopen_and_close_popup() {
+        let root = dir();
+        let (mut updates, mut state) = notice_ui_state(&root);
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        crate::design::apply(&ctx, "moon");
+        let size = egui::vec2(1200., 800.);
+        notice_ui_click(&ctx, &mut updates, &mut state, "notice-heading:new", size);
+        assert!(updates.open_notices.contains("new"));
+        assert!(notice_read(&state, "new"));
+        assert_eq!(updates.unread_count(&state), 1);
+        notice_ui_click(&ctx, &mut updates, &mut state, "notice-popup:new", size);
+        assert_eq!(updates.popup.as_ref().map(|n| n.id.as_str()), Some("new"));
+        notice_ui_click(&ctx, &mut updates, &mut state, "notice-close", size);
+        assert!(updates.popup.is_none());
+        notice_ui_click(&ctx, &mut updates, &mut state, "notice-popup:new", size);
+        assert!(updates.popup.is_some());
+        notice_ui_click(&ctx, &mut updates, &mut state, "notice-confirm", size);
+        assert!(updates.popup.is_none());
+        notice_ui_click(&ctx, &mut updates, &mut state, "notice-read-all", size);
+        assert_eq!(updates.unread_count(&state), 0);
+        assert_eq!(state["readAnnouncements"].as_array().unwrap().len(), 2);
+        let _ = fs::remove_dir_all(root);
+    }
+    #[test]
+    fn announcement_popup_preference_and_automatic_read_receipt_are_preserved() {
+        let root = dir();
+        let (mut updates, mut state) = notice_ui_state(&root);
+        state["announcementPopups"] = json!(false);
+        updates.queue_announcement(&mut state);
+        assert!(updates.popup.is_none());
+        assert_eq!(updates.unread_count(&state), 2);
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        crate::design::apply(&ctx, "moon");
+        notice_ui_click(
+            &ctx,
+            &mut updates,
+            &mut state,
+            "notice-popup-setting",
+            egui::vec2(760., 800.),
+        );
+        assert_eq!(state["announcementPopups"], true);
+        updates.queue_announcement(&mut state);
+        assert_eq!(updates.popup.as_ref().map(|n| n.id.as_str()), Some("new"));
+        assert!(notice_read(&state, "new"));
+        updates.popup = None;
+        updates.queue_announcement(&mut state);
+        assert!(
+            updates.popup.is_none(),
+            "one automatic notice per launch; other notices stay in the list"
+        );
+        assert_eq!(updates.unread_count(&state), 1);
+        assert_eq!(notice_date("2026-11-11T12:00:00Z"), "2026年11月11日");
+        assert!(notice_date("").is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+    #[test]
+    fn update_settings_and_busy_buttons_respond_to_native_input() {
+        let root = dir();
+        let (mut updates, mut state) = notice_ui_state(&root);
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        crate::design::apply(&ctx, "moon");
+        let size = egui::vec2(1200., 800.);
+        notice_ui_click(&ctx, &mut updates, &mut state, "update-auto-check", size);
+        assert_eq!(state["autoCheckUpdates"], true);
+        notice_ui_click(&ctx, &mut updates, &mut state, "update-auto-download", size);
+        assert_eq!(state["autoDownload"], true);
+        updates.busy = true;
+        notice_ui_click(&ctx, &mut updates, &mut state, "update-check", size);
+        assert!(
+            updates.channel.is_none(),
+            "busy controls must not start another network request"
+        );
+        let _ = fs::remove_dir_all(root);
     }
     #[test]
     fn paths_and_channel_are_strict() {

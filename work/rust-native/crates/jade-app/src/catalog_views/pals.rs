@@ -555,6 +555,20 @@ pub(super) fn passive(
     }
     if page == "details/surgery" {
         section(ui, "手术台与更改性别", |ui| {
+            if let Some(uri) = d.get("pal-details-data")["tableIcon"].as_str() {
+                if ui
+                    .add(
+                        egui::Image::new(d.image_source(uri))
+                            .fit_to_exact_size(Vec2::splat(68.))
+                            .sense(egui::Sense::click()),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .on_hover_text("建造帕鲁手术台")
+                    .clicked()
+                {
+                    *nav = Some("#work/facilities/Pal_Surgery_Table".into());
+                }
+            }
             route(
                 ui,
                 "#work/facilities/Pal_Surgery_Table",

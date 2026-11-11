@@ -1,3 +1,4 @@
+use crate::design::{action as icon_action, icon_button};
 use crate::{
     data::{Data, array, search, text},
     store::Store,
@@ -223,13 +224,27 @@ impl Breeding {
             ui.spacing_mut().interact_size.y = 25.;
             ui.spacing_mut().button_padding.y = 3.;
             ui.horizontal(|ui| {
-                if ui
-                    .selectable_value(&mut self.reverse, false, "查配种伙伴")
-                    .changed()
-                    | ui.selectable_value(&mut self.reverse, true, "反查双亲")
-                        .changed()
-                {
-                    self.lookup_page = 0;
+                for (reverse, icon, label) in [
+                    (false, "branch", "查配种伙伴"),
+                    (true, "parents", "反查双亲"),
+                ] {
+                    if ui
+                        .add(
+                            egui::Button::image_and_text(
+                                egui::Image::new(crate::design::icon_source(icon))
+                                    .fit_to_exact_size(Vec2::splat(15.))
+                                    .tint(ui.visuals().text_color()),
+                                label,
+                            )
+                            .selected(self.reverse == reverse),
+                        )
+                        .clicked()
+                    {
+                        if self.reverse != reverse {
+                            self.lookup_page = 0;
+                        }
+                        self.reverse = reverse;
+                    }
                 }
             });
             let p = &d.species[self.lookup_pal];
@@ -266,7 +281,7 @@ impl Breeding {
                     });
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("＋ 加入仓库").clicked() {
+                    if icon_action(ui, "plus", "加入仓库").clicked() {
                         self.edit = Some(new_record(key));
                     }
                 });
@@ -409,10 +424,10 @@ impl Breeding {
                     records.len(),
                     kinds.len()
                 ));
-                if ui.button("＋ 添加帕鲁").clicked() {
+                if icon_action(ui, "plus", "添加帕鲁").clicked() {
                     self.edit = Some(new_record(text(&d.species[self.pal], "key")));
                 }
-                if ui.link("可配出的帕鲁 →").clicked() {
+                if icon_action(ui, "egg", "可配出的帕鲁").clicked() {
                     nav = Some("#offspring".into());
                 }
             });
@@ -427,7 +442,7 @@ impl Breeding {
                 {
                     self.stock_page = 0;
                 }
-                if !self.stock_filter.is_empty() && ui.button("清除").clicked() {
+                if !self.stock_filter.is_empty() && icon_action(ui, "reset", "清除").clicked() {
                     self.stock_filter.clear();
                     self.stock_page = 0;
                 }
@@ -480,7 +495,7 @@ impl Breeding {
                     "没有匹配的仓库成员"
                 });
                 ui.label("每只个体独立保留名字、性别和词条，同种帕鲁可以拥有多只。");
-                if ui.button("添加第一只帕鲁").clicked() {
+                if icon_action(ui, "plus", "添加第一只帕鲁").clicked() {
                     self.edit = Some(new_record(text(&d.species[self.pal], "key")));
                 }
             });
@@ -555,13 +570,14 @@ impl Breeding {
                                 });
                                 ui.separator();
                                 ui.horizontal(|ui| {
-                                    if ui.small_button("编辑").clicked() {
+                                    if crate::design::small_action(ui, "edit", "编辑").clicked() {
                                         self.edit = Some(p.clone());
                                     }
-                                    if ui.small_button("＋ 同种").clicked() {
+                                    if crate::design::small_action(ui, "plus", "同种").clicked() {
                                         self.edit = Some(new_record(key));
                                     }
-                                    if ui.small_button("移除").clicked() {
+                                    if crate::design::small_action(ui, "trash", "移除").clicked()
+                                    {
                                         remove = Some(text(p, "id").to_owned());
                                     }
                                 });
@@ -622,7 +638,8 @@ impl Breeding {
                         text(p, "name"),
                         d.pal_name(text(p, "speciesKey"))
                     ));
-                    if p["terminalArchived"] != true && ui.small_button("恢复手工记录").clicked()
+                    if p["terminalArchived"] != true
+                        && crate::design::small_action(ui, "reset", "恢复手工记录").clicked()
                     {
                         restore = Some(p.clone());
                     }
@@ -648,7 +665,7 @@ impl Breeding {
                 "输入准确的中文名、英文名或游戏编号，用逗号、顿号或换行分隔；重复名字会分别添加。",
             );
             ui.text_edit_multiline(&mut self.batch);
-            if ui.button("添加已识别的个体").clicked() {
+            if icon_action(ui, "plus", "添加已识别的个体").clicked() {
                 let terms: Vec<_> = self
                     .batch
                     .split([',', '，', '、', ';', '；', '\n', '\r'])
@@ -808,27 +825,30 @@ impl Breeding {
                     self.active_plan.clear();
                     self.invalidate();
                 }
-                if ui
-                    .button(format!("选择目标词条（{}/4）", self.traits.len()))
-                    .clicked()
+                if icon_action(
+                    ui,
+                    "list",
+                    &format!("选择目标词条（{}/4）", self.traits.len()),
+                )
+                .clicked()
                 {
                     self.picker = true;
                 }
             });
             ui.horizontal_wrapped(|ui| {
                 for t in self.traits.clone() {
-                    if ui.button(format!("{} ×", d.trait_name(&t))).clicked() {
+                    if trait_remove_tag(ui, d, &t).clicked() {
                         self.traits.retain(|x| x != &t);
                         self.invalidate();
                     }
                 }
             });
             ui.vertical(|ui| {
-                if ui.checkbox(&mut self.random, "允许随机孵出词条").changed() {
+                if crate::design::checkbox(ui, &mut self.random, "允许随机孵出词条").changed()
+                {
                     self.invalidate();
                 }
-                if ui
-                    .checkbox(&mut self.surgery, "使用已拥有的手术台词条")
+                if crate::design::checkbox(ui, &mut self.surgery, "使用已拥有的手术台词条")
                     .changed()
                 {
                     self.invalidate();
@@ -838,7 +858,8 @@ impl Breeding {
             ui.horizontal_wrapped(|ui| {
                 crate::design::section(ui, "繁育结果");
                 ui.label("最多配种代数");
-                let mut changed = ui.checkbox(&mut self.all_steps, "不限步数").changed();
+                let mut changed =
+                    crate::design::checkbox(ui, &mut self.all_steps, "不限步数").changed();
                 changed |= ui
                     .add_enabled(
                         !self.all_steps,
@@ -855,14 +876,18 @@ impl Breeding {
             });
         }
         if ui
-            .add_enabled(
-                !self.busy && data_ready,
-                egui::Button::new(if offspring {
-                    "计算可配出的帕鲁"
-                } else {
-                    "计算配种路径"
-                }),
-            )
+            .add_enabled_ui(!self.busy && data_ready, |ui| {
+                icon_action(
+                    ui,
+                    "branch",
+                    if offspring {
+                        "计算可配出的帕鲁"
+                    } else {
+                        "计算配种路径"
+                    },
+                )
+            })
+            .inner
             .clicked()
             || qa_run
             || (offspring && !self.busy && self.result.is_null())
@@ -881,10 +906,10 @@ impl Breeding {
                 });
             });
             ui.horizontal_wrapped(|ui| {
-                if ui.link("刷新位置").clicked() {
+                if icon_action(ui, "pin", "刷新位置").clicked() {
                     *nav = Some(format!("#spawns/{key}"));
                 }
-                if ui.link("管理手术台词条").clicked() {
+                if icon_action(ui, "surgery", "管理手术台词条").clicked() {
                     *nav = Some("#details/surgery".into());
                 }
             });
@@ -1038,17 +1063,20 @@ impl Breeding {
                             .desired_width(180.)
                             .hint_text("计划名称（可选）"),
                     );
-                    if ui
-                        .button(if self.active_plan.is_empty() {
+                    if icon_action(
+                        ui,
+                        "save",
+                        if self.active_plan.is_empty() {
                             "保存为计划"
                         } else {
                             "更新计划"
-                        })
-                        .clicked()
+                        },
+                    )
+                    .clicked()
                     {
                         self.save_plan(d, store);
                     }
-                    if ui.button("新建计划").clicked() {
+                    if icon_action(ui, "plus", "新建计划").clicked() {
                         self.active_plan.clear();
                         self.plan_name.clear();
                         self.traits.clear();
@@ -1161,14 +1189,14 @@ impl Breeding {
                     let route=if p["currentRoute"].is_object(){&p["currentRoute"]}else{&p["initialRoute"]};
                     for (i,step) in array(&route["steps"]).iter().enumerate(){
                         ui.group(|ui|{ui.strong(format!("第 {} 代 · {}",step["generation"],d.pal_name(text(step,"speciesKey"))));
-                            ui.horizontal_wrapped(|ui|{for parent in array(&step["parents"]){ui.label(format!("{} {} {}",d.pal_name(text(parent,"speciesKey")),sex_label(text(parent,"sex")),text(parent,"name")));}ui.label("→");for t in array(&step["traits"]){if trait_badge(ui,d,t.as_str().unwrap_or("")).clicked(){*nav=Some(format!("#details/passive/trait/{}",t.as_str().unwrap_or("")));}}});
+                            ui.horizontal_wrapped(|ui|{for parent in array(&step["parents"]){ui.label(format!("{} {} {}",d.pal_name(text(parent,"speciesKey")),sex_label(text(parent,"sex")),text(parent,"name")));}crate::design::icon(ui,"arrow",16.);for t in array(&step["traits"]){if trait_badge(ui,d,t.as_str().unwrap_or("")).clicked(){*nav=Some(format!("#details/passive/trait/{}",t.as_str().unwrap_or("")));}}});
                             let parents_ready=array(&step["parents"]).len()==2&&array(&step["parents"]).iter().all(|parent|array(&store.world()["inventory"]["records"]).iter().any(|r|r["id"]==parent["stockId"]));
-                            if ui.add_enabled(parents_ready,egui::Button::new(format!("登记第 {} 步实际孵化结果",i+1))).on_disabled_hover_text("请先登记前一步的实际子代，再重新计算并更新计划路线。").clicked(){let mut draft=new_record(text(step,"speciesKey"));let id=uuid::Uuid::new_v4().to_string();draft["id"]=json!(format!("hatch-{id}"));draft["name"]=json!(format!("{} 第{}只",d.pal_name(text(step,"speciesKey")),array(&p["log"]).len()+1));draft["traits"]=step["traits"].clone();self.edit=Some(draft);self.recording=Some((text(p,"id").into(),json!({"id":id,"stockId":format!("hatch-{id}"),"kind":"hatch","at":timestamp(),"speciesKey":step["speciesKey"],"generation":step["generation"],"expectedTraits":step["traits"],"expectedSexes":step["sexes"],"parents":step["parents"]})));}
+                            if ui.add_enabled_ui(parents_ready,|ui|icon_action(ui,"egg",&format!("登记第 {} 步实际孵化结果",i+1))).inner.on_disabled_hover_text("请先登记前一步的实际子代，再重新计算并更新计划路线。").clicked(){let mut draft=new_record(text(step,"speciesKey"));let id=uuid::Uuid::new_v4().to_string();draft["id"]=json!(format!("hatch-{id}"));draft["name"]=json!(format!("{} 第{}只",d.pal_name(text(step,"speciesKey")),array(&p["log"]).len()+1));draft["traits"]=step["traits"].clone();self.edit=Some(draft);self.recording=Some((text(p,"id").into(),json!({"id":id,"stockId":format!("hatch-{id}"),"kind":"hatch","at":timestamp(),"speciesKey":step["speciesKey"],"generation":step["generation"],"expectedTraits":step["traits"],"expectedSexes":step["sexes"],"parents":step["parents"]})));}
                         });
                     }
-                    if p["surgery"]==true{egui::CollapsingHeader::new("登记现有目标个体的实际手术结果").show(ui,|ui|{let targets:Vec<_>=array(&store.world()["inventory"]["records"]).iter().filter(|r|r["speciesKey"]==p["targetKey"]).cloned().collect();if targets.is_empty(){ui.label("请先登记配出的目标帕鲁。");}for r in targets{if ui.button(format!("登记手术 · {} · {}",text(&r,"name"),sex_label(text(&r,"sex")))).clicked(){let id=uuid::Uuid::new_v4().to_string();self.recording=Some((text(p,"id").into(),json!({"id":id,"stockId":r["id"],"kind":"surgery","at":timestamp(),"speciesKey":r["speciesKey"],"generation":0,"expectedTraits":p["traits"],"expectedSexes":[],"parents":[]})));self.edit=Some(r);}}});}
+                    if p["surgery"]==true{egui::CollapsingHeader::new("登记现有目标个体的实际手术结果").show(ui,|ui|{let targets:Vec<_>=array(&store.world()["inventory"]["records"]).iter().filter(|r|r["speciesKey"]==p["targetKey"]).cloned().collect();if targets.is_empty(){ui.label("请先登记配出的目标帕鲁。");}for r in targets{if icon_action(ui,"surgery",&format!("登记手术 · {} · {}",text(&r,"name"),sex_label(text(&r,"sex")))).clicked(){let id=uuid::Uuid::new_v4().to_string();self.recording=Some((text(p,"id").into(),json!({"id":id,"stockId":r["id"],"kind":"surgery","at":timestamp(),"speciesKey":r["speciesKey"],"generation":0,"expectedTraits":p["traits"],"expectedSexes":[],"parents":[]})));self.edit=Some(r);}}});}
                     egui::CollapsingHeader::new("实际孵化 / 手术记录").show(ui,|ui|render_log(ui,d,&p["log"],nav));
-                    ui.horizontal(|ui|{if ui.button("载入目标并重新计算").clicked(){if let Some(index)=d.species.iter().position(|s|s["key"]==p["targetKey"]){self.active_plan=text(p,"id").into();self.plan_name=text(p,"name").into();self.recalculate=true;self.pal=index;self.traits=array(&p["traits"]).iter().filter_map(|v|v.as_str().map(str::to_owned)).collect();self.random=p["random"]==true;self.surgery=p["surgery"]==true;self.invalidate();self.notice="已载入计划，正在按最新仓库重新计算。".into();}}if ui.small_button("删除计划").clicked(){delete=Some(text(p,"id").to_owned());}});
+                    ui.horizontal(|ui|{if icon_action(ui, "reset", "载入目标并重新计算").clicked(){if let Some(index)=d.species.iter().position(|s|s["key"]==p["targetKey"]){self.active_plan=text(p,"id").into();self.plan_name=text(p,"name").into();self.recalculate=true;self.pal=index;self.traits=array(&p["traits"]).iter().filter_map(|v|v.as_str().map(str::to_owned)).collect();self.random=p["random"]==true;self.surgery=p["surgery"]==true;self.invalidate();self.notice="已载入计划，正在按最新仓库重新计算。".into();}}if icon_action(ui, "trash", "删除计划").clicked(){delete=Some(text(p,"id").to_owned());}});
                 });
             });}
             if let Some(id)=delete{self.delete_plan=Some(id);}
@@ -1176,11 +1204,16 @@ impl Breeding {
         if let Some(id) = self.delete_plan.clone() {
             let mut keep = true;
             egui::Window::new("确认删除配种计划")
+                .title_bar(false)
                 .collapsible(false)
                 .show(ui.ctx(), |ui| {
+                    if crate::design::dialog_header(ui, "trash", "确认删除配种计划").clicked()
+                    {
+                        keep = false;
+                    }
                     ui.label("删除该计划及执行记录？已经入仓的个体仍会保留。");
                     ui.horizontal(|ui| {
-                        if ui.button("确认删除").clicked() {
+                        if icon_action(ui, "trash", "确认删除").clicked() {
                             let mut next = store.state.clone();
                             let i = store.world_index();
                             next["worlds"][i]["plans"]
@@ -1197,7 +1230,7 @@ impl Breeding {
                                 Err(e) => self.notice = e,
                             }
                         }
-                        if ui.button("取消").clicked() {
+                        if icon_action(ui, "close", "取消").clicked() {
                             keep = false;
                         }
                     });
@@ -1231,7 +1264,7 @@ impl Breeding {
                 if previous != self.element {
                     self.offspring_page = 0;
                 }
-                if ui.checkbox(&mut self.new_only, "仅看未拥有").changed() {
+                if crate::design::checkbox(ui, &mut self.new_only, "仅看未拥有").changed() {
                     self.offspring_page = 0;
                 }
                 page_size(
@@ -1280,7 +1313,7 @@ impl Breeding {
                 ui.add_space(15.);
                 ui.strong("没有符合条件的繁育结果");
                 ui.label("可放宽步数、取消「仅看未拥有」，或补齐仓库个体及性别后重算。");
-                if ui.button("清除结果筛选").clicked() {
+                if icon_action(ui, "reset", "清除结果筛选").clicked() {
                     self.filter.clear();
                     self.element.clear();
                     self.new_only = false;
@@ -1312,6 +1345,8 @@ impl Breeding {
                                     ui.set_min_height(66.);
                                     ui.horizontal(|ui| {
                                         ui.vertical(|ui| {
+                                            ui.set_width((width * 0.43).max(100.));
+                                            ui.spacing_mut().item_spacing.y = 2.;
                                             let parents = array(&r["steps"])
                                                 .last()
                                                 .map(|s| array(&s["parents"]))
@@ -1321,21 +1356,34 @@ impl Breeding {
                                                     .as_u64()
                                                     .and_then(|i| d.species.get(i as usize))
                                                 {
-                                                    ui.label(
-                                                        egui::RichText::new(format!(
-                                                            "{}{}",
-                                                            if index == 0 { "" } else { "× " },
+                                                    ui.horizontal(|ui| {
+                                                        ui.spacing_mut().item_spacing.x = 3.;
+                                                        d.portrait(ui, text(p, "key"), 22.);
+                                                        ui.add(
+                                                            egui::Label::new(
+                                                                egui::RichText::new(text(p, "zh"))
+                                                                    .size(12.),
+                                                            )
+                                                            .truncate(),
+                                                        )
+                                                        .on_hover_text(format!(
+                                                            "亲代{}：{}",
+                                                            index + 1,
                                                             text(p, "zh")
-                                                        ))
-                                                        .size(12.),
-                                                    );
+                                                        ));
+                                                    });
                                                 }
                                             }
                                         });
-                                        ui.label("→");
+                                        crate::design::icon(ui, "arrow", 16.);
                                         d.portrait(ui, text(p, "key"), 36.);
                                         ui.vertical(|ui| {
-                                            ui.strong(text(p, "zh"));
+                                            ui.add(
+                                                egui::Label::new(
+                                                    egui::RichText::new(text(p, "zh")).strong(),
+                                                )
+                                                .truncate(),
+                                            );
                                             ui.small(format!(
                                                 "#{} · {} 步",
                                                 text(p, "dex"),
@@ -1367,9 +1415,13 @@ impl Breeding {
                 .find(|r| r["id"].as_u64() == Some(id as u64))
             {
                 let mut open = true;
-                egui::Window::new("配种路线").id(egui::Id::new("offspring-route")).open(&mut open).default_width(740.).vscroll(true).show(ui.ctx(),|ui|{let p=&d.species[id];ui.horizontal(|ui|{d.portrait(ui,text(p,"key"),56.);ui.vertical(|ui|{ui.heading(text(p,"zh"));ui.label(format!("{} {} 代 · {} 组配对",if r["minimumCertain"]==true{"最少"}else{"此路线"},r["depth"],array(&r["steps"]).len()));});if ui.link("刷新位置").clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}});
-            for step in array(&r["steps"]){panel(ui).show(ui,|ui|{ui.strong(format!("第 {} 步",step["depth"]));ui.horizontal_wrapped(|ui|{for (i,parent) in array(&step["parents"]).iter().enumerate(){if i>0{ui.label("＋");}if let Some(p)=parent["species"].as_u64().and_then(|i|d.species.get(i as usize)){d.portrait(ui,text(p,"key"),34.);ui.vertical(|ui|{if ui.link(format!("{} {}",text(p,"zh"),sex_label(text(parent,"sex")))).clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}if let Some(stock)=array(&store.world()["inventory"]["records"]).iter().find(|r|r["id"]==parent["stockId"]){ui.small(format!("仓库：{}",text(stock,"name")));}if parent["unknown"]==true{ui.small("性别待确认");}});}}ui.label("→");if let Some(p)=step["child"].as_u64().and_then(|i|d.species.get(i as usize)){d.portrait(ui,text(p,"key"),34.);if ui.link(text(p,"zh")).clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}}});});ui.add_space(7.);}
+                let mut requested_close = false;
+                egui::Window::new("配种路线").title_bar(false).id(egui::Id::new("offspring-route")).open(&mut open).default_width(740.).vscroll(true).show(ui.ctx(),|ui|{if crate::design::dialog_header(ui,"branch","配种路线").clicked(){requested_close=true;}let p=&d.species[id];ui.horizontal(|ui|{d.portrait(ui,text(p,"key"),56.);ui.vertical(|ui|{ui.heading(text(p,"zh"));ui.label(format!("{} {} 代 · {} 组配对",if r["minimumCertain"]==true{"最少"}else{"此路线"},r["depth"],array(&r["steps"]).len()));});if icon_action(ui,"pin","刷新位置").clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}});
+            for step in array(&r["steps"]){panel(ui).show(ui,|ui|{ui.strong(format!("第 {} 步",step["depth"]));ui.horizontal_wrapped(|ui|{for (i,parent) in array(&step["parents"]).iter().enumerate(){if i>0{crate::design::icon(ui,"plus",16.);}if let Some(p)=parent["species"].as_u64().and_then(|i|d.species.get(i as usize)){d.portrait(ui,text(p,"key"),34.);ui.vertical(|ui|{if ui.link(format!("{} {}",text(p,"zh"),sex_label(text(parent,"sex")))).clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}if let Some(stock)=array(&store.world()["inventory"]["records"]).iter().find(|r|r["id"]==parent["stockId"]){ui.small(format!("仓库：{}",text(stock,"name")));}if parent["unknown"]==true{ui.small("性别待确认");}});}}crate::design::icon(ui,"arrow",16.);if let Some(p)=step["child"].as_u64().and_then(|i|d.species.get(i as usize)){d.portrait(ui,text(p,"key"),34.);if ui.link(text(p,"zh")).clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}}});});ui.add_space(7.);}
             ui.small("子代用于后续配对时，请留下路线要求的性别。标注待确认的仓库个体需要先核对性别。");});
+                if requested_close {
+                    open = false;
+                }
                 if !open {
                     self.offspring_selected = None;
                 }
@@ -1396,6 +1448,7 @@ impl Breeding {
         }
         let mut open = true;
         let mut save = false;
+        let mut requested_close = false;
         let title = if self
             .recording
             .as_ref()
@@ -1408,12 +1461,16 @@ impl Breeding {
             "帕鲁个体"
         };
         egui::Window::new(title)
+            .title_bar(false)
             .id(egui::Id::new("edit-pal"))
             .open(&mut open)
             .default_width(1100.)
             .default_height((ctx.content_rect().height() - 80.).min(780.))
             .vscroll(true)
             .show(ctx, |ui| {
+                if crate::design::dialog_header(ui, "paldex", title).clicked() {
+                    requested_close = true;
+                }
                 let mut index = d
                     .species
                     .iter()
@@ -1468,10 +1525,13 @@ impl Breeding {
                     .collect();
                 trait_grid(ui, d, &mut keys);
                 draft["traits"] = json!(keys);
-                if ui.button("保存个体").clicked() {
+                if icon_action(ui, "save", "保存个体").clicked() {
                     save = true;
                 }
             });
+        if requested_close {
+            open = false;
+        }
         if save {
             if text(&draft, "name").trim().is_empty() {
                 let count = array(&store.world()["inventory"]["records"])
@@ -1577,7 +1637,7 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
         ui.add(
             egui::TextEdit::singleline(&mut query).hint_text("搜索词条名称或效果（留空显示全部）"),
         );
-        if ui.small_button("清空搜索").clicked() {
+        if icon_action(ui, "reset", "清空搜索").clicked() {
             query.clear();
         }
     });
@@ -1601,10 +1661,7 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
     ));
     ui.horizontal_wrapped(|ui| {
         for key in keys.clone() {
-            if ui
-                .small_button(format!("{} ×", d.trait_name(&key)))
-                .clicked()
-            {
+            if trait_remove_tag(ui, d, &key).clicked() {
                 keys.retain(|k| k != &key);
             }
         }
@@ -1630,6 +1687,94 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
             }
         });
 }
+/// Official square rank emblem, with the same tier colours and downward
+/// negative arrows as the original handbook. Paint directly: Frame's minimum
+/// widget height must not turn a 15 px square into a tall pill.
+pub fn passive_rank(ui: &mut egui::Ui, d: &Data, rank: i64, size: f32) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), egui::Sense::hover());
+    paint_passive_rank(ui, d, rank, rect);
+    response.on_hover_text(format!("词条等级 {rank}"))
+}
+fn paint_passive_rank(ui: &egui::Ui, d: &Data, rank: i64, rect: egui::Rect) {
+    if let Some(uri) = d.get("trait-ranks")[rank.unsigned_abs() as usize]
+        .as_str()
+        .filter(|uri| !uri.is_empty())
+    {
+        ui.painter()
+            .rect_filled(rect, 3, egui::Color32::from_rgb(51, 59, 75));
+        let colour = if rank < 0 {
+            egui::Color32::from_rgb(255, 137, 119)
+        } else if rank >= 4 {
+            egui::Color32::from_rgb(79, 255, 222)
+        } else if rank >= 2 {
+            egui::Color32::from_rgb(255, 221, 67)
+        } else {
+            egui::Color32::WHITE
+        };
+        let mut image = egui::Image::new(d.image_source(uri)).tint(colour);
+        if rank < 0 {
+            image = image.uv(egui::Rect::from_min_max(
+                egui::pos2(0., 1.),
+                egui::pos2(1., 0.),
+            ));
+        }
+        image.paint_at(ui, rect.shrink(1.));
+    }
+}
+
+pub fn trait_remove_tag(ui: &mut egui::Ui, d: &Data, key: &str) -> egui::Response {
+    let name = d.trait_name(key);
+    let rank = array(&d.get("trait-data")["traits"])
+        .iter()
+        .find(|t| text(t, "key") == key)
+        .and_then(|t| t["rank"].as_i64())
+        .unwrap_or_default();
+    let palette = crate::design::palette(ui.ctx());
+    let galley =
+        ui.painter()
+            .layout_no_wrap(name.clone(), egui::FontId::proportional(12.), palette.ink);
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(galley.size().x + 49., 24.), egui::Sense::click());
+    ui.painter().rect_filled(
+        rect,
+        5,
+        if response.hovered() {
+            palette.selected
+        } else {
+            palette.soft
+        },
+    );
+    ui.painter().rect_stroke(
+        rect,
+        5,
+        egui::Stroke::new(1., palette.line),
+        egui::StrokeKind::Inside,
+    );
+    paint_passive_rank(
+        ui,
+        d,
+        rank,
+        egui::Rect::from_center_size(rect.left_center() + Vec2::new(11., 0.), Vec2::splat(15.)),
+    );
+    ui.painter().galley(
+        rect.left_center() + Vec2::new(23., -galley.size().y * 0.5),
+        galley,
+        palette.ink,
+    );
+    egui::Image::new(crate::design::icon_source("close"))
+        .tint(palette.muted)
+        .paint_at(
+            ui,
+            egui::Rect::from_center_size(
+                rect.right_center() - Vec2::new(11., 0.),
+                Vec2::splat(12.),
+            ),
+        );
+    response
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(format!("移除词条：{name}"))
+}
+
 /// Keep the inline work picker and the full picker consistent, including the game's rank art.
 pub fn trait_checkbox(
     ui: &mut egui::Ui,
@@ -1644,19 +1789,15 @@ pub fn trait_checkbox(
             .find(|t| text(t, "key") == key)
             .and_then(|t| t["rank"].as_i64())
             .unwrap_or_default();
-        if let Some(icon) = d.get("trait-ranks")[rank.unsigned_abs() as usize]
-            .as_str()
-            .filter(|s| !s.is_empty())
-        {
-            egui::Frame::new()
-                .fill(egui::Color32::from_rgb(52, 62, 80))
-                .corner_radius(3)
-                .inner_margin(1)
-                .show(ui, |ui| d.image(ui, icon, Vec2::splat(14.)));
-        }
-        let response = ui
+        let emblem = passive_rank(ui, d, rank, 15.).interact(egui::Sense::click());
+        track_test_rect(ui, &emblem, &format!("trait-emblem:{key}"));
+        let mut response = ui
             .add_enabled(enabled, egui::Checkbox::new(selected, d.trait_name(key)))
             .on_hover_text(text(&d.get("pal-details-data")["passives"][key], "effect"));
+        if enabled && emblem.clicked() {
+            *selected = !*selected;
+            response.mark_changed();
+        }
         track_test_rect(ui, &response, &format!("trait:{key}"));
         response
     })
@@ -1665,14 +1806,18 @@ pub fn trait_checkbox(
 pub fn trait_picker(ctx: &egui::Context, d: &Data, open: &mut bool, keys: &mut Vec<String>) {
     let mut done = false;
     egui::Window::new("选择词条")
+        .title_bar(false)
         .id(egui::Id::new("traits-picker"))
         .open(open)
         .default_width(1120.)
         .default_height(720.)
         .resizable(true)
         .show(ctx, |ui| {
+            if crate::design::dialog_header(ui, "layers", "选择词条").clicked() {
+                done = true;
+            }
             egui::ScrollArea::vertical().show(ui, |ui| trait_grid(ui, d, keys));
-            if ui.button("完成").clicked() {
+            if icon_action(ui, "check", "完成").clicked() {
                 done = true;
             }
         });
@@ -1736,12 +1881,15 @@ fn compact_lookup_pair(
     let second = if reverse { b } else { c };
     let special = pair.as_array().is_some_and(|p| p.len() == 5);
     let member = (width - 26.) / 2.;
-    ui.painter().text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
-        if reverse { "＋" } else { "→" },
-        egui::FontId::proportional(13.),
-        ui.visuals().text_color(),
+    egui::Image::new(crate::design::icon_source(if reverse {
+        "plus"
+    } else {
+        "arrow"
+    }))
+    .tint(ui.visuals().text_color())
+    .paint_at(
+        ui,
+        egui::Rect::from_center_size(rect.center(), Vec2::splat(14.)),
     );
     for (i, index) in [first, second].into_iter().enumerate() {
         let pal = &d.species[index];
@@ -1808,34 +1956,13 @@ fn compact_lookup_pair(
         );
         if !reverse && i == 1 {
             let mut x = number.right() + 3.;
-            for kind in array(&pal["types"]) {
-                let (name, color) = match kind.as_str().unwrap_or("") {
-                    "fire" => ("火", egui::Color32::from_rgb(186, 75, 45)),
-                    "water" => ("水", egui::Color32::from_rgb(42, 118, 162)),
-                    "grass" => ("草", egui::Color32::from_rgb(62, 117, 54)),
-                    "electric" => ("雷", egui::Color32::from_rgb(141, 106, 26)),
-                    "ice" => ("冰", egui::Color32::from_rgb(37, 128, 139)),
-                    "ground" => ("地", egui::Color32::from_rgb(141, 91, 51)),
-                    "dark" => ("暗", egui::Color32::from_rgb(113, 78, 149)),
-                    "dragon" => ("龙", egui::Color32::from_rgb(126, 75, 163)),
-                    _ => ("无", egui::Color32::from_rgb(128, 113, 71)),
-                };
-                ui.painter().rect_filled(
-                    egui::Rect::from_min_size(
-                        egui::pos2(x - 1., rect.top() + 22.),
-                        Vec2::new(13., 13.),
-                    ),
-                    2,
-                    color.gamma_multiply(0.12),
+            for kind in array(&pal["types"]).iter().filter_map(Value::as_str) {
+                paint_element_badge(
+                    ui,
+                    kind,
+                    egui::Rect::from_min_size(egui::pos2(x, rect.top() + 22.), Vec2::new(29., 14.)),
                 );
-                ui.painter().text(
-                    egui::pos2(x, rect.top() + 23.),
-                    egui::Align2::LEFT_TOP,
-                    name,
-                    egui::FontId::proportional(10.),
-                    color,
-                );
-                x += 15.;
+                x += 32.;
             }
         }
     }
@@ -1904,14 +2031,16 @@ fn pagination(ui: &mut egui::Ui, total: usize, size: usize, page: &mut usize) {
         ));
         if pages > 1 {
             if ui
-                .add_enabled(*page > 0, egui::Button::new("«"))
+                .add_enabled_ui(*page > 0, |ui| icon_button(ui, "first", "第一页"))
+                .inner
                 .on_hover_text("第一页")
                 .clicked()
             {
                 *page = 0;
             }
             if ui
-                .add_enabled(*page > 0, egui::Button::new("‹"))
+                .add_enabled_ui(*page > 0, |ui| icon_button(ui, "left", "上一页"))
+                .inner
                 .on_hover_text("上一页")
                 .clicked()
             {
@@ -1919,14 +2048,16 @@ fn pagination(ui: &mut egui::Ui, total: usize, size: usize, page: &mut usize) {
             }
             ui.label(format!("{} / {pages}", *page + 1));
             if ui
-                .add_enabled(*page + 1 < pages, egui::Button::new("›"))
+                .add_enabled_ui(*page + 1 < pages, |ui| icon_button(ui, "right", "下一页"))
+                .inner
                 .on_hover_text("下一页")
                 .clicked()
             {
                 *page += 1;
             }
             if ui
-                .add_enabled(*page + 1 < pages, egui::Button::new("»"))
+                .add_enabled_ui(*page + 1 < pages, |ui| icon_button(ui, "last", "最后一页"))
+                .inner
                 .on_hover_text("最后一页")
                 .clicked()
             {
@@ -1935,26 +2066,45 @@ fn pagination(ui: &mut egui::Ui, total: usize, size: usize, page: &mut usize) {
         }
     });
 }
+pub fn element_color(key: &str) -> egui::Color32 {
+    match key {
+        "fire" => egui::Color32::from_rgb(186, 75, 45),
+        "water" => egui::Color32::from_rgb(42, 118, 162),
+        "grass" => egui::Color32::from_rgb(62, 117, 54),
+        "electric" => egui::Color32::from_rgb(141, 106, 26),
+        "ice" => egui::Color32::from_rgb(37, 128, 139),
+        "ground" => egui::Color32::from_rgb(141, 91, 51),
+        "dark" => egui::Color32::from_rgb(113, 78, 149),
+        "dragon" => egui::Color32::from_rgb(126, 75, 163),
+        _ => egui::Color32::from_rgb(128, 113, 71),
+    }
+}
+fn paint_element_badge(ui: &egui::Ui, key: &str, rect: egui::Rect) {
+    let color = element_color(key);
+    ui.painter()
+        .rect_filled(rect, 3, color.gamma_multiply(0.12));
+    egui::Image::new(crate::design::icon_source(key))
+        .tint(color)
+        .paint_at(
+            ui,
+            egui::Rect::from_center_size(rect.left_center() + Vec2::new(8., 0.), Vec2::splat(12.)),
+        );
+    ui.painter().text(
+        rect.left_center() + Vec2::new(17., 0.),
+        egui::Align2::LEFT_CENTER,
+        element_label(key),
+        egui::FontId::proportional(11.),
+        color,
+    );
+}
 pub fn element_badges(ui: &mut egui::Ui, types: &Value) {
     ui.horizontal_wrapped(|ui| {
-        for t in array(types) {
-            let (name, color) = match t.as_str().unwrap_or("") {
-                "fire" => ("火", egui::Color32::from_rgb(205, 86, 52)),
-                "water" => ("水", egui::Color32::from_rgb(55, 133, 183)),
-                "grass" => ("草", egui::Color32::from_rgb(89, 142, 68)),
-                "electric" => ("雷", egui::Color32::from_rgb(166, 133, 32)),
-                "ice" => ("冰", egui::Color32::from_rgb(50, 151, 159)),
-                "ground" => ("地", egui::Color32::from_rgb(158, 109, 67)),
-                "dark" => ("暗", egui::Color32::from_rgb(125, 94, 167)),
-                "dragon" => ("龙", egui::Color32::from_rgb(137, 91, 183)),
-                _ => ("无", egui::Color32::from_rgb(143, 130, 90)),
-            };
-            ui.label(
-                egui::RichText::new(format!(" {name} "))
-                    .size(11.)
-                    .color(color)
-                    .background_color(color.gamma_multiply(0.12)),
-            );
+        ui.spacing_mut().item_spacing.x = 4.;
+        for t in array(types).iter().filter_map(Value::as_str) {
+            let (rect, response) =
+                ui.allocate_exact_size(Vec2::new(33., 18.), egui::Sense::hover());
+            paint_element_badge(ui, t, rect);
+            response.on_hover_text(format!("{}属性", element_label(t)));
         }
     });
 }
@@ -1973,15 +2123,9 @@ pub fn trait_badge(ui: &mut egui::Ui, d: &Data, key: &str) -> egui::Response {
     } else {
         ui.visuals().text_color()
     };
-    ui.horizontal(|ui| {
+    let inner = ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 3.;
-        if let Some(icon) = d.get("trait-ranks")[rank.unsigned_abs() as usize].as_str() {
-            egui::Frame::new()
-                .fill(egui::Color32::from_rgb(52, 62, 80))
-                .corner_radius(3)
-                .inner_margin(1)
-                .show(ui, |ui| d.image(ui, icon, Vec2::splat(13.)));
-        }
+        passive_rank(ui, d, rank, 15.);
         ui.add(egui::Link::new(
             egui::RichText::new(d.trait_name(key))
                 .size(12.)
@@ -1989,8 +2133,14 @@ pub fn trait_badge(ui: &mut egui::Ui, d: &Data, key: &str) -> egui::Response {
                 .background_color(color.gamma_multiply(0.10)),
         ))
         .on_hover_text(text(&d.get("pal-details-data")["passives"][key], "effect"))
-    })
-    .inner
+    });
+    ui.interact(
+        inner.response.rect,
+        ui.id().with(("trait-badge", key)),
+        egui::Sense::click(),
+    )
+    .union(inner.inner)
+    .on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 fn new_record(key: &str) -> Value {
     json!({"id":uuid::Uuid::new_v4().to_string(),"speciesKey":key,"name":"","sex":"unknown","traits":[],"legacy":false})
@@ -2075,7 +2225,7 @@ fn render_plan(
             ui.horizontal_wrapped(|ui| {
                 for (i, parent) in array(&step["parents"]).iter().enumerate() {
                     if i > 0 {
-                        ui.label("＋");
+                        crate::design::icon(ui, "plus", 16.);
                     }
                     if let Some(p) = parent["species"]
                         .as_u64()
@@ -2115,7 +2265,7 @@ fn render_plan(
                         }
                     }
                 }
-                ui.label("→");
+                crate::design::icon(ui, "arrow", 16.);
                 if let Some(p) = step["species"]
                     .as_u64()
                     .and_then(|i| d.species.get(i as usize))
@@ -2481,6 +2631,136 @@ mod progress_tests {
             "card {} exceeds the virtual row",
             rect.height()
         );
+    }
+    #[test]
+    fn rank_emblems_are_square_tinted_and_negative_arrows_point_down() {
+        let (mut d, temp) = ui_fixture();
+        std::fs::create_dir_all(temp.0.join("assets")).unwrap();
+        let real = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../data/assets/passive-rank-1.webp");
+        std::fs::copy(real, temp.0.join("assets/rank.webp")).unwrap();
+        d.tables.insert(
+            "trait-ranks".into(),
+            std::sync::Arc::new(json!([
+                "",
+                "assets/rank.webp",
+                "assets/rank.webp",
+                "assets/rank.webp",
+                "assets/rank.webp"
+            ])),
+        );
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        crate::design::apply(&ctx, "moon");
+        let uri = d.image_uri("assets/rank.webp");
+        let start = std::time::Instant::now();
+        let mut texture = None;
+        while texture.is_none() && start.elapsed().as_secs() < 5 {
+            let _ = ctx.run(egui::RawInput::default(), |ctx| {
+                if let Ok(egui::load::TexturePoll::Ready { texture: ready }) = ctx.try_load_texture(
+                    &uri,
+                    egui::TextureOptions::LINEAR,
+                    egui::load::SizeHint::default(),
+                ) {
+                    texture = Some(ready.id);
+                }
+            });
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        texture.expect("real rank texture should load");
+        let mut bounds = Vec::new();
+        let output = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(300., 100.),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        for rank in [1, 2, 4, -1] {
+                            bounds.push(passive_rank(ui, &d, rank, 15.).rect);
+                        }
+                    });
+                });
+            },
+        );
+        assert!(
+            bounds.iter().all(|r| r.size() == Vec2::splat(15.)),
+            "rank background must not expand with minimum widget height"
+        );
+        // egui 0.33 paints unrotated images as textured RectShape values;
+        // Mesh is only used for rotated images. The image widget can also use
+        // a different texture sampler than preloading, so inspect its real draw
+        // rather than assuming the preload's texture ID is the same.
+        let images: Vec<_> = output
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Rect(r) if r.brush.is_some() => Some(r),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(images.len(), 4);
+        assert!(
+            images
+                .iter()
+                .all(|r| r.brush.as_ref().unwrap().fill_texture_id
+                    == images[0].brush.as_ref().unwrap().fill_texture_id)
+        );
+        assert!(images.iter().all(|r| r.rect.size() == Vec2::splat(13.)));
+        assert_eq!(images[0].brush.as_ref().unwrap().uv.min.y, 0.);
+        assert_eq!(images[3].brush.as_ref().unwrap().uv.min.y, 1.);
+        assert_eq!(images[3].brush.as_ref().unwrap().uv.max.y, 0.);
+        assert_ne!(images[0].fill, images[1].fill);
+        assert_ne!(images[1].fill, images[2].fill);
+        assert_ne!(images[2].fill, images[3].fill);
+    }
+    #[test]
+    fn trait_emblem_click_toggles_the_same_selection_as_its_checkbox() {
+        let (d, _temp) = ui_fixture();
+        let ctx = egui::Context::default();
+        let mut keys = Vec::new();
+        let render = |events: Vec<egui::Event>, keys: &mut Vec<String>| {
+            ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(700., 500.),
+                    )),
+                    focused: true,
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| trait_grid(ui, &d, keys));
+                },
+            )
+        };
+        let _ = render(vec![], &mut keys);
+        let _ = render(vec![], &mut keys);
+        let rect = ctx
+            .data(|m| m.get_temp::<egui::Rect>(egui::Id::new("test-widget:trait-emblem:Legend")))
+            .unwrap();
+        for expected in [true, false] {
+            for pressed in [true, false] {
+                let _ = render(
+                    vec![
+                        egui::Event::PointerMoved(rect.center()),
+                        egui::Event::PointerButton {
+                            pos: rect.center(),
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                    &mut keys,
+                );
+            }
+            assert_eq!(keys.iter().any(|key| key == "Legend"), expected);
+        }
     }
     #[test]
     fn trait_checkboxes_can_select_and_remove_by_pointer() {

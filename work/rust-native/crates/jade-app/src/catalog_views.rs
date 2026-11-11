@@ -107,6 +107,91 @@ pub fn show(
     nav
 }
 
+/// The original surgery page starts with the actual facility and gender medicine,
+/// before individual passive operations. Keep these visible in the list view too.
+pub fn surgery_overview(ui: &mut egui::Ui, d: &Data) -> Option<String> {
+    let mut nav = None;
+    let table = |ui: &mut egui::Ui, nav: &mut Option<String>| {
+        crate::design::card(ui).inner_margin(9).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal(|ui| {
+                if let Some(uri) = d.get("pal-details-data")["tableIcon"].as_str() {
+                    if ui
+                        .add(
+                            egui::Image::new(d.image_source(uri))
+                                .fit_to_exact_size(Vec2::splat(56.))
+                                .sense(egui::Sense::click()),
+                        )
+                        .on_hover_text("建造帕鲁手术台")
+                        .on_hover_cursor(egui::CursorIcon::PointingHand)
+                        .clicked()
+                    {
+                        *nav = Some("#work/facilities/Pal_Surgery_Table".into());
+                    }
+                }
+                ui.vertical(|ui| {
+                    action(
+                        ui,
+                        "#work/facilities/Pal_Surgery_Table",
+                        "建造帕鲁手术台",
+                        nav,
+                    );
+                    ui.small("科技 Lv. 38");
+                });
+            });
+            ui.horizontal_wrapped(|ui| {
+                for (id, label) in [
+                    ("IronIngot", "精炼金属锭 ×30"),
+                    ("Cloth2", "优质的布 ×20"),
+                    ("Corrosive_Solvent", "腐蚀溶剂 ×10"),
+                ] {
+                    route(ui, format!("#items/{id}"), label, nav);
+                }
+            });
+        });
+    };
+    let gender = |ui: &mut egui::Ui, nav: &mut Option<String>| {
+        crate::design::card(ui).inner_margin(9).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal(|ui| {
+                if let Some(source) = item_image(d, "PalGenderReverse") {
+                    if ui
+                        .add(
+                            egui::Image::new(source)
+                                .fit_to_exact_size(Vec2::splat(56.))
+                                .sense(egui::Sense::click()),
+                        )
+                        .on_hover_text("帕鲁性转药")
+                        .on_hover_cursor(egui::CursorIcon::PointingHand)
+                        .clicked()
+                    {
+                        *nav = Some("#items/PalGenderReverse".into());
+                    }
+                }
+                ui.vertical(|ui| {
+                    action(ui, "#items/PalGenderReverse", "更改性别", nav);
+                    ui.small("在手术台使用帕鲁性转药。");
+                });
+            });
+            ui.small("性转药的获取方式可在物品图鉴中查看。");
+        });
+    };
+    if ui.available_width() > 620. {
+        ui.columns(2, |cols| {
+            table(&mut cols[0], &mut nav);
+            gender(&mut cols[1], &mut nav);
+        });
+    } else {
+        table(ui, &mut nav);
+        gender(ui, &mut nav);
+    }
+    ui.horizontal_wrapped(|ui| {
+        ui.small("勾选已获取的植入体或持有耗材后，可在目标配种中使用。");
+        action(ui, "#planner", "前往目标配种", &mut nav);
+    });
+    nav
+}
+
 fn number(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
@@ -152,11 +237,13 @@ fn section<R>(ui: &mut egui::Ui, title: &str, body: impl FnOnce(&mut egui::Ui) -
 fn hero(ui: &mut egui::Ui, d: &Data, e: &Entry, kind: &str, subtitle: &str) {
     ui.horizontal_top(|ui| {
         let page = entry_page(e);
-        if let Some(source) = entry_image(d, page, e) {
+        if matches!(page, "details/passive" | "details/surgery") {
+            crate::breeding_ui::passive_rank(ui, d, e.value["rank"].as_i64().unwrap_or(0), 40.);
+        } else if let Some(source) = entry_image(d, page, e) {
             let size = if kind == "pal" { 76. } else { 64. };
             let mut image = egui::Image::new(source).fit_to_exact_size(Vec2::splat(size));
             if page == "details/active" {
-                image = image.tint(crate::design::palette(ui.ctx()).accent);
+                image = image.tint(crate::breeding_ui::element_color(text(&e.value, "type")));
             }
             ui.add(image);
         }
@@ -360,7 +447,22 @@ fn route(
 }
 fn action(ui: &mut egui::Ui, href: impl Into<String>, label: &str, nav: &mut Option<String>) {
     let href = href.into();
-    let response = ui.button(label);
+    let icon = if href.starts_with("#spawns") || href.starts_with("#map") {
+        "pin"
+    } else if href.starts_with("#planner") {
+        "target"
+    } else if href.starts_with("#lookup") {
+        "branch"
+    } else if href.starts_with("#work/ranch") {
+        "ranch"
+    } else if href.starts_with("#work/suitability") || href.starts_with("#work/efficiency") {
+        "settings"
+    } else if href.starts_with("#details/surgery") {
+        "surgery"
+    } else {
+        "book"
+    };
+    let response = crate::design::action(ui, icon, label);
     #[cfg(test)]
     track(ui, &response, &href);
     if response.clicked() {
@@ -372,7 +474,19 @@ fn item(ui: &mut egui::Ui, d: &Data, id: &str, note: &str, nav: &mut Option<Stri
         return;
     }
     ui.horizontal(|ui| {
-        d.item_icon(ui, id, 26.);
+        if let Some(source) = item_image(d, id) {
+            let response = ui
+                .add(
+                    egui::Image::new(source)
+                        .fit_to_exact_size(Vec2::splat(26.))
+                        .sense(egui::Sense::click()),
+                )
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .on_hover_text(d.item_name(id));
+            if response.clicked() {
+                *nav = Some(format!("#items/{id}"));
+            }
+        }
         route(ui, format!("#items/{id}"), d.item_name(id), nav);
         if !note.is_empty() {
             ui.weak(note);
@@ -381,7 +495,20 @@ fn item(ui: &mut egui::Ui, d: &Data, id: &str, note: &str, nav: &mut Option<Stri
 }
 fn pal(ui: &mut egui::Ui, d: &Data, key: &str, note: &str, nav: &mut Option<String>) {
     ui.horizontal(|ui| {
-        d.portrait(ui, key, 30.);
+        if let Some(source) = pal_image(d, key) {
+            if ui
+                .add(
+                    egui::Image::new(source)
+                        .fit_to_exact_size(Vec2::splat(30.))
+                        .sense(egui::Sense::click()),
+                )
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .on_hover_text(d.pal_name(key))
+                .clicked()
+            {
+                *nav = Some(format!("#paldex/{key}"));
+            }
+        }
         route(ui, format!("#paldex/{key}"), d.pal_name(key), nav);
         if !note.is_empty() {
             ui.weak(note);
@@ -421,17 +548,21 @@ fn element(ui: &mut egui::Ui, key: &str) {
         "dark" => egui::Color32::from_rgb(113, 77, 151),
         _ => ui.visuals().text_color(),
     };
-    ui.label(
-        RichText::new(format!("{} 属性", element_name(key)))
-            .color(color)
-            .strong(),
-    );
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 3.;
+        if let Some(source) = element_image(key) {
+            ui.add(
+                egui::Image::new(source)
+                    .fit_to_exact_size(Vec2::splat(17.))
+                    .tint(color),
+            );
+        }
+        ui.label(RichText::new(element_name(key)).color(color).strong());
+    });
 }
 fn rank(ui: &mut egui::Ui, d: &Data, v: &Value) {
     let value = v.as_i64().unwrap_or(0);
-    if let Some(icon) = d.get("trait-ranks")[value.unsigned_abs() as usize].as_str() {
-        d.image(ui, icon, Vec2::splat(20.));
-    }
+    crate::breeding_ui::passive_rank(ui, d, value, 20.);
     ui.weak(if value < 0 {
         format!("负面词条 · 等级 {value}")
     } else {

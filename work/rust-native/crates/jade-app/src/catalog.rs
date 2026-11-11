@@ -22,7 +22,7 @@ pub struct Catalog {
     pub last: String,
     views: HashMap<String, Filters>,
     pub filter: String,
-    ranch_level: usize,
+    ranch: crate::work_views::RanchState,
     sort: String,
     scope: String,
     pal_filter: String,
@@ -305,18 +305,24 @@ impl Catalog {
         if page == "paldex" && selected.is_some() {
             let e = selected.unwrap();
             ui.horizontal(|ui| {
-                if ui.button("← 返回图鉴列表").clicked() {
+                if crate::design::small_action(ui, "left", "返回图鉴列表").clicked() {
                     navigate = Some("#paldex".into());
                 }
                 if let Some(index) = entries.iter().position(|r| r.id == e.id) {
                     if ui
-                        .add_enabled(index > 0, egui::Button::new("上一只"))
+                        .add_enabled_ui(index > 0, |ui| {
+                            crate::design::small_action(ui, "left", "上一只")
+                        })
+                        .inner
                         .clicked()
                     {
                         navigate = Some(entries[index - 1].route.clone());
                     }
                     if ui
-                        .add_enabled(index + 1 < entries.len(), egui::Button::new("下一只"))
+                        .add_enabled_ui(index + 1 < entries.len(), |ui| {
+                            crate::design::small_action(ui, "right", "下一只")
+                        })
+                        .inner
                         .clicked()
                     {
                         navigate = Some(entries[index + 1].route.clone());
@@ -356,7 +362,11 @@ impl Catalog {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.query)
                         .hint_text("搜索名称、编号或效果")
-                        .desired_width(250.),
+                        .desired_width(if ui.ctx().content_rect().width() < 1120. {
+                            200.
+                        } else {
+                            250.
+                        }),
                 );
                 if !groups.is_empty()
                     && !["details/partner", "details/active", "details/fruits"].contains(&page)
@@ -524,7 +534,7 @@ impl Catalog {
                         [("palpagos", "帕洛斯群岛"), ("worldtree", "世界树")],
                     );
                 }
-                if ui.button("清除筛选").clicked() {
+                if crate::design::small_action(ui, "reset", "清除筛选").clicked() {
                     self.query.clear();
                     self.group.clear();
                     self.filter.clear();
@@ -544,7 +554,7 @@ impl Catalog {
                     ui.small("技能类型 · 多选匹配任一");
                     for tag in tags {
                         let mut enabled = self.tags.contains(tag);
-                        if ui.checkbox(&mut enabled, group_label(tag)).changed() {
+                        if crate::design::checkbox(ui, &mut enabled, group_label(tag)).changed() {
                             if enabled {
                                 self.tags.insert(tag.into());
                             } else {
@@ -648,12 +658,20 @@ impl Catalog {
                 matches.first().copied()
             }
         });
+        if page == "details/surgery" && selected.is_none() {
+            if let Some(route) = crate::catalog_views::surgery_overview(ui, d) {
+                navigate = Some(route);
+            }
+        }
         ui.horizontal(|ui| {
             ui.label(RichText::new(format!("{} 条", matches.len())).strong());
             if page == "details/partner" {
                 ui.weak("按图鉴编号排列");
             }
-            if selected.is_some() && full_grid && ui.small_button("展开全部列表").clicked() {
+            if selected.is_some()
+                && full_grid
+                && crate::design::small_action(ui, "list", "展开全部列表").clicked()
+            {
                 navigate = Some(format!("#{page}"));
             }
         });
@@ -745,153 +763,7 @@ impl Catalog {
     }
 
     fn ranch(&mut self, ui: &mut egui::Ui, d: &Data, route: &str) -> Option<String> {
-        let mut nav = None;
-        let path = route.strip_prefix("#work/ranch/").unwrap_or("");
-        let reverse = path.starts_with("item/");
-        let id = path.trim_start_matches("item/");
-        let pals = d.get("ranch-data")["pals"].as_object()?;
-        ui.horizontal_wrapped(|ui| {
-            if ui.selectable_label(!reverse, "按帕鲁查看").clicked() {
-                nav = Some("#work/ranch".into());
-            }
-            if ui.selectable_label(reverse, "按产物反查").clicked() {
-                nav = Some("#work/ranch/item/".into());
-            }
-            ui.label("牧场适应性等级（0 = 天然等级）");
-            ui.add(egui::DragValue::new(&mut self.ranch_level).range(0..=10));
-            ui.text_edit_singleline(&mut self.query);
-        });
-        let products: BTreeSet<String> = pals
-            .values()
-            .flat_map(|p| {
-                array(&p["tiers"])
-                    .iter()
-                    .flat_map(array)
-                    .filter_map(|r| r["item"].as_str().map(str::to_owned))
-            })
-            .collect();
-        let candidates: Vec<String> = if reverse {
-            products.into_iter().collect()
-        } else {
-            d.species
-                .iter()
-                .map(|p| text(p, "key"))
-                .filter(|k| pals.contains_key(*k))
-                .map(str::to_owned)
-                .collect()
-        };
-        let selected = if candidates.iter().any(|s| s == id) {
-            id.to_owned()
-        } else {
-            candidates.first().cloned().unwrap_or_default()
-        };
-        ui.columns(2, |cols| {
-            egui::ScrollArea::vertical()
-                .id_salt(("ranch-list", reverse))
-                .show(&mut cols[0], |ui| {
-                    for key in &candidates {
-                        let name = if reverse {
-                            d.item_name(key)
-                        } else {
-                            d.pal_name(key)
-                        };
-                        if !crate::data::normalize(&name)
-                            .contains(&crate::data::normalize(&self.query))
-                            && !crate::data::normalize(key)
-                                .contains(&crate::data::normalize(&self.query))
-                        {
-                            continue;
-                        }
-                        ui.horizontal(|ui| {
-                            if reverse {
-                                d.item_icon(ui, key, 36.);
-                            } else {
-                                d.portrait(ui, key, 36.);
-                            }
-                            if ui.selectable_label(*key == selected, name).clicked() {
-                                nav = Some(format!(
-                                    "#work/ranch/{}{key}",
-                                    if reverse { "item/" } else { "" }
-                                ));
-                            }
-                        });
-                    }
-                });
-            egui::ScrollArea::vertical()
-                .id_salt(("ranch-detail", &selected, reverse))
-                .show(&mut cols[1], |ui| {
-                    ui.heading(if reverse {
-                        d.item_name(&selected)
-                    } else {
-                        d.pal_name(&selected)
-                    });
-                    ui.label(
-                        "每次产出抽取一种物品，数量为抽中后的个数。等级包含浓缩和适应性手册提升。",
-                    );
-                    let suppliers: Vec<_> = if reverse {
-                        pals.iter()
-                            .filter(|(_, p)| {
-                                array(&p["tiers"])
-                                    .iter()
-                                    .flat_map(array)
-                                    .any(|r| r["item"] == selected)
-                            })
-                            .collect()
-                    } else {
-                        pals.iter().filter(|(k, _)| **k == selected).collect()
-                    };
-                    for (key, p) in suppliers {
-                        let base = p["base"].as_u64().unwrap_or(1) as usize;
-                        let level = if self.ranch_level == 0 {
-                            base
-                        } else {
-                            self.ranch_level
-                        };
-                        crate::design::card(ui).show(ui, |ui| {
-                            ui.horizontal_wrapped(|ui| {
-                                d.portrait(ui, key, 44.);
-                                if ui.link(d.pal_name(key)).clicked() {
-                                    nav = Some(format!("#paldex/{key}"));
-                                }
-                                ui.label(format!(
-                                    "天然 Lv.{base} · 满星 Lv.{} · 当前 Lv.{level}",
-                                    p["condensed"]
-                                ));
-                            });
-                            if level < base {
-                                ui.label(format!("该帕鲁天然适应性为 Lv.{base}，不能低于此级。"));
-                            } else {
-                                for r in array(&p["tiers"][level - 1]) {
-                                    let item = text(r, "item");
-                                    if reverse && item != selected {
-                                        continue;
-                                    }
-                                    ui.horizontal_wrapped(|ui| {
-                                        d.item_icon(ui, item, 32.);
-                                        if ui.link(d.item_name(item)).clicked() {
-                                            nav = Some(format!("#items/{item}"));
-                                        }
-                                        ui.label(format!(
-                                            "{}～{} 件 · {}%",
-                                            r["min"], r["max"], r["chance"]
-                                        ));
-                                        if ui.small_button("反查产量").clicked() {
-                                            nav = Some(format!("#work/ranch/item/{item}"));
-                                        }
-                                    });
-                                }
-                            }
-                            if ui.link("伙伴技能").clicked() {
-                                nav = Some(format!("#details/partner/{key}"));
-                            }
-                            if ui.link("查看全部产物").clicked() {
-                                nav = Some(format!("#work/ranch/{key}"));
-                            }
-                        });
-                    }
-                });
-        });
-        nav
+        self.ranch.show(ui, d, route)
     }
 }
 fn is_merchant(v: &Value) -> bool {
@@ -1211,10 +1083,12 @@ fn entry_card(
             .layout(egui::Layout::left_to_right(egui::Align::Center)),
     );
     cell.set_clip_rect(rect.intersect(ui.clip_rect()));
-    if let Some(source) = crate::catalog_views::entry_image(d, page, e) {
+    if matches!(page, "details/passive" | "details/surgery") {
+        crate::breeding_ui::passive_rank(&mut cell, d, e.value["rank"].as_i64().unwrap_or(0), 22.);
+    } else if let Some(source) = crate::catalog_views::entry_image(d, page, e) {
         let mut image = egui::Image::new(source).fit_to_exact_size(Vec2::splat(36.));
         if page == "details/active" {
-            image = image.tint(p.accent);
+            image = image.tint(crate::breeding_ui::element_color(text(&e.value, "type")));
         }
         cell.add(image);
     }

@@ -11,6 +11,7 @@ mod map;
 mod qa;
 mod store;
 mod updates;
+mod work_views;
 mod worlds_ui;
 use data::{Data, array, text};
 use eframe::egui::{self, Color32, RichText, Vec2};
@@ -410,11 +411,17 @@ impl App {
             return None;
         }
         let mut open = true;
+        let mut close_search = false;
         egui::Window::new("全局搜索")
             .open(&mut open)
+            .title_bar(false)
             .default_width(840.)
             .default_height(640.)
             .show(ctx, |ui| {
+                if design::dialog_header(ui, "search", "全局搜索").clicked() {
+                    close_search = true;
+                }
+                ui.separator();
                 let input = ui.add(
                     egui::TextEdit::singleline(&mut self.search)
                         .hint_text("中文名、英文名或游戏编号")
@@ -507,11 +514,24 @@ impl App {
                                 .layout(egui::Layout::left_to_right(egui::Align::Center)),
                         );
                         row.set_clip_rect(rect.intersect(ui.clip_rect()));
-                        if let Some(source) = self.catalog.image_for_route(&self.data, href) {
+                        if href.starts_with("#details/passive/")
+                            || href.starts_with("#details/surgery/")
+                        {
+                            let key = href.rsplit('/').next().unwrap_or("");
+                            let rank = self.data.get("pal-details-data")["passives"][key]["rank"]
+                                .as_i64()
+                                .unwrap_or(0);
+                            breeding_ui::passive_rank(&mut row, &self.data, rank, 22.);
+                        } else if let Some(source) = self.catalog.image_for_route(&self.data, href)
+                        {
                             let mut image =
                                 egui::Image::new(source).fit_to_exact_size(Vec2::splat(30.));
                             if href.starts_with("#details/active/") {
-                                image = image.tint(p.accent);
+                                let key = href.rsplit('/').next().unwrap_or("");
+                                image = image.tint(breeding_ui::element_color(text(
+                                    &self.data.get("pal-details-data")["moves"][key],
+                                    "type",
+                                )));
                             }
                             row.add(image);
                         } else {
@@ -549,7 +569,7 @@ impl App {
                     }
                 });
             });
-        self.search_open = open;
+        self.search_open = open && !close_search;
         nav
     }
     fn settings(&mut self, ui: &mut egui::Ui, page: &str) {
@@ -663,6 +683,8 @@ impl eframe::App for App {
         }
         ctx.request_repaint_after(Duration::from_secs(1));
         self.data.poll();
+        self.updates
+            .seed_local_notices(self.data.get("announcements"));
         self.data.preload(ctx);
         self.worlds.tick(&mut self.store);
         if self.frames == 1 && std::env::var_os("JADE_QA_WORLDS").is_some() {
@@ -709,18 +731,34 @@ impl eframe::App for App {
         let mut nav = None;
         let palette = design::palette(ctx);
         egui::TopBottomPanel::top("titlebar")
-            .exact_height(32.)
+            .exact_height(35.)
             .frame(
                 egui::Frame::new()
-                    .fill(palette.surface)
-                    .inner_margin(egui::Margin::symmetric(10, 0)),
+                    .fill(palette.rail)
+                    .inner_margin(egui::Margin::ZERO),
             )
             .show(ctx, |ui| {
-                let drag = ui.interact(
-                    ui.max_rect(),
-                    ui.id().with("window-drag"),
-                    egui::Sense::drag(),
-                );
+                if self.theme == "moon" {
+                    design::gradient(
+                        ui.painter(),
+                        ui.max_rect(),
+                        &[
+                            Color32::from_rgb(155, 191, 217),
+                            Color32::from_rgb(155, 173, 216),
+                            Color32::from_rgb(183, 166, 212),
+                        ],
+                        true,
+                    );
+                }
+                let caption_ink = if self.theme == "moon" {
+                    palette.ink
+                } else {
+                    Color32::WHITE
+                };
+                ui.visuals_mut().override_text_color = Some(caption_ink);
+                let mut drag_rect = ui.max_rect();
+                drag_rect.max.x -= 138.;
+                let drag = ui.interact(drag_rect, ui.id().with("window-drag"), egui::Sense::drag());
                 if drag.drag_started() {
                     ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
@@ -729,32 +767,37 @@ impl eframe::App for App {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
                 }
                 ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing = Vec2::ZERO;
+                    ui.add_space(12.);
                     ui.add(
                         egui::Image::new(egui::include_image!("../assets/jade-symbol.webp"))
                             .fit_to_exact_size(Vec2::splat(24.)),
                     );
+                    ui.add_space(8.);
                     ui.label(RichText::new("Jade · 幻兽帕鲁工具箱").size(12.).strong());
-                    ui.weak(RichText::new("Rust 测试版").size(11.));
+                    ui.add_space(10.);
+                    ui.label(
+                        RichText::new("Rust 测试版")
+                            .size(11.)
+                            .color(caption_ink.gamma_multiply(0.8)),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .add_sized([38., 28.], egui::Button::new("×").frame(false))
-                            .on_hover_text("关闭")
-                            .clicked()
-                        {
+                        if design::window_button(ui, "close", "关闭", caption_ink).clicked() {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
-                        if ui
-                            .add_sized([38., 28.], egui::Button::new("□").frame(false))
-                            .on_hover_text("最大化 / 还原")
-                            .clicked()
+                        let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
+                        if design::window_button(
+                            ui,
+                            if max { "restore" } else { "maximize" },
+                            "最大化 / 还原",
+                            caption_ink,
+                        )
+                        .clicked()
                         {
                             let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
                             ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
                         }
-                        if ui
-                            .add_sized([38., 28.], egui::Button::new("—").frame(false))
-                            .on_hover_text("最小化")
-                            .clicked()
+                        if design::window_button(ui, "minimize", "最小化", caption_ink).clicked()
                         {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
                         }
@@ -892,49 +935,67 @@ impl eframe::App for App {
                     .inner_margin(egui::Margin::symmetric(20, 5)),
             )
             .show(ctx, |ui| {
+                if self.theme == "moon" {
+                    design::gradient(
+                        ui.painter(),
+                        ui.max_rect().expand2(Vec2::new(20., 5.)),
+                        &[palette.surface, Color32::from_rgb(195, 186, 215)],
+                        true,
+                    );
+                }
                 ui.horizontal_centered(|ui| {
                     if ui
-                        .add_enabled(!self.history.is_empty(), egui::Button::new("← 返回"))
+                        .add_enabled_ui(!self.history.is_empty(), |ui| {
+                            design::action(ui, "left", "返回")
+                        })
+                        .inner
                         .clicked()
                     {
                         self.back();
                     }
                     if !self.forward.is_empty()
-                        && ui
-                            .add(egui::Button::new("→").small())
-                            .on_hover_text("前进 · Alt+→")
-                            .clicked()
+                        && design::icon_button(ui, "right", "前进 · Alt+→").clicked()
                     {
                         self.next();
                     }
                     let unread = self.updates.unread_count(&self.store.state);
-                    let news = if unread > 0 {
-                        format!("公告 {unread}")
-                    } else {
-                        "公告".into()
-                    };
-                    if ui
-                        .add(egui::Button::image_and_text(
-                            egui::Image::new(design::icon_source("bell"))
-                                .fit_to_exact_size(Vec2::splat(16.))
-                                .tint(palette.accent),
-                            news,
-                        ))
-                        .clicked()
-                    {
+                    if design::announcement_button(ui, unread).clicked() {
                         nav = Some("#settings/updates".into());
                     }
                     egui::ScrollArea::horizontal()
                         .id_salt("tab-scroll")
+                        .max_height(44.)
+                        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
                                 for (name, id) in SECTIONS[section].2 {
-                                    if design::tab(ui, name, page == *id).clicked() {
+                                    let response = design::tab_with_icon(
+                                        ui,
+                                        name,
+                                        design::tab_icon(id),
+                                        page == *id,
+                                    );
+                                    if page == *id
+                                        && ui
+                                            .ctx()
+                                            .data(|m| {
+                                                m.get_temp::<String>(egui::Id::new(
+                                                    "last-tabs-page",
+                                                ))
+                                            })
+                                            .as_deref()
+                                            != Some(page.as_str())
+                                    {
+                                        response.scroll_to_me(Some(egui::Align::Center));
+                                    }
+                                    if response.clicked() {
                                         nav = Some(format!("#{id}"));
                                     }
                                 }
                             });
                         });
+                    ui.ctx()
+                        .data_mut(|m| m.insert_temp(egui::Id::new("last-tabs-page"), page.clone()));
                 });
             });
         egui::CentralPanel::default()
@@ -960,7 +1021,10 @@ impl eframe::App for App {
                 if ["warehouse", "planner", "offspring"].contains(&page.as_str()) {
                     ui.horizontal(|ui| {
                         if ui
-                            .add_enabled(!self.worlds.busy, egui::Button::new("↻ 刷新现有帕鲁"))
+                            .add_enabled_ui(!self.worlds.busy, |ui| {
+                                design::action(ui, "refresh", "刷新现有帕鲁")
+                            })
+                            .inner
                             .clicked()
                         {
                             self.worlds.refresh(ctx, &self.store);
@@ -1024,9 +1088,15 @@ impl eframe::App for App {
             self.new_window();
         }
         if self.about {
+            let mut close_about = false;
             egui::Window::new("数据说明")
                 .open(&mut self.about)
+                .title_bar(false)
                 .show(ctx, |ui| {
+                    if design::dialog_header(ui, "info", "数据说明").clicked() {
+                        close_about = true;
+                    }
+                    ui.separator();
                     ui.label("非官方玩家工具。游戏美术与文本归 Pocketpair 等原权利人所有。");
                     ui.label("原生 Rust 界面与计算；测试版独立保存数据。");
                     catalog::render_value(
@@ -1037,6 +1107,9 @@ impl eframe::App for App {
                         &mut nav,
                     );
                 });
+            if close_about {
+                self.about = false;
+            }
         }
         if let Some(route) = nav {
             self.go(route);
