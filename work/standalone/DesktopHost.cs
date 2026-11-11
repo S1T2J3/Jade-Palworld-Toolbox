@@ -13,7 +13,7 @@ using System.Windows.Forms;
 [assembly: AssemblyTitle("Jade · 幻兽帕鲁工具箱")]
 [assembly: AssemblyProduct("Jade · 幻兽帕鲁工具箱")]
 [assembly: AssemblyDescription("离线帕鲁图鉴、配种、世界地图与物品查询")]
-[assembly: AssemblyVersion("1.0.16.0")]
+[assembly: AssemblyVersion("1.0.17.0")]
 
 internal static class DesktopHost {
     const string Title="Jade · 幻兽帕鲁工具箱";

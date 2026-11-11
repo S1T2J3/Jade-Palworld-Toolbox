@@ -902,4 +902,5 @@
     showActiveView();
   });
   showActiveView();
+  desktopTables.startBackground();
 })();
