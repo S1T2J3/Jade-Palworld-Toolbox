@@ -23,6 +23,7 @@
       </div>
       <button type="button" id="rail-close" class="rail-close" aria-label="关闭导航"><i data-icon="close"></i></button>
     </div>
+    <button type="button" id="atlas-search-open" class="rail-search" aria-haspopup="dialog" aria-controls="atlas-search-dialog" title="搜索全部资料（Ctrl+K）"><i data-icon="search"></i><span>全局搜索</span></button>
     <nav class="section-links" aria-label="主导航">
       <a id="section-breeding" href="#lookup" class="section-active" aria-current="true"><i data-icon="egg"></i><span>配种手册</span></a>
       <a id="section-map" href="#map" aria-controls="map-view spawns-view"><i data-icon="worldmap"></i><span>世界地图</span></a>
@@ -205,6 +206,18 @@
     </footer>
   </dialog>
   <!--__WORLD_MANAGER__-->
+  <dialog id="atlas-search-dialog" aria-labelledby="atlas-search-title">
+    <div class="atlas-search-content">
+      <div class="atlas-search-heading"><h2 id="atlas-search-title">搜索工具箱</h2><button type="button" id="atlas-search-close" aria-label="关闭搜索">关闭</button></div>
+      <label class="atlas-search-field"><i data-icon="search"></i><input type="search" id="atlas-search-input" aria-label="搜索名称、英文名或游戏编号" autocomplete="off" spellcheck="false" placeholder="搜索帕鲁、词条、物品、技能…" aria-controls="atlas-search-results"></label>
+      <div id="atlas-search-filters" aria-label="筛选资料类型"></div>
+      <p id="atlas-search-status" role="status" aria-live="polite">正在读取搜索索引…</p>
+      <div id="atlas-search-results" aria-label="搜索结果"></div>
+      <button type="button" id="atlas-search-more" hidden>显示更多结果</button>
+      <button type="button" id="atlas-search-retry" hidden>重试读取</button>
+    </div>
+  </dialog>
+  <script id="search-index-data" type="application/json">__SEARCH_INDEX__</script>
   <script id="db" type="application/json">__DATABASE__</script>
   <script id="portraits" type="application/json">__PORTRAITS__</script>
   <script id="trait-data" type="application/json">__TRAITS__</script>

@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const releaseVersion = '1.0.14';
+const releaseVersion = '1.0.15';
 const releaseRepository = process.env.JADE_RELEASE_REPOSITORY || 'S1T2J3/Jade-Palworld-Toolbox';
 if (!/^[a-z\d][a-z\d-]{0,38}\/[a-z\d][a-z\d_.-]{0,99}$/i.test(releaseRepository)) {
   throw new Error('Invalid GitHub update repository');
@@ -23,11 +23,12 @@ const cssModules={
 };
 const originalStyles=['warehouse','trait-ui','collection','result-density','pair-grid','section-shell','world-map','spawn-map','pal-details','item-catalog','stat-calc','capture-calc','paldex','relic','ranch','facilities','work-efficiency','world-manager','breeding-gaps','partner-skills','combat-guide','journals','expeditions','handbook-layout'];
 const themeStyles=require('./theme-styles.cjs');
-const skinStyles=['skin-picker','skins','enemies','external-links','adventure','resource-guides','trait-ranks','release-center'];
+const skinStyles=['skin-picker','skins','enemies','external-links','adventure','resource-guides','trait-ranks','release-center','global-search'];
 const styles=[['base',themeStyles(baseStyle)],...originalStyles.map(name=>[name,themeStyles(read('ui',name+'.css'))]),...skinStyles.map(name=>[name,read('ui',name+'.css')])];
 const style=styles.map(([name,css])=>cssModules[name]?'/*<lazy-'+name+'>*/'+css+'/*</lazy-'+name+'>*/':css).join('\n');
 const core=['desktop-data','recipe-index','trait-ranks','inventory-store','surgery-book','world-store','world-manager','breeding-plans','external-footer','release-badge'];
 const features={
+  search:['global-search'],
   planner:['breeding-gaps','trait-ui'], runner:['trait-runner'], warehouse:['collection'], offspring:['warehouse'],
   camera:['map-camera'], map:['world-map'], spawns:['spawn-map'], details:['pal-details'],
   stats:['stat-calc'], capture:['capture-calc'], items:['item-crafting','item-catalog'], enemies:['enemies'], 'external-links':['external-links'], paldex:['paldex'], relic:['relic'], ranch:['ranch'],
@@ -90,6 +91,7 @@ const page = read('ui','index.html')
   .replace('<!--__WAREHOUSE__-->', () => read('ui','warehouse.html'))
   .replace('<!--__COLLECTION__-->', () => read('ui','collection.html'))
   .replace('<!--__TRAIT_UI__-->', () => read('ui','trait-ui.html'))
+  .replace('__SEARCH_INDEX__', () => inlineJSON(require('./search-index.cjs')({breeding,enemyBook,itemBook,resourceBook,adventureBook,humanLinks})))
   .replace('<!--__WORLD_MANAGER__-->', () => read('ui','world-manager.html'))
   .replace('<!--__MAP_UI__-->', () => read('ui','world-map.html'))
   .replace('<!--__SPAWN_UI__-->', () => read('ui','spawn-map.html'))
@@ -224,7 +226,7 @@ function makeDesktopPage(html) {
   let light=splitDesktopImages(html,splitImages,JSON.parse(read('data','breeding.json')));
   // Use local classic scripts: file:// reads work in the packaged content
   // sandbox without a localhost server or relaxed cross-origin permissions.
-  const optional=new Set(['map-data','spawn-data','item-catalog-data','enemy-data','adventure-data','resource-guides-data','paldex-data','paldex-index-data','pal-details-data','stat-data','capture-data','relic-data','ranch-data','item-icons','map-images','facilities-data','work-efficiency-data','partner-skills-data','combat-guide-data','journals-data','expedition-data']);
+  const optional=new Set(['search-index-data','map-data','spawn-data','item-catalog-data','enemy-data','adventure-data','resource-guides-data','paldex-data','paldex-index-data','pal-details-data','stat-data','capture-data','relic-data','ranch-data','item-icons','map-images','facilities-data','work-efficiency-data','partner-skills-data','combat-guide-data','journals-data','expedition-data']);
   light=light.replace(/<script id="([^"]+)" type="application\/json">([\s\S]*?)<\/script>/g,(tag,id,json)=>{
     if(!optional.has(id)) return tag;
     optional.delete(id);

@@ -559,6 +559,41 @@
     if(offspring && !byId('offspring-view').hidden) offspring.refresh();
   });
   byId('rail-close').addEventListener('click',()=>setRail(false,true));
+  const searchDialog=byId('atlas-search-dialog'),searchButton=byId('atlas-search-open');
+  let globalSearch,searchLoading;
+  async function openGlobalSearch() {
+    if(document.querySelector('dialog[open]') && !searchDialog.open)return;
+    setRail(false);
+    if(!searchDialog.open)searchDialog.showModal();
+    byId('atlas-search-input').focus();
+    if(globalSearch){globalSearch.refresh();return;}
+    if(searchLoading)return;
+    byId('atlas-search-retry').hidden=true;
+    byId('atlas-search-status').textContent='正在读取本地搜索索引…';
+    searchLoading=Promise.all(['code-search','search-index-data'].map(desktopTables.load));
+    try {
+      await searchLoading;
+      globalSearch=initGlobalSearch({entries:JSON.parse(byId('search-index-data').textContent)});
+      if(searchDialog.open)globalSearch.focus();
+    } catch {
+      byId('atlas-search-status').textContent='未能读取本地索引，请重试。';
+      byId('atlas-search-retry').hidden=false;
+    } finally {searchLoading=null;}
+  }
+  searchButton.addEventListener('click',openGlobalSearch);
+  byId('atlas-search-retry').addEventListener('click',openGlobalSearch);
+  byId('atlas-search-close').addEventListener('click',()=>searchDialog.close());
+  searchDialog.addEventListener('close',()=>{
+    if(narrowRail.matches)openRail.focus({preventScroll:true});else searchButton.focus({preventScroll:true});
+  });
+  searchDialog.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!event.isComposing){event.preventDefault();event.stopPropagation();searchDialog.close();}
+  });
+  document.addEventListener('keydown',event=>{
+    if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
+      event.preventDefault();openGlobalSearch();
+    }
+  });
   byId('rail-shade').addEventListener('click',()=>setRail(false,true));
   rail.querySelector('.section-links').addEventListener('click',()=>setRail(false,true));
   narrowRail.addEventListener('change',()=>setRail(false));
