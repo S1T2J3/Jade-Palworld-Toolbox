@@ -256,6 +256,11 @@ fn hero(ui: &mut egui::Ui, d: &Data, e: &Entry, kind: &str, subtitle: &str) {
 /// One image resolver for list cards, search results and detail headings. Many
 /// catalogue records reference another table's image instead of carrying `icon`.
 pub fn entry_image(d: &Data, page: &str, e: &Entry) -> Option<egui::ImageSource<'static>> {
+    if page == "enemies" {
+        if let Some(source) = crate::game_art::enemy_source(&e.id) {
+            return Some(source);
+        }
+    }
     if !e.icon.is_empty() {
         if let Some(uri) = d.get("enemy-data")["icons"][&e.icon].as_str() {
             return Some(d.image_source(uri));

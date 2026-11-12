@@ -2,6 +2,7 @@
 use crate::data::{Data, array, normalize, text};
 use eframe::egui::{self, Color32, Rect, Sense, Stroke, Vec2};
 use serde_json::{Value, json};
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -19,6 +20,14 @@ struct Pin {
     art: String,
     raw: Value,
     search: String,
+}
+#[derive(Default)]
+struct MapSearchCache {
+    query: String,
+    points: usize,
+    custom_signature: String,
+    scores: Vec<Option<u32>>,
+    texts: Vec<crate::search::CachedText>,
 }
 #[derive(Clone)]
 struct Editor {
@@ -61,6 +70,7 @@ pub struct MapState {
     categories_expanded: bool,
     viewport: Rect,
     detail_height: f32,
+    search_cache: RefCell<MapSearchCache>,
 }
 impl Default for MapState {
     fn default() -> Self {
@@ -96,6 +106,7 @@ impl Default for MapState {
             categories_expanded: false,
             viewport: Rect::NOTHING,
             detail_height: 220.,
+            search_cache: RefCell::default(),
         }
     }
 }
@@ -740,18 +751,55 @@ fn coordinate_tools(ui: &mut egui::Ui, state: &mut MapState) {
 }
 fn filtered<'a>(points: &'a [Pin], state: &MapState, done: &HashSet<String>) -> Vec<&'a Pin> {
     let q = normalize(state.search.trim());
-    points
+    let allowed = |p: &&Pin| {
+        p.region == state.region
+            && (state.categories.contains(&p.category)
+                || state.categories.contains(text(&p.raw, "alsoCategory")))
+            && (state.completion == 0
+                || (state.completion == 1 && !done.contains(&p.id))
+                || (state.completion == 2 && done.contains(&p.id)))
+    };
+    if q.is_empty() {
+        return points.iter().filter(allowed).collect();
+    }
+    let mut cache = state.search_cache.borrow_mut();
+    let identity = points.as_ptr() as usize;
+    let changed = cache.points != identity
+        || cache.texts.len() != points.len()
+        || cache.custom_signature != state.custom_signature;
+    if changed {
+        // Ordinary map opening and panning keep the original light-weight pins.
+        // Prepare approximate names only when the user actually searches.
+        cache.texts=points.iter().map(|p|crate::search::CachedText::from_row(&json!({
+            "name":p.name,"hint":p.search,"href":format!("#map/point/{}",p.id),
+            "category":p.category,"aliases":[text(&p.raw,"en"),text(&p.raw,"nearest"),p.category]
+        }))).collect();
+    }
+    if cache.query != q || changed {
+        let query = crate::search::PreparedQuery::new(&q);
+        cache.scores = points
+            .iter()
+            .zip(&cache.texts)
+            .map(|(p, fuzzy)| {
+                if q.split_whitespace().all(|word| p.search.contains(word)) {
+                    Some(0)
+                } else {
+                    fuzzy.match_query(&query).map(|m| m.score)
+                }
+            })
+            .collect();
+        cache.query = q;
+        cache.points = identity;
+        cache.custom_signature = state.custom_signature.clone();
+    }
+    let mut results: Vec<_> = points
         .iter()
-        .filter(|p| {
-            p.region == state.region
-                && (state.categories.contains(&p.category)
-                    || state.categories.contains(text(&p.raw, "alsoCategory")))
-                && (state.completion == 0
-                    || (state.completion == 1 && !done.contains(&p.id))
-                    || (state.completion == 2 && done.contains(&p.id)))
-                && q.split_whitespace().all(|word| p.search.contains(word))
-        })
-        .collect()
+        .enumerate()
+        .filter(|(_, p)| allowed(p))
+        .filter_map(|(i, p)| cache.scores[i].map(|score| (score, p)))
+        .collect();
+    results.sort_by_key(|(score, _)| *score);
+    results.into_iter().map(|(_, p)| p).collect()
 }
 fn color(cat: &str) -> Color32 {
     match cat {
@@ -1472,7 +1520,7 @@ pub fn show(
                     });
                     ui.add(
                         egui::TextEdit::singleline(&mut state.search)
-                            .hint_text("搜索地点、资源…")
+                            .hint_text("搜索名称、资源或别名…")
                             .desired_width(f32::INFINITY),
                     );
                     ui.horizontal(|ui| {
@@ -1991,6 +2039,37 @@ pub fn show_spawns(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn approximate_map_search_keeps_all_locations_filters_and_cached_text() {
+        let data = fixture();
+        let points: Vec<_> = array(&data.get("map-data")["points"])
+            .iter()
+            .filter(|p| text(p, "category") == "anti_air")
+            .map(|p| pin(&data, p))
+            .collect();
+        let mut state = MapState::default();
+        state.categories = HashSet::from(["anti_air".into()]);
+        assert_eq!(filtered(&points, &state, &HashSet::new()).len(), 11);
+        assert!(
+            state.search_cache.borrow().texts.is_empty(),
+            "ordinary map display must not prepare fuzzy rows"
+        );
+        state.search = "天坠之地炮台".into();
+        assert_eq!(filtered(&points, &state, &HashSet::new()).len(), 11);
+        let prepared = state.search_cache.borrow().texts.as_ptr();
+        assert_eq!(filtered(&points, &state, &HashSet::new()).len(), 11);
+        assert_eq!(prepared, state.search_cache.borrow().texts.as_ptr());
+        state.search = "防空袍".into();
+        assert_eq!(filtered(&points, &state, &HashSet::new()).len(), 11);
+        assert_eq!(prepared, state.search_cache.borrow().texts.as_ptr());
+        let completed = HashSet::from([points[0].id.clone()]);
+        state.completion = 1;
+        assert_eq!(filtered(&points, &state, &completed).len(), 10);
+        state.completion = 2;
+        assert_eq!(filtered(&points, &state, &completed)[0].id, points[0].id);
+        state.categories.clear();
+        assert!(filtered(&points, &state, &completed).is_empty());
+    }
     #[test]
     fn native_editor_repick_keeps_the_original_record_and_draft_text() {
         let ctx = egui::Context::default();

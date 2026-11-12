@@ -29,7 +29,7 @@ fn catalogue_images_resolve_to_decodable_bundled_art() {
             let source = entry_image(&h.d, page, e);
             // These sections all have a documented source for every entry. A
             // missing connection used to silently erase both thumbnail and hero.
-            if !matches!(page, "enemies" | "items") {
+            if page != "items" {
                 assert!(source.is_some(), "missing image for {page}/{}", e.id);
             }
             let Some(source) = source else {

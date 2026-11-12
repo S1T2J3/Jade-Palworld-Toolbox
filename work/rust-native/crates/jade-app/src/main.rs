@@ -8,11 +8,13 @@ mod data;
 mod design;
 mod elements;
 mod external;
+mod game_art;
 mod instance;
 mod links;
 mod map;
 mod qa;
 mod search;
+mod search_rows;
 mod skins;
 mod store;
 mod updates;
@@ -299,8 +301,11 @@ struct App {
     search: String,
     search_kind: String,
     search_selected: usize,
-    search_terms: Vec<String>,
-    search_names: Vec<String>,
+    search_index: Option<search::GlobalIndex>,
+    search_index_tables: usize,
+    search_hits: Vec<search::SearchHit>,
+    search_cache_key: Option<(String, String)>,
+    search_kinds: Vec<String>,
     search_focus: bool,
     about: bool,
     last_tables: usize,
@@ -368,8 +373,11 @@ impl App {
             search: String::new(),
             search_kind: String::new(),
             search_selected: 0,
-            search_terms: vec![],
-            search_names: vec![],
+            search_index: None,
+            search_index_tables: 0,
+            search_hits: vec![],
+            search_cache_key: None,
+            search_kinds: vec![],
             search_focus: false,
             about: false,
             last_tables: 0,
@@ -459,11 +467,17 @@ impl App {
         }
         let mut open = true;
         let mut close_search = false;
+        let search_size = Vec2::new(
+            (ctx.content_rect().width() - 48.).clamp(280., 960.),
+            (ctx.content_rect().height() - 80.).clamp(240., 640.),
+        );
         egui::Window::new("全局搜索")
             .open(&mut open)
             .title_bar(false)
-            .default_width(840.)
-            .default_height(640.)
+            .default_size(search_size)
+            .min_size(Vec2::new(280., 200.))
+            .max_size(search_size)
+            .constrain_to(ctx.content_rect().shrink(16.))
             .show(ctx, |ui| {
                 if design::dialog_header(ui, "search", "全局搜索").clicked() {
                     close_search = true;
@@ -471,7 +485,7 @@ impl App {
                 ui.separator();
                 let input = ui.add(
                     egui::TextEdit::singleline(&mut self.search)
-                        .hint_text("中文名、英文名或编号；词条支持简称")
+                        .hint_text("名称、编号、别名或近似说法，例如防空炮")
                         .desired_width(f32::INFINITY),
                 );
                 if self.search_focus {
@@ -481,69 +495,44 @@ impl App {
                 if input.changed() {
                     self.search_selected = 0;
                 }
-                let rows = array(self.data.get("search-index-data"));
-                if self.search_terms.len() != rows.len() {
-                    self.search_terms = rows
+                // Build only when the search is opened, then reuse its prepared rows
+                // and results while the user scrolls or moves the pointer.
+                if self.search_index.is_none() || self.search_index_tables != self.data.tables.len()
+                {
+                    let rows = search_rows::all(&self.data);
+                    let index = search::GlobalIndex::new(&rows);
+                    self.search_kinds = index
+                        .rows()
                         .iter()
-                        .map(|r| data::normalize(&r.to_string()))
+                        .map(|r| r.kind.clone())
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .into_iter()
                         .collect();
-                    self.search_names = rows
-                        .iter()
-                        .map(|r| data::normalize(text(r, "name")))
-                        .collect();
+                    self.search_index = Some(index);
+                    self.search_index_tables = self.data.tables.len();
+                    self.search_cache_key = None;
                 }
-                let kinds: std::collections::BTreeSet<_> =
-                    rows.iter().map(|r| text(r, "kind")).collect();
                 ui.horizontal_wrapped(|ui| {
                     ui.selectable_value(&mut self.search_kind, String::new(), "全部");
-                    for k in kinds {
-                        ui.selectable_value(&mut self.search_kind, k.into(), k);
+                    for kind in &self.search_kinds {
+                        ui.selectable_value(&mut self.search_kind, kind.clone(), kind.as_str());
                     }
                 });
-                let q = data::normalize(&self.search);
-                let mut found: Vec<_> = rows
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(index, r)| {
-                        if !self.search_kind.is_empty() && text(r, "kind") != self.search_kind {
-                            return None;
-                        }
-                        let href = text(r, "href");
-                        let passive = href
-                            .strip_prefix("#details/passive/trait/")
-                            .or_else(|| href.strip_prefix("#details/surgery/trait/"));
-                        let fuzzy =
-                            passive.and_then(|key| search::trait_score(&self.data, key, &q));
-                        let literal = q
-                            .split_whitespace()
-                            .all(|word| self.search_terms[index].contains(word));
-                        if !literal && fuzzy.is_none() {
-                            return None;
-                        }
-                        let name = &self.search_names[index];
-                        let literal_score = if q.is_empty() || *name == q {
-                            0
-                        } else if name.starts_with(&q) {
-                            20
-                        } else if name.contains(&q) {
-                            30
-                        } else {
-                            70
-                        };
-                        let score = if q.is_empty() {
-                            0
-                        } else {
-                            fuzzy.unwrap_or(u32::MAX).min(if literal {
-                                literal_score
-                            } else {
-                                u32::MAX
-                            })
-                        };
-                        Some((score, r))
-                    })
-                    .collect();
-                found.sort_by_key(|(score, _)| *score);
-                let found: Vec<_> = found.into_iter().map(|(_, r)| r).collect();
+                let cache_key = (
+                    data::normalize(self.search.trim()),
+                    self.search_kind.clone(),
+                );
+                if self.search_cache_key.as_ref() != Some(&cache_key) {
+                    self.search_hits = self.search_index.as_ref().unwrap().search(
+                        &cache_key.0,
+                        &cache_key.1,
+                        usize::MAX,
+                    );
+                    self.search_cache_key = Some(cache_key);
+                    self.search_selected = 0;
+                }
+                let index = self.search_index.as_ref().unwrap();
+                let found = &self.search_hits;
                 self.search_selected = self.search_selected.min(found.len().saturating_sub(1));
                 let down =
                     ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown));
@@ -557,18 +546,28 @@ impl App {
                 }
                 if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
                     if let Some(r) = found.get(self.search_selected) {
-                        nav = Some(text(r, "href").into());
+                        nav = Some(index.rows()[r.row_index].href.clone());
                     }
                 }
-                ui.label(format!("{} 条结果", found.len()));
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(format!("{} 条结果", found.len()));
+                    if !self.search.trim().is_empty()
+                        && found
+                            .iter()
+                            .any(|h| h.match_kind != search::MatchKind::Exact)
+                    {
+                        ui.weak("包含别名或近似匹配，请按名称、类别和坐标选择。");
+                    }
+                });
                 let mut scroll = egui::ScrollArea::vertical();
                 if up || down {
                     scroll = scroll.vertical_scroll_offset(self.search_selected as f32 * 45.);
                 }
                 scroll.show_rows(ui, 45., found.len(), |ui, range| {
                     for i in range {
-                        let r = found[i];
-                        let href = text(r, "href");
+                        let hit = &found[i];
+                        let r = &index.rows()[hit.row_index];
+                        let href = r.href.as_str();
                         let (rect, response) = ui.allocate_exact_size(
                             Vec2::new(ui.available_width(), 41.),
                             egui::Sense::click(),
@@ -592,6 +591,11 @@ impl App {
                                 .as_i64()
                                 .unwrap_or(0);
                             breeding_ui::passive_rank(&mut row, &self.data, rank, 22.);
+                        } else if !r.image.is_empty() {
+                            row.add(
+                                egui::Image::new(self.data.image_source(&r.image))
+                                    .fit_to_exact_size(Vec2::splat(30.)),
+                            );
                         } else if let Some(source) = self.catalog.image_for_route(&self.data, href)
                         {
                             let image =
@@ -603,7 +607,7 @@ impl App {
                         row.add_sized(
                             Vec2::new(72., 32.),
                             egui::Label::new(
-                                RichText::new(text(r, "kind")).size(12.).color(p.muted),
+                                RichText::new(r.kind.as_str()).size(12.).color(p.muted),
                             )
                             .halign(egui::Align::Min)
                             .truncate(),
@@ -611,20 +615,26 @@ impl App {
                         let name_width = (row.available_width() * 0.47).max(90.);
                         row.add_sized(
                             Vec2::new(name_width, 32.),
-                            egui::Label::new(RichText::new(text(r, "name")).size(14.))
+                            egui::Label::new(RichText::new(r.name.as_str()).size(14.))
                                 .halign(egui::Align::Min)
                                 .truncate(),
                         );
                         row.add_sized(
                             Vec2::new(row.available_width(), 32.),
                             egui::Label::new(
-                                RichText::new(text(r, "hint")).size(11.).color(p.muted),
+                                RichText::new(if hit.match_kind == search::MatchKind::Exact {
+                                    r.hint.clone()
+                                } else {
+                                    format!("{} · {}", r.hint, hit.match_kind.label())
+                                })
+                                .size(11.)
+                                .color(p.muted),
                             )
                             .halign(egui::Align::Min)
                             .truncate(),
                         );
                         if response
-                            .on_hover_text(format!("{}\n{}", text(r, "name"), text(r, "hint")))
+                            .on_hover_text(format!("{}\n{}\n{}", r.name, r.hint, hit.explanation))
                             .clicked()
                         {
                             nav = Some(href.into());

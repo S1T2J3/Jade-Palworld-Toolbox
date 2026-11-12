@@ -1,0 +1,72 @@
+{
+  "recordedAt": "2026-11-12T01:16:03.199702+00:00",
+  "downloadedUnmodified": true,
+  "file": "YakushimaBoss002.webp",
+  "bytes": 9800,
+  "sha256": "fb1363926afc21a6c1b6926f9b7f5c5de104d0c933f4a4ddf0e30e017f6ee927",
+  "format": "WEBP",
+  "size": [
+    256,
+    256
+  ],
+  "mode": "RGBA",
+  "alphaRange": [
+    0,
+    255
+  ],
+  "visualReview": "Viewed with view_image: pale green three-dimensional Moon Lord body, glowing eyes and face tentacles, transparent background; not the Moon Lord Mask item or a similar Pal.",
+  "sharedAssetEvidence": "Both exact-code character pages explicitly reference the same /img/palart/YakushimaBoss002.webp image. This is an observed shared mapping, not a guessed variant substitution.",
+  "existingData": "enemy-data.json contains both exact IDs without icon/palKey/speciesKey fields; no matching enemy-data.icons entries. catalog_views::entry_image therefore has no source for these entries.",
+  "crossChecks": [
+    {
+      "url": "https://paldb.cc/en/Moon_Lord",
+      "evidence": "Code RAID_YakushimaBoss002; Tribe/BPClass YakushimaBoss002; BattleBGM RaidBoss_MoonLord. Browser source verified; direct HTML download returns 403."
+    },
+    {
+      "url": "https://paldeck.cc/bosses/RAID_YakushimaBoss002",
+      "localFile": "paldeck-moon-lord.html",
+      "evidence": "Exact boss ID page references /assets/palworld/pals/Yakushima/T_YakushimaBoss002_icon_normal.webp."
+    },
+    {
+      "url": "https://paldeck.cc/bosses/RAID_YakushimaBoss002_2",
+      "localFile": "paldeck-moon-lord-master.html",
+      "evidence": "Master exact boss ID page explicitly references the same Yakushima/T_YakushimaBoss002_icon_normal.webp resource."
+    }
+  ],
+  "rejectedSources": [
+    {
+      "url": "https://paldeck.cc/assets/palworld/pals/Yakushima/T_YakushimaBoss002_icon_normal.webp",
+      "reason": "HTTP 404. Its path is useful cross-check evidence only; no substitute image was taken from it."
+    }
+  ],
+  "records": [
+    {
+      "gameId": "RAID_YakushimaBoss002",
+      "localFile": "YakushimaBoss002.webp",
+      "imageUrl": "https://www.palworld.tools/img/palart/YakushimaBoss002.webp",
+      "sourcePage": "https://www.palworld.tools/pals/moon-lord-raid",
+      "sourcePageFile": "palworld-tools-moon-lord.html",
+      "sourcePageSha256": "36a3202466b45b2edeac25ac6f3c5f92a974c84fa472e70d9eaf229ec99fc138",
+      "exactGameCode": "RAID_YakushimaBoss002",
+      "exactGameTribe": "YakushimaBoss002",
+      "rawGameIconReference": "PalIcon/Normal/T_RAID_YakushimaBoss002_icon_normal",
+      "actualImageTag": "<img src=\"/img/palart/YakushimaBoss002.webp\" alt=\"Moon Lord\" class=\"relative w-[86%] h-[86%] object-contain [filter:drop-shadow(0_8px_14px_rgba(0,0,0,.5))]\"/>",
+      "sourceHasInGameModelSection": true,
+      "sha256": "fb1363926afc21a6c1b6926f9b7f5c5de104d0c933f4a4ddf0e30e017f6ee927"
+    },
+    {
+      "gameId": "RAID_YakushimaBoss002_2",
+      "localFile": "YakushimaBoss002.webp",
+      "imageUrl": "https://www.palworld.tools/img/palart/YakushimaBoss002.webp",
+      "sourcePage": "https://www.palworld.tools/pals/moon-lord-raid-2",
+      "sourcePageFile": "palworld-tools-moon-lord-master.html",
+      "sourcePageSha256": "55d8b8a0606f8bb5609284dbeb449b072d1d21cd531e531ac019f6b64e508827",
+      "exactGameCode": "RAID_YakushimaBoss002_2",
+      "exactGameTribe": "YakushimaBoss002_2",
+      "rawGameIconReference": "PalIcon/Normal/T_RAID_YakushimaBoss002_2_icon_normal",
+      "actualImageTag": "<img src=\"/img/palart/YakushimaBoss002.webp\" alt=\"Moon Lord\" class=\"relative w-[86%] h-[86%] object-contain [filter:drop-shadow(0_8px_14px_rgba(0,0,0,.5))]\"/>",
+      "sourceHasInGameModelSection": true,
+      "sha256": "fb1363926afc21a6c1b6926f9b7f5c5de104d0c933f4a4ddf0e30e017f6ee927"
+    }
+  ]
+}

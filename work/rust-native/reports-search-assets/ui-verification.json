@@ -1,0 +1,162 @@
+{
+  "version": "2.0.0-beta.6",
+  "exeSha256": "473f35d84eee18df583e4ea82e35881685c0df3cf86f2fa3c549145b3808d210",
+  "automatedChecks": 105,
+  "publicFixtureRecords": 467,
+  "scenes": [
+    {
+      "route": "#enemies/RAID_YakushimaBoss002",
+      "size": "1440x900",
+      "imageHash": "96d6889751a270c3e00c83fbe1378b2bf10e2e50cad3549c1c100a578e00e025",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#enemies/RAID_YakushimaBoss002_2",
+      "size": "1440x900",
+      "imageHash": "e537a9eeddeae7a06b85e7182383e3feb5ac12ba86650682aace342a054ec0ac",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items/Premium_Processed_Wood",
+      "size": "1440x900",
+      "imageHash": "f2bd91aff2543b1ec2562519b2076a479cb0de5c7186131899b15c373da13cc8",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items/PalDopingShot_3",
+      "size": "1440x900",
+      "imageHash": "c94aaaea30886b842fcfb7da7e71f05a3927f4bcd425410a29bba96ebbbf112f",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items/Potage",
+      "size": "1440x900",
+      "imageHash": "4759fb1620e39f7a7a649846c26d3f1160f725dbf1fd91a2ad1377693a9d427b",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#lookup",
+      "size": "1440x900",
+      "imageHash": "5fcc6bdaa29032d129fa9a0ab48f72fc44dab6c9e315ca8da7a279e02ec5abc0",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#planner",
+      "size": "1440x900",
+      "imageHash": "347daee8dd5be67ae6c6372d07fee39c39f2de803c95d7e94f432d3fb9bb5017",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#warehouse",
+      "size": "1440x900",
+      "imageHash": "1c040fcf63e2526106ef5c3e63c4812a5d0f8ba45513bdb6813c18d34ac035f1",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#enemies/RAID_YakushimaBoss002",
+      "size": "960x620",
+      "imageHash": "4b1f33550027dd6d1f822a25a37fbec12b9b289eafe4b9b7422cb2d66ae273c2",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#enemies/RAID_YakushimaBoss002_2",
+      "size": "960x620",
+      "imageHash": "6fb87456cc0f1308bb2afa441bba05c0f410c27492a96208e32609b28e86636c",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items/Premium_Processed_Wood",
+      "size": "960x620",
+      "imageHash": "3e0d70375ece6268838a5a68879c34a1ac76fdac2b4e67ffbc39a2e43cc7c1bc",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items/PalDopingShot_3",
+      "size": "960x620",
+      "imageHash": "16b94e2c25ff69f896cd2d12d4b8c23e248da435ed928e0dead854f00193478b",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items/Potage",
+      "size": "960x620",
+      "imageHash": "06b4149361c12c09c630fa4651ca6cc3b1364e803fddf03c8b115643e07982cf",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#lookup",
+      "size": "960x620",
+      "imageHash": "c8bfd97844e77401e1b557ba2473dcf9adaa281f048b1a35555a8f64d5cde5b2",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#planner",
+      "size": "960x620",
+      "imageHash": "60e3873d9829a410315910b90cae83c6ea0b22fdebf7a9a7d58df75a1d9d1514",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#warehouse",
+      "size": "960x620",
+      "imageHash": "0196bc7f313584ab207e2208d237fdd10a6769ecd5fb2f69b04f5ecc05a2a0e1",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#lookup",
+      "size": "1440x900",
+      "imageHash": "30bc50eadd7ea111a30ee53781318a7977b46460d8380f1716cf37783f38423f",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#lookup",
+      "size": "960x620",
+      "imageHash": "3d8ee99f0ff14b026514cabafd38ad6101453bbcd53f289463a8c7662546c727",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#lookup",
+      "size": "1440x900",
+      "imageHash": "65703ee22a951d01e3b58be98f9f29915e6eefed7922db500b22258e9e62cfe6",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#items",
+      "size": "1440x900",
+      "imageHash": "6f93e6e2837bbd0c35081f0ce2160b368fe715d2cb7c541d6e85fd5cb4b6b3fd",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#map/category/anti_air/palpagos/天坠之地炮台",
+      "size": "1440x900",
+      "imageHash": "56e020ecc7ffd923149ff8ba09a4315aa99e3e50257bc32180be616cad77819f",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    },
+    {
+      "route": "#map/category/anti_air/palpagos/防空袍",
+      "size": "1440x900",
+      "imageHash": "e293f1faccb208507c7446834c039a393dc8fd1b2ef8daff9036b2676e310da2",
+      "inventoryPreserved": true,
+      "mapNotesPreserved": true
+    }
+  ]
+}

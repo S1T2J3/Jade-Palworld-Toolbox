@@ -12,6 +12,7 @@ pub struct Entry {
     pub icon: String,
     pub value: Value,
     pub needle: String,
+    fuzzy: crate::search::CachedText,
     methods: BTreeSet<String>,
 }
 #[derive(Default)]
@@ -56,6 +57,11 @@ fn entry(id: &str, name: &str, route: &str, value: Value) -> Entry {
             .into(),
         icon: text(&value, "icon").into(),
         needle: crate::data::normalize(&format!("{name} {id} {value}")),
+        fuzzy: crate::search::CachedText::from_row(&json!({
+            "name":name,"href":route,"category":text(&value,"category"),
+            "hint":text(&value,"effect"),
+            "aliases":[id,text(&value,"en"),text(&value,"zh"),text(&value,"title")]
+        })),
         value,
         methods: BTreeSet::new(),
     }
@@ -396,7 +402,7 @@ impl Catalog {
             ui.horizontal_wrapped(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.query)
-                        .hint_text("搜索名称、编号或效果")
+                        .hint_text("模糊搜索名称、编号或效果")
                         .desired_width(if ui.ctx().content_rect().width() < 1120. {
                             200.
                         } else {
@@ -619,10 +625,11 @@ impl Catalog {
             filters.query, filters.group, filters.filter, filters.scope, filters.pal, filters.tags
         );
         if self.match_key != match_key {
+            let prepared = crate::search::PreparedQuery::new(&filters.query);
             self.matched = entries
                 .iter()
                 .enumerate()
-                .filter(|(_, e)| matches_filters(d, page, e, &filters, surgery))
+                .filter(|(_, e)| matches_filters_prepared(d, page, e, &filters, surgery, &prepared))
                 .filter(|(_, e)| {
                     loot_item.is_none_or(|(chapter, item)| {
                         e.id.starts_with(&format!("{chapter}/"))
@@ -633,6 +640,17 @@ impl Catalog {
                 })
                 .map(|(i, _)| i)
                 .collect();
+            if !filters.query.trim().is_empty()
+                && !matches!(page, "details/passive" | "details/surgery")
+            {
+                self.matched.sort_by_cached_key(|i| {
+                    entries[*i]
+                        .fuzzy
+                        .match_query(&prepared)
+                        .map(|m| m.score)
+                        .unwrap_or(110)
+                });
+            }
             self.match_key = match_key;
         }
         let mut matches: Vec<_> = self
@@ -1108,10 +1126,28 @@ fn item_method_tags(d: &Data, v: &Value) -> BTreeSet<String> {
     methods
 }
 fn matches_filters(d: &Data, page: &str, e: &Entry, f: &Filters, surgery: &Value) -> bool {
+    matches_filters_prepared(
+        d,
+        page,
+        e,
+        f,
+        surgery,
+        &crate::search::PreparedQuery::new(&f.query),
+    )
+}
+fn matches_filters_prepared(
+    d: &Data,
+    page: &str,
+    e: &Entry,
+    f: &Filters,
+    surgery: &Value,
+    query: &crate::search::PreparedQuery,
+) -> bool {
     let query_matches = if matches!(page, "details/passive" | "details/surgery") {
         crate::search::trait_matches(d, &e.id, &f.query)
     } else {
         f.query.split_whitespace().all(|q| e.needle.contains(q))
+            || e.fuzzy.match_query(query).is_some()
     };
     if !query_matches {
         return false;
