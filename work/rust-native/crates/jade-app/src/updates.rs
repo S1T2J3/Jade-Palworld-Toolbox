@@ -135,7 +135,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"查配种伙伴改为「当前亲代 + 配种伙伴 → 子代」，每组最左边加入当前选定帕鲁的头像、名称和编号。保留多列布局、属性和文字筛选、分页及刷新位置跳转；特殊配方同时标出两位亲代所需性别。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"工具箱先打开首页，地图随后持续在后台加载帕洛斯群岛和世界树底图，不再因鼠标移动、切换页面而停止。提前进入地图会先显示预览，再自动换成清晰底图；共用加载结果避免重复解码。物品图鉴新增效果与属性，按编号区分不同品质的攻击、防御、生命、耐久、附加效果、食物恢复与限时增益，以及技能果实跳转。保留配方、合成路径、商人、掉落和地图关联。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.

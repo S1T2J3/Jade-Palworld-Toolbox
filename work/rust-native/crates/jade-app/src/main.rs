@@ -17,6 +17,7 @@ mod search;
 mod search_rows;
 mod skins;
 mod store;
+mod terrain;
 mod updates;
 mod work_views;
 mod worlds_ui;

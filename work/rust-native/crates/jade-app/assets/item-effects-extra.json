@@ -1,0 +1,127 @@
+{
+  "Bow_Triple": {
+    "description": "改良后的弓，可同时发射3支箭。 拥有不可思议的力量，每次射击只消耗1支箭。",
+    "sha256": "86a98ebe00b07660a3976b67e3dce30847a2b600c84b19c83cee92a76edc1da6",
+    "source": "https://paldb.cc/cn/Three_Shot_Bow"
+  },
+  "ExpBoost_03": {
+    "description": "如果让帕鲁阅读此书， 就可以积累大量经验。",
+    "sha256": "c5c7f7616a9bb0f1cd6e376f999d316bacb171a1b4f08cf8276525006bc9525c",
+    "source": "https://paldb.cc/cn/Training_Manual_L"
+  },
+  "ExplosiveBullet": {
+    "description": "火箭发射器等使用的弹药。 可在「武器流水线工厂II」制作。",
+    "sha256": "5d7f9e04e8f19c6cdd407dbe8636029032287de9dfcd64812585252141d21619",
+    "source": "https://paldb.cc/cn/Rocket_Ammo"
+  },
+  "Fruit_hp_01": {
+    "description": "一种非常难以获得的珍贵果实。 可稍微提升帕鲁的「生命值」的潜力值。",
+    "sha256": "d5533ae82569f6bd9b6a5aa13c9ecef47f5c52e45c07796d333dfbbecdcad6b3",
+    "source": "https://paldb.cc/cn/Life_Fruit"
+  },
+  "HotMilk": {
+    "description": "加热后变得更加美味。 很奇妙地，喝起来更有饱足感。",
+    "sha256": "072eb1c57e04699cedf0e59a521fb64ddd7078374fd0dcbd76ed94fa2cb524c9",
+    "source": "https://paldb.cc/cn/Hot_Milk"
+  },
+  "LvUP_01": {
+    "description": "将这块神秘的结晶交给帕鲁， 便可使该帕鲁的等级提升1级。",
+    "sha256": "2bc26578d0b089cc17a3611bd1b9287fcdfc32fdb4c456d2fe933baee950d7b1",
+    "source": "https://paldb.cc/cn/Training_Crystal"
+  },
+  "PalAwakening_Neutral": {
+    "description": "浓缩了世界树能量的结晶。 可以让无属性的帕鲁觉醒，解放其隐藏的能力。",
+    "sha256": "2eaae21be463ae2f62641dda8415bc143cc9405696579b4a0781aac42038c1cd",
+    "source": "https://paldb.cc/cn/Neutral_Awakening_Crystal"
+  },
+  "PalPassiveSkillChange_Consumable_CraftSpeed_up3": {
+    "description": "植入帕鲁体内、用于更改其被动技能的植入体。 持有此道具时，可在「帕鲁手术台」选择相应的被动技能。",
+    "sha256": "78086c1a7a715617865ec7785997525912296d8ba7f69a2864286c5a4d033743",
+    "source": "https://paldb.cc/cn/Disposable_Implant%3A_Remarkable_Craftsmanship"
+  },
+  "PalPassiveSkillChange_Consumable_PAL_ALLAttack_up3": {
+    "description": "植入帕鲁体内、用于更改其被动技能的植入体。 持有此道具时，可在「帕鲁手术台」选择相应的被动技能。",
+    "sha256": "c80b94e2cb93f46cbd2c49054a9733a20530fc940225c536c918e061687ae772",
+    "source": "https://paldb.cc/cn/Disposable_Implant%3A_Demon_God"
+  },
+  "PalPassiveSkillChange_Noukin": {
+    "description": "植入帕鲁体内、用于更改其被动技能的植入体。 持有此道具时，可在「帕鲁手术台」选择相应的被动技能。",
+    "sha256": "2fac788653b2f098d3b4fd052890e5d9728a71a008a357479430f6656a62e8f3",
+    "source": "https://paldb.cc/cn/Implant%3A_Musclehead"
+  },
+  "PalSphere_Giga": {
+    "description": "可扔出并捕捉帕鲁的道具。 此款式可捕捉有一定强度的帕鲁。",
+    "sha256": "9b3440851ec7d414be1fb36e2925f8f354588374705b166bf94474768f6e19c4",
+    "source": "https://paldb.cc/cn/Giga_Sphere"
+  },
+  "PalSphere_Ultimate": {
+    "description": "可扔出并捕捉帕鲁的道具。 拥有压倒性的性能，几乎可以抓住任何帕鲁。",
+    "sha256": "f23130dd4479106bf225d5b06f52e2bb7f788c942e51aff42da168f6adddd018",
+    "source": "https://paldb.cc/cn/Ultimate_Sphere"
+  },
+  "PalSummon_KingBahamut_Dragon": {
+    "description": "画着殁殃的石板。 只要将其献给「召唤的祭坛」， 就能召唤非常强大的殁殃[Lv 55]。",
+    "sha256": "e93e4c4525fbcaae5572a96964a92be0a83b1fff579ee17efa539b8f436ac0f1",
+    "source": "https://paldb.cc/cn/Blazamut_Ryu_Slab"
+  },
+  "PalSummon_NightLady_Dark_2": {
+    "description": "贝菈露洁之力满溢而出的石板。 只要将其献给「召唤的祭坛」， 就能召唤强大到令人绝望的贝菈露洁[Lv ??]。",
+    "sha256": "592bf9bf9b749b858d2585e9365e66cf2c65f4b04b7e65db6b0f20dfa525063d",
+    "source": "https://paldb.cc/cn/Bellanoir_Libero_Ultra_Slab"
+  },
+  "SkillUnlock_BlueThunderHorse": {
+    "description": "持有此道具时， 即可骑乘驭雷马。",
+    "sha256": "6fa184e7043980f8805efaa9a7ce16272e906c4a383d21f6e2d6442fd841689d",
+    "source": "https://paldb.cc/cn/Azurmane_Saddle"
+  },
+  "SkillUnlock_SakuraSaurus_Water": {
+    "description": "持有此道具时， 即可骑乘海誓龙。",
+    "sha256": "64aa755aed20cba755e8a0cf31ce5aae91e871f08d2281af630e4c00de8d96fe",
+    "source": "https://paldb.cc/cn/Broncherry_Aqua_Saddle"
+  },
+  "SkillUnlock_SkyDragon": {
+    "description": "持有此道具时， 即可骑乘天羽龙。",
+    "sha256": "01e898c6defc6c3d7bd19021235a1eb1c23cb38f711673b8880fdf163d700512",
+    "source": "https://paldb.cc/cn/Quivern_Saddle"
+  },
+  "TechnologyBook_G1": {
+    "description": "书上写着某种高端技术。 使用后，可获得少量科技点。",
+    "sha256": "ca4a88b38a5bf72c2fb6fc41388f7b8d0ab69934144085140eb4aa97c21cd752",
+    "source": "https://paldb.cc/cn/Advanced_Technical_Manual"
+  },
+  "TreasureBoxKey02": {
+    "description": "用于打开上锁宝箱的钥匙。",
+    "sha256": "dee112936740ee285d108e4854efba94910677e67065c6c3a74586e4066a7841",
+    "source": "https://paldb.cc/cn/Silver_Key"
+  },
+  "WorkSuitability_AddTicket_MonsterFarm": {
+    "description": "记载着牧场精髓的珍贵书籍。 如果让帕鲁阅读， 可永久提升牧场适应性1级。",
+    "sha256": "f9a01997985ce9c99d0961d54bab49a21cebabbf4ed844ae657e6dc1a8dd2add",
+    "source": "https://paldb.cc/cn/Applied_Ranching_Handbook_I"
+  },
+  "WorkSuitability_AddTicket_Seeding": {
+    "description": "记载着播种精髓的珍贵书籍。 如果让帕鲁阅读， 可永久提升播种适应性1级。",
+    "sha256": "689cca38aebf154dbd480a5e419851069d7ba08dd19876b7001697a0720a0922",
+    "source": "https://paldb.cc/cn/Applied_Planting_Handbook_I"
+  },
+  "WorkSuitability_AddTicket_Watering": {
+    "description": "记载着浇水精髓的珍贵书籍。 如果让帕鲁阅读， 可永久提升浇水适应性1级。",
+    "sha256": "669aad20d951885e7722d512c1f09a2f31c5af33b08f20ebea3571b60041cd18",
+    "source": "https://paldb.cc/cn/Applied_Watering_Handbook_I"
+  },
+  "WorldTreeHolyWater": {
+    "description": "充满世界树能量的圣水。 它能净化万物，并唤醒潜藏的力量。 喝下后一定时间内，世界树区域的树木和矿石不会在接近时消失。",
+    "sha256": "aa10b886d3dc3a83c0fee541261a5cf4d291ba3ebde884fa95537e19710c826b",
+    "source": "https://paldb.cc/cn/World_Tree_Holy_Water"
+  },
+  "YakushimaHeadEquip005": {
+    "description": "【泰拉瑞亚联动】 可以感受到月亮领主不祥的力量。 由于是相当稀少之物，拥有之人少之又少。",
+    "sha256": "3cddd72db8c1d44e39f130d8f215151b04996576ea82cdc621caa0eacc31780d",
+    "source": "https://paldb.cc/cn/Moon_Lord_Mask"
+  },
+  "YakushimaHeadEquip006": {
+    "description": "【泰拉瑞亚联动】 可以感受到克苏鲁之眼不祥的力量。 由于是相当稀少之物，拥有之人少之又少。",
+    "sha256": "25f6d9760ebe72ef55247d43bd884f7ba1934890e71adb0978d5c1feaea4f865",
+    "source": "https://paldb.cc/cn/Eye_of_Cthulhu_Mask"
+  }
+}

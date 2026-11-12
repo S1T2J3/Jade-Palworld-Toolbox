@@ -2,6 +2,50 @@ use super::*;
 use crate::catalog::Catalog;
 
 #[test]
+fn every_item_has_exact_id_effects_and_quality_specific_stats() {
+    let mut h = Harness::new();
+    let effects = &h.d.get("item-effects-data")["items"];
+    assert_eq!(effects.as_object().unwrap().len(), h.c.pages["items"].len());
+    for e in &h.c.pages["items"] {
+        assert!(!effects[&e.id].is_null(), "missing effects: {}", e.id);
+        for id in array(&effects[&e.id]["relatedItems"])
+            .iter()
+            .filter_map(Value::as_str)
+        {
+            assert!(!effects[id].is_null(), "broken related item: {id}");
+        }
+        let skill = text(&effects[&e.id], "skill");
+        if !skill.is_empty() {
+            assert!(
+                !h.d.get("pal-details-data")["moves"][skill].is_null(),
+                "broken skill {skill}"
+            );
+        }
+    }
+    for (id, expected) in [
+        ("StealArmor", vec!["220", "750", "5000", "耐寒", "耐暑"]),
+        ("StealArmor_5", vec!["352", "1200", "26000", "+12%"]),
+        ("Accessory_AT_1", vec!["+15%"]),
+        ("Salad", vec!["工作速度 +30%", "600 秒"]),
+        ("SkillCard_AquaJet", vec!["使用后学习", "水流射击"]),
+    ] {
+        let e = h.entry("items", id);
+        let screen = h.warm("items", &e, &format!("#items/{id}"));
+        for expected in expected {
+            assert!(screen.contains(expected), "{id}: missing {expected}");
+        }
+    }
+    for (id, target) in [
+        ("SkillCard_AquaJet", "#details/active/move/AquaJet"),
+        ("PalPassiveSkillChange_Consumable_Vampire", "#details/surgery/trait/Vampire"),
+    ] {
+        let e = h.entry("items", id);
+        h.warm("items", &e, &e.route);
+        assert_eq!(h.click("items", &e, &e.route, target).0.as_deref(), Some(target));
+    }
+}
+
+#[test]
 fn catalogue_images_resolve_to_decodable_bundled_art() {
     let h = Harness::new();
     let mut no_rank = h.c.pages["details/passive"][0].clone();

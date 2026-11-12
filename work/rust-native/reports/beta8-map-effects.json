@@ -1,0 +1,427 @@
+{
+  "version": "2.0.0-beta.8",
+  "binarySha256": "4997b6044cd1bdd14e3081286ecadda31661e3cea67bcd3589f8d6e6d8ef34f6",
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "cases": {
+    "baseline": {
+      "launchToSecondPassMs": 425.090087890625,
+      "mapPreloadedAfterMs": 1389.4058,
+      "worldtreePreloadedAfterMs": null,
+      "inventoryCount": 467,
+      "initialInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "finalInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "initialNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "finalNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "errors": [],
+      "exeSha256": "221986a9b748484e696728a1d592e3dde93ecd817bcd19ff418e2b766cc2044b",
+      "scenes": [
+        {
+          "route": "#map/coords/worldtree/0/800",
+          "readyMs": 274.1175,
+          "fullTerrainReady": null,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 0.3518,
+            "p95Ms": 0.5045,
+            "maxMs": 0.6891999999999999
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 4.1615,
+            "p95Ms": 4.4131,
+            "maxMs": 4.571300000000001
+          },
+          "dragChangedPixels": true
+        },
+        {
+          "route": "#map/category/all/palpagos",
+          "readyMs": 34.8669,
+          "fullTerrainReady": null,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 2.3711,
+            "p95Ms": 3.2617000000000003,
+            "maxMs": 3.9316999999999998
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 5.5904,
+            "p95Ms": 7.192200000000001,
+            "maxMs": 7.801
+          },
+          "dragChangedPixels": true
+        },
+        {
+          "route": "#spawns/SheepBall",
+          "readyMs": 9.5052,
+          "fullTerrainReady": null,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 0.2838,
+            "p95Ms": 0.3658,
+            "maxMs": 0.5163
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 4.1509,
+            "p95Ms": 4.499099999999999,
+            "maxMs": 4.566
+          },
+          "dragChangedPixels": true
+        }
+      ]
+    },
+    "current": {
+      "launchToSecondPassMs": 374.91650390625,
+      "mapPreloadedAfterMs": 1385.0142,
+      "worldtreePreloadedAfterMs": 1581.0933,
+      "inventoryCount": 467,
+      "initialInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "finalInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "initialNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "finalNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "errors": [],
+      "exeSha256": "4997b6044cd1bdd14e3081286ecadda31661e3cea67bcd3589f8d6e6d8ef34f6",
+      "scenes": [
+        {
+          "route": "#map/coords/worldtree/0/800",
+          "readyMs": 47.590599999999995,
+          "fullTerrainReady": true,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 0.3914,
+            "p95Ms": 0.6124999999999999,
+            "maxMs": 0.9024
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 4.1629,
+            "p95Ms": 4.403,
+            "maxMs": 4.7819
+          },
+          "dragChangedPixels": true
+        },
+        {
+          "route": "#map/category/all/palpagos",
+          "readyMs": 39.3636,
+          "fullTerrainReady": true,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 2.9962,
+            "p95Ms": 4.2221,
+            "maxMs": 6.6261
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 6.5013,
+            "p95Ms": 8.6537,
+            "maxMs": 11.2401
+          },
+          "dragChangedPixels": true
+        },
+        {
+          "route": "#spawns/SheepBall",
+          "readyMs": 8.3988,
+          "fullTerrainReady": true,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 0.2888,
+            "p95Ms": 0.4563,
+            "maxMs": 0.5628
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 4.1491,
+            "p95Ms": 4.6531,
+            "maxMs": 4.9308
+          },
+          "dragChangedPixels": true
+        }
+      ]
+    },
+    "twoCpu": {
+      "launchToSecondPassMs": 375.9287109375,
+      "mapPreloadedAfterMs": 1468.4705,
+      "worldtreePreloadedAfterMs": 1751.9974,
+      "inventoryCount": 467,
+      "initialInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "finalInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "initialNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "finalNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "errors": [],
+      "exeSha256": "b4b88712b47e9e3247d8dffb731ad6f5e624c34a4536601e570c4270a2bf1820",
+      "scenes": [
+        {
+          "route": "#map/coords/worldtree/0/800",
+          "readyMs": 45.9467,
+          "fullTerrainReady": true,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 0.3164,
+            "p95Ms": 0.495,
+            "maxMs": 0.6066999999999999
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 4.1592,
+            "p95Ms": 4.9298,
+            "maxMs": 5.0504
+          },
+          "dragChangedPixels": true
+        },
+        {
+          "route": "#map/category/all/palpagos",
+          "readyMs": 41.3788,
+          "fullTerrainReady": true,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 2.2566,
+            "p95Ms": 3.1294,
+            "maxMs": 5.225
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 5.0197,
+            "p95Ms": 6.688000000000001,
+            "maxMs": 8.1022
+          },
+          "dragChangedPixels": true
+        },
+        {
+          "route": "#spawns/SheepBall",
+          "readyMs": 10.141499999999999,
+          "fullTerrainReady": true,
+          "dragUiCpu": {
+            "samples": 90,
+            "medianMs": 0.2378,
+            "p95Ms": 0.368,
+            "maxMs": 0.4398
+          },
+          "dragFrameIntervals": {
+            "samples": 90,
+            "medianMs": 4.173,
+            "p95Ms": 4.5816,
+            "maxMs": 4.8871
+          },
+          "dragChangedPixels": true
+        }
+      ]
+    },
+    "slowPreview": {
+      "launchToSecondPassMs": 406.254150390625,
+      "mapPreloadedAfterMs": 2239.8747000000003,
+      "worldtreePreloadedAfterMs": 3490.8481,
+      "inventoryCount": 467,
+      "initialInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "finalInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "initialNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "finalNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "errors": [],
+      "exeSha256": "b4b88712b47e9e3247d8dffb731ad6f5e624c34a4536601e570c4270a2bf1820",
+      "scenes": [
+        {
+          "route": "#map/category/all/palpagos",
+          "readyMs": 69.6209,
+          "fullTerrainReady": false,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#map/coords/worldtree/0/800",
+          "readyMs": 11.4695,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        }
+      ]
+    },
+    "items": {
+      "launchToSecondPassMs": 403.89892578125,
+      "mapPreloadedAfterMs": 1383.1786,
+      "worldtreePreloadedAfterMs": 1578.5784,
+      "inventoryCount": 467,
+      "initialInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "finalInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "initialNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "finalNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "errors": [],
+      "exeSha256": "4997b6044cd1bdd14e3081286ecadda31661e3cea67bcd3589f8d6e6d8ef34f6",
+      "scenes": [
+        {
+          "route": "#items/StealArmor_5",
+          "readyMs": 40.103899999999996,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/Accessory_AT_1",
+          "readyMs": 22.914199999999997,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/Salad",
+          "readyMs": 24.873800000000003,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/SkillCard_AquaJet",
+          "readyMs": 17.025,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/Cake",
+          "readyMs": 24.360300000000002,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        }
+      ]
+    },
+    "smallItems": {
+      "launchToSecondPassMs": 373.29345703125,
+      "mapPreloadedAfterMs": 1385.6604,
+      "worldtreePreloadedAfterMs": 1577.2963,
+      "inventoryCount": 467,
+      "initialInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "finalInventoryHash": "99bf96852c5f92deca4638a505ab1dd630176e947ae424f0691772d3fec7a919",
+      "initialNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "finalNotesHash": "8dc046eabb3919241f9d522bee0d5f93ed6684d2aa14232682d517f2d5463149",
+      "errors": [],
+      "exeSha256": "4997b6044cd1bdd14e3081286ecadda31661e3cea67bcd3589f8d6e6d8ef34f6",
+      "scenes": [
+        {
+          "route": "#items/StealArmor_5",
+          "readyMs": 38.4414,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/Accessory_AT_1",
+          "readyMs": 21.258699999999997,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/Salad",
+          "readyMs": 20.259,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/SkillCard_AquaJet",
+          "readyMs": 8.576,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        },
+        {
+          "route": "#items/Cake",
+          "readyMs": 25.1505,
+          "fullTerrainReady": true,
+          "dragUiCpu": null,
+          "dragFrameIntervals": null,
+          "dragChangedPixels": null
+        }
+      ]
+    }
+  },
+  "effects": {
+    "items": 2466,
+    "equipment": 915,
+    "inputSha256": {
+      "DT_ItemDataTable_Common.json": "f9efdce2b623a929dfe068c30701ce9a26d8bc9c8e4b8f3bb20dca22090fb6b5",
+      "effects-passives.json": "3cacd052abdc827ec249e5add4685ff5068b18fc1143cae57d9a10d532940cc1",
+      "effects-food.json": "c45add22b62c8da8b9b88c44640093e8111ec8adc591b5d1fd9f1e73c5c501ce",
+      "effects-status.json": "d4e6fed753a264f98fe8483a8edc829640abd7bde6f07facf1451cff30f291a0",
+      "effects-items-cn.html": "319f59084b62e721c5bf1f21880b3dd1ee1cb540236ede3e7235c0dafc23ad8c",
+      "item-effects-extra.json": "24e867ffa9b96cc06a6e2162636ebc17b624621b249c74ff9a6b8f4e6e598c56"
+    },
+    "unconfirmedSpecialEffects": [
+      "Otomo_MoveSpeed_up_1"
+    ]
+  },
+  "checks": {
+    "ordinary": 103,
+    "explicitPublicFixture": 6,
+    "total": 109,
+    "goldenCases": 1942,
+    "recordsPreserved": 467
+  },
+  "delta": {
+    "verified": true,
+    "changedFiles": [
+      "Jade-Palworld-Rust.exe",
+      "README.md",
+      "THIRD_PARTY.md",
+      "data/announcements.json",
+      "data/item-effects-data.json"
+    ],
+    "reusedFiles": 2119,
+    "deltaBytes": 8089137,
+    "fullBytes": 17836731,
+    "existingGameDataUnchanged": true,
+    "addedGameData": [
+      "data/item-effects-data.json"
+    ]
+  },
+  "package": {
+    "version": "2.0.0-beta.8",
+    "fileCount": 2125,
+    "installerExecuted": false,
+    "registryAndShortcutsModified": false,
+    "installerSha256": "6fbde32958c3a839e435cc3e81a0dca6480e2f9b2c3f9209e0d1d6c322c448a8",
+    "archiveSha256": "4b90b1e57bdc614da8056e20e7fbdb9e9a875635ea771dbc376a2d1a0b1f787b",
+    "passed": true
+  },
+  "updater": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "helperExitCode": 0,
+      "elapsedMs": 3058.1207999966864,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "helperExitCode": 0,
+      "elapsedMs": 3879.432599998836,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "helperExitCode": 1,
+      "elapsedMs": 2759.2942000010225,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "elapsedMs": 985.215500000777,
+      "allPackageHashesVerified": true
+    }
+  ]
+}

@@ -987,8 +987,20 @@ fn scene(
     painter.rect_filled(clip, 15., Color32::from_rgb(12, 22, 28));
     let old_clip = ui.clip_rect();
     ui.set_clip_rect(old_clip.intersect(clip));
-    if let Some(uri) = data.get("map-images")[&state.region].as_str() {
-        egui::Image::new(data.image_source(uri)).paint_at(ui, map_rect);
+    egui::Image::new(data.map_source(&state.region)).paint_at(ui, map_rect);
+    if !data.map_ready(&state.region) {
+        let message = if data.map_error(&state.region).is_some() {
+            "清晰底图加载失败，当前显示预览地图"
+        } else {
+            "清晰地图正在后台加载…"
+        };
+        painter.text(
+            clip.left_top() + Vec2::splat(16.),
+            egui::Align2::LEFT_TOP,
+            message,
+            egui::FontId::proportional(13.),
+            Color32::WHITE,
+        );
     }
     let mut groups = spatial_groups(visible, map_rect, clip);
     // A selected marker has one explicit top layer, independent of hover and pan.

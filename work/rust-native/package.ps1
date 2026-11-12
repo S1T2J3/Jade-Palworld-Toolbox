@@ -1,4 +1,4 @@
-param([string]$Version='2.0.0-beta.7',[string]$InnoCompiler,[string]$PreviousPackage)
+param([string]$Version='2.0.0-beta.8',[string]$InnoCompiler,[string]$PreviousPackage)
 $ErrorActionPreference='Stop'
 $project=[IO.Path]::GetFullPath($PSScriptRoot)
 $dist=Join-Path $project 'dist'

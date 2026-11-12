@@ -2,7 +2,7 @@ use base64::Engine;
 use eframe::egui::{self, Vec2};
 use serde_json::Value;
 use std::{
-    cell::{Cell, RefCell},
+    cell::RefCell,
     hash::{Hash, Hasher},
 };
 use std::{
@@ -24,12 +24,7 @@ pub struct Data {
     pub errors: Vec<String>,
     pub pending: usize,
     inline_images: RefCell<HashMap<String, (String, Arc<[u8]>)>>,
-    preload_started: std::time::Instant,
-    preload_last_input: std::time::Instant,
-    preload_receiver: Option<mpsc::Receiver<Result<egui::ColorImage, String>>>,
-    preload_attempted: bool,
-    map_requested: Cell<bool>,
-    warmed_map: Option<egui::TextureHandle>,
+    terrain: crate::terrain::Terrain,
 }
 impl Data {
     pub fn new(root: PathBuf, ctx: egui::Context) -> Result<Self, String> {
@@ -62,6 +57,7 @@ impl Data {
             "paldex-index-data",
             "search-index-data",
             "item-catalog-data",
+            "item-effects-data",
             "item-icons",
             "stat-data",
             "capture-data",
@@ -81,6 +77,7 @@ impl Data {
         ];
         let (sender, receiver) = mpsc::channel();
         let location = root.clone();
+        let terrain = crate::terrain::Terrain::new(root.clone(), ctx.clone());
         std::thread::spawn(move || {
             // Initial UI goes first. One serial I/O worker bounds memory on small PCs.
             std::thread::sleep(std::time::Duration::from_millis(450));
@@ -107,12 +104,7 @@ impl Data {
             errors: vec![],
             pending: ids.len(),
             inline_images: RefCell::new(HashMap::new()),
-            preload_started: std::time::Instant::now(),
-            preload_last_input: std::time::Instant::now(),
-            preload_receiver: None,
-            preload_attempted: false,
-            map_requested: Cell::new(false),
-            warmed_map: None,
+            terrain,
         })
     }
     pub fn poll(&mut self) {
@@ -149,86 +141,20 @@ impl Data {
         self.routes.get(&normalize(value))
     }
     pub fn background_map_ready(&self) -> bool {
-        self.warmed_map.is_some()
+        self.terrain.ready("palpagos")
     }
-    /// Decode the default terrain on a worker only after the first UI and an idle grace.
-    /// User navigation always remains free to request its own foreground image.
-    pub fn preload(&mut self, ctx: &egui::Context) {
-        let (hidden, active) = ctx.input(|i| {
-            (
-                i.viewport().minimized.unwrap_or(false),
-                i.pointer.any_down()
-                    || i.events.iter().any(|e| {
-                        matches!(
-                            e,
-                            egui::Event::Key { .. }
-                                | egui::Event::Text(_)
-                                | egui::Event::PointerMoved(_)
-                                | egui::Event::PointerButton { .. }
-                                | egui::Event::MouseWheel { .. }
-                                | egui::Event::Touch { .. }
-                        )
-                    }),
-            )
-        });
-        if active {
-            self.preload_last_input = std::time::Instant::now();
-        }
-        if hidden || active {
-            return;
-        }
-        if let Some(receiver) = &self.preload_receiver {
-            if let Ok(result) = receiver.try_recv() {
-                self.preload_receiver = None;
-                if !self.map_requested.get() {
-                    if let Ok(image) = result {
-                        self.warmed_map = Some(ctx.load_texture(
-                            "jade-default-terrain",
-                            image,
-                            egui::TextureOptions::LINEAR,
-                        ));
-                    }
-                }
-            }
-            return;
-        }
-        if self.preload_attempted || self.map_requested.get() || self.warmed_map.is_some() {
-            return;
-        }
-        let quiet = if std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(2)
-            <= 4
-        {
-            2400
-        } else {
-            1200
-        };
-        if self.preload_started.elapsed().as_millis() < 1200
-            || self.preload_last_input.elapsed().as_millis() < quiet
-        {
-            ctx.request_repaint_after(std::time::Duration::from_millis(250));
-            return;
-        }
-        let Some(uri) = self.get("map-images")["palpagos"]
-            .as_str()
-            .filter(|s| s.starts_with("assets/"))
-        else {
-            return;
-        };
-        let path = self.root.join(uri);
-        let max_side = ctx.input(|i| i.max_texture_side).max(1) as u32;
-        let (sender, receiver) = mpsc::channel();
-        let repaint = ctx.clone();
-        self.preload_receiver = Some(receiver);
-        self.preload_attempted = true;
-        std::thread::spawn(move || {
-            let result = image::open(path)
-                .map(|image| capped_color_image(image, max_side))
-                .map_err(|e| e.to_string());
-            let _ = sender.send(result);
-            repaint.request_repaint();
-        });
+    pub fn map_ready(&self, region: &str) -> bool {
+        self.terrain.ready(region)
+    }
+    pub fn map_error(&self, region: &str) -> Option<String> {
+        self.terrain.error(region)
+    }
+    pub fn map_source(&self, region: &str) -> egui::ImageSource<'static> {
+        self.terrain.source(region)
+    }
+    /// Always consume results, including while navigating, dragging or minimized.
+    pub fn preload(&mut self, _ctx: &egui::Context) {
+        self.terrain.poll();
     }
     pub fn get(&self, id: &str) -> &Value {
         self.tables.get(id).map(AsRef::as_ref).unwrap_or(&EMPTY)
@@ -271,14 +197,10 @@ impl Data {
         }
     }
     pub fn image_source(&self, uri: &str) -> egui::ImageSource<'static> {
-        if self.get("map-images")["palpagos"].as_str() == Some(uri) {
-            if let Some(texture) = &self.warmed_map {
-                return egui::ImageSource::Texture(egui::load::SizedTexture::new(
-                    texture.id(),
-                    texture.size_vec2(),
-                ));
+        for region in ["palpagos", "worldtree"] {
+            if self.get("map-images")[region].as_str() == Some(uri) {
+                return self.map_source(region);
             }
-            self.map_requested.set(true);
         }
         if uri.starts_with("data:image/") {
             if let Some((name, bytes)) = self.inline_images.borrow().get(uri) {
@@ -393,7 +315,7 @@ pub fn normalize(s: &str) -> String {
     s.nfkc().flat_map(char::to_lowercase).collect()
 }
 
-fn capped_color_image(image: image::DynamicImage, max_side: u32) -> egui::ColorImage {
+pub(crate) fn capped_color_image(image: image::DynamicImage, max_side: u32) -> egui::ColorImage {
     let image = if image.width() > max_side || image.height() > max_side {
         image.thumbnail(max_side, max_side)
     } else {
@@ -540,60 +462,54 @@ mod preload_tests {
         assert_eq!(size, Some(Vec2::splat(1024.)));
     }
     #[test]
-    fn initial_hidden_and_input_grace_then_worker_decode() {
-        let base = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let root = [base.join("../../data"), base.join("../../rust-native/data")]
-            .into_iter()
-            .find(|p| p.join("map-images.json").exists())
-            .unwrap();
+    fn requested_map_finishes_while_pointer_keeps_moving() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
         let ctx = egui::Context::default();
-        let mut data = Data::new(root.clone(), ctx.clone()).unwrap();
-        data.tables.insert(
-            "map-images".into(),
-            Arc::new(
-                serde_json::from_slice(&std::fs::read(root.join("map-images.json")).unwrap())
-                    .unwrap(),
-            ),
-        );
-        let _ = ctx.run(egui::RawInput::default(), |ctx| data.preload(ctx));
-        assert!(!data.preload_attempted);
+        let mut data = Data::new(root, ctx.clone()).unwrap();
         assert!(!data.background_map_ready());
-        data.preload_started -= std::time::Duration::from_secs(3);
-        data.preload_last_input -= std::time::Duration::from_secs(3);
-        let mut hidden = egui::RawInput::default();
-        hidden
-            .viewports
-            .get_mut(&egui::ViewportId::ROOT)
-            .unwrap()
-            .minimized = Some(true);
-        let _ = ctx.run(hidden, |ctx| data.preload(ctx));
-        assert!(!data.preload_attempted);
-        let mut input = egui::RawInput::default();
-        input
-            .viewports
-            .get_mut(&egui::ViewportId::ROOT)
-            .unwrap()
-            .minimized = Some(false);
-        input
-            .events
-            .push(egui::Event::PointerMoved(egui::Pos2::new(20., 20.)));
-        let _ = ctx.run(input, |ctx| data.preload(ctx));
-        assert!(!data.preload_attempted);
-        data.preload_last_input -= std::time::Duration::from_secs(3);
-        let _ = ctx.run(egui::RawInput::default(), |ctx| data.preload(ctx));
-        assert!(data.preload_attempted);
+        let _ = ctx.run(
+            egui::RawInput {
+                max_texture_side: Some(1024),
+                ..Default::default()
+            },
+            |_| {
+                let _ = data.map_source("palpagos");
+            },
+        );
         let start = std::time::Instant::now();
-        while !data.background_map_ready() && start.elapsed().as_secs() < 5 {
+        while !data.map_ready("palpagos") {
+            let raw = egui::RawInput {
+                max_texture_side: Some(1024),
+                events: vec![egui::Event::PointerMoved(egui::pos2(20., 20.))],
+                ..Default::default()
+            };
+            let _ = ctx.run(raw, |ctx| data.preload(ctx));
+            assert!(
+                data.map_error("palpagos").is_none(),
+                "{:?}",
+                data.map_error("palpagos")
+            );
+            assert!(start.elapsed().as_secs() < 5);
             std::thread::sleep(std::time::Duration::from_millis(10));
-            let _ = ctx.run(egui::RawInput::default(), |ctx| data.preload(ctx));
         }
-        assert!(data.background_map_ready());
-        let uri = data.get("map-images")["palpagos"].as_str().unwrap();
+        let second = std::time::Instant::now();
+        while !data.map_ready("worldtree") {
+            let _ = ctx.run(
+                egui::RawInput {
+                    max_texture_side: Some(1024),
+                    events: vec![egui::Event::PointerMoved(egui::pos2(20., 20.))],
+                    ..Default::default()
+                },
+                |ctx| data.preload(ctx),
+            );
+            assert!(second.elapsed().as_secs() < 5);
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert_eq!(data.terrain.size("palpagos"), Some([1024, 1024]));
+        assert_eq!(data.terrain.size("worldtree"), Some([1024, 1024]));
         assert!(matches!(
-            data.image_source(uri),
+            data.map_source("palpagos"),
             egui::ImageSource::Texture(_)
         ));
-        let cap = ctx.input(|i| i.max_texture_side).min(4096);
-        assert_eq!(data.warmed_map.as_ref().unwrap().size(), [cap, cap]);
     }
 }

@@ -6,6 +6,8 @@ const candidates=fs.existsSync(path.join(repo,'build'))?fs.readdirSync(path.join
 const source=sourceArg?path.resolve(sourceArg):candidates[0];
 if(!source)throw Error('First build the existing offline data, then pass its content directory: node work/rust-native/export-data.cjs <directory-containing-index.html>');
 const dest=path.join(__dirname,'data');fs.mkdirSync(dest,{recursive:true});
+// Exact-ID equipment, food and item effects, built from pinned game data.
+fs.copyFileSync(path.join(__dirname,'crates/jade-app/assets/item-effects-data.json'),path.join(dest,'item-effects-data.json'));
 const html=fs.readFileSync(path.join(source,'index.html'),'utf8');
 const checks={tables:{},assets:{}};
 for(const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)){

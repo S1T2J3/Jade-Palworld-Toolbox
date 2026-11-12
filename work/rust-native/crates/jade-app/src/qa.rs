@@ -102,20 +102,12 @@ impl Probe {
         } else {
             "palpagos"
         };
-        if region == "palpagos" && data.background_map_ready() {
+        if std::env::var("JADE_QA_MAP_EARLY").as_deref() == Ok("1") {
+            let _ = data.map_source(region);
             return true;
         }
-        let Some(uri) = data.get("map-images")[region].as_str() else {
-            return false;
-        };
-        matches!(
-            ctx.try_load_texture(
-                &data.image_uri(uri),
-                egui::TextureOptions::LINEAR,
-                egui::load::SizeHint::default()
-            ),
-            Ok(egui::load::TexturePoll::Ready { .. })
-        )
+        let _ = ctx;
+        data.map_ready(region)
     }
     pub fn tick(
         &mut self,
@@ -163,6 +155,10 @@ impl Probe {
             self.report["mapPreloadedAfterMs"] =
                 json!(self.started.elapsed().as_secs_f64() * 1000.);
         }
+        if data.map_ready("worldtree") && self.report["worldtreePreloadedAfterMs"].is_null() {
+            self.report["worldtreePreloadedAfterMs"] =
+                json!(self.started.elapsed().as_secs_f64() * 1000.);
+        }
         if let Some(mut current) = self.current.take() {
             current.frames += 1;
             if current.phase == 2 {
@@ -185,6 +181,12 @@ impl Probe {
                 && current.frames >= 3
                 && Self::texture_ready(ctx, data, &current.route)
             {
+                current.result["fullTerrainReady"] =
+                    json!(data.map_ready(if current.route.contains("worldtree") {
+                        "worldtree"
+                    } else {
+                        "palpagos"
+                    }));
                 current.result["readyMs"] = json!(current.start.elapsed().as_secs_f64() * 1000.);
                 current.result["readyPassCpuMs"] = json!(cpu_ms);
                 current.phase = 1;
@@ -371,7 +373,12 @@ impl Probe {
             }
         }
         if self.current.is_none()
-            && self.started.elapsed() > Duration::from_secs(5)
+            && self.started.elapsed()
+                > if std::env::var("JADE_QA_MAP_EARLY").as_deref() == Ok("1") {
+                    Duration::from_millis(100)
+                } else {
+                    Duration::from_secs(5)
+                }
             && data.pending == 0
         {
             if let Some(next) = self.scenes.get(self.index) {

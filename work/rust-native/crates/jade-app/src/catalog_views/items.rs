@@ -45,6 +45,7 @@ pub(super) fn show(
         });
         return;
     }
+    effects(ui, d, &e.id, nav);
     if !sellers.is_empty() {
         section(ui, "商人出售", |ui| {
             let points: std::collections::BTreeSet<_> = sellers
@@ -154,6 +155,56 @@ pub(super) fn show(
             format!("https://paldb.cc/cn/{}", text(v, "slug")),
         );
     }
+}
+fn effects(ui: &mut egui::Ui, d: &Data, id: &str, nav: &mut Option<String>) {
+    section(ui, "物品效果与属性", |ui| {
+        if !d.ready("item-effects-data") {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                ui.label("正在读取物品效果…");
+            });
+            return;
+        }
+        let v = &d.get("item-effects-data")["items"][id];
+        if !text(v, "description").is_empty() {
+            ui.label(text(v, "description"));
+        }
+        let values: Vec<_> = array(&v["stats"])
+            .iter()
+            .map(|r| {
+                (
+                    r[0].as_str().unwrap_or(""),
+                    r[1].as_str().unwrap_or("").to_owned(),
+                )
+            })
+            .collect();
+        stats(ui, &values);
+        for effect in array(&v["effects"]).iter().filter_map(Value::as_str) {
+            ui.label(format!("• {effect}"));
+        }
+        if !text(&v["passive"], "key").is_empty() {
+            route(ui, format!("#details/surgery/trait/{}", text(&v["passive"], "key")),
+                format!("手术台词条 · {}", text(&v["passive"], "name")), nav);
+        }
+        if !text(v, "skill").is_empty() {
+            let key = text(v, "skill");
+            let title = text(&d.get("pal-details-data")["moves"][key], "zh");
+            route(
+                ui,
+                format!("#details/active/move/{key}"),
+                format!("使用后学习 · {title}"),
+                nav,
+            );
+        }
+        if !array(&v["relatedItems"]).is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.weak("说明中提到的物品：");
+                for key in array(&v["relatedItems"]).iter().filter_map(Value::as_str) {
+                    item(ui, d, key, "", nav);
+                }
+            });
+        }
+    });
 }
 fn point_link(ui: &mut egui::Ui, d: &Data, id: &str, nav: &mut Option<String>) {
     let book = d.get("item-catalog-data");

@@ -281,3 +281,5 @@ Dependency license texts are in licenses/. Some crates declare their license in 
 | zopfli | 0.8.4 | Apache-2.0 | https://github.com/zopfli-rs/zopfli |
 | zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image |
 | zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg |
+
+Item effects: exact-ID numeric properties, equipment passives and food durations from Dhampyru/Palworld-Extracted commit d38105b4dc0cf6f36c5035997fbe54205bb2d753 (https://github.com/Dhampyru/Palworld-Extracted). Chinese gameplay descriptions and effect names from https://paldb.cc/cn/Items. Original game text belongs to Pocketpair and other original owners. The pinned input hashes are retained in item-effects-data.json; tools/build-item-effects.py generates this offline table. Embedded 512px map previews derive from the same bundled original map assets; full-resolution terrain is unchanged.

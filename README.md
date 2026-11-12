@@ -2,7 +2,7 @@
 
 一款中文《幻兽帕鲁》桌面工具。用自己仓库里的帕鲁规划配种，按目标词条反查亲代，在图鉴、制作配方、物品掉落和世界地图之间直接跳转。也可以读取本机游戏存档，将同一世界的终端帕鲁按个体导入仓库。
 
-Rust 原生测试版已另设独立通道：[2.0.0-beta.7 测试发行版](https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases/tag/rust-v2.0.0-beta.7) · [原生版说明与构建](work/rust-native/README.md)。界面、计算、存档读取、地图和更新均为 Rust；与下方正式版独立安装、独立保存数据。可通过世界档案 JSON 备份迁移记录。正式版更新仍沿用原通道。
+Rust 原生测试版已另设独立通道：[2.0.0-beta.8 测试发行版](https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases/tag/rust-v2.0.0-beta.8) · [原生版说明与构建](work/rust-native/README.md)。界面、计算、存档读取、地图和更新均为 Rust；与下方正式版独立安装、独立保存数据。可通过世界档案 JSON 备份迁移记录。正式版更新仍沿用原通道。
 
 ## 下载和运行
 
