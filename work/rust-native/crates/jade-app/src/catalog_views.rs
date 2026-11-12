@@ -241,11 +241,7 @@ fn hero(ui: &mut egui::Ui, d: &Data, e: &Entry, kind: &str, subtitle: &str) {
             crate::breeding_ui::passive_rank(ui, d, e.value["rank"].as_i64().unwrap_or(0), 40.);
         } else if let Some(source) = entry_image(d, page, e) {
             let size = if kind == "pal" { 76. } else { 64. };
-            let mut image = egui::Image::new(source).fit_to_exact_size(Vec2::splat(size));
-            if page == "details/active" {
-                image = image.tint(crate::breeding_ui::element_color(text(&e.value, "type")));
-            }
-            ui.add(image);
+            ui.add(egui::Image::new(source).fit_to_exact_size(Vec2::splat(size)));
         }
         ui.vertical(|ui| {
             ui.set_width(ui.available_width());
@@ -288,7 +284,7 @@ pub fn entry_image(d: &Data, page: &str, e: &Entry) -> Option<egui::ImageSource<
                 .filter(|uri| !uri.trim().is_empty())
                 .map(|uri| d.image_source(uri))
         }),
-        "details/active" => element_image(text(&e.value, "type")),
+        "details/active" => crate::elements::source(text(&e.value, "type")),
         "details/passive" | "details/surgery" => {
             let rank = e.value["rank"].as_i64()?.unsigned_abs() as usize;
             d.get("trait-ranks")[rank]
@@ -323,18 +319,7 @@ fn pal_image(d: &Data, key: &str) -> Option<egui::ImageSource<'static>> {
         .map(|uri| d.image_source(uri))
 }
 fn element_image(key: &str) -> Option<egui::ImageSource<'static>> {
-    Some(match key {
-        "neutral" => egui::include_image!("../assets/neutral.svg"),
-        "fire" => egui::include_image!("../assets/fire.svg"),
-        "water" => egui::include_image!("../assets/water.svg"),
-        "grass" => egui::include_image!("../assets/grass.svg"),
-        "electric" => egui::include_image!("../assets/electric.svg"),
-        "ice" => egui::include_image!("../assets/ice.svg"),
-        "ground" => egui::include_image!("../assets/ground.svg"),
-        "dark" => egui::include_image!("../assets/dark.svg"),
-        "dragon" => egui::include_image!("../assets/dragon.svg"),
-        _ => return None,
-    })
+    crate::elements::source(key)
 }
 fn entry_page(e: &Entry) -> &str {
     let path = e.route.trim_start_matches('#');
@@ -551,11 +536,7 @@ fn element(ui: &mut egui::Ui, key: &str) {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 3.;
         if let Some(source) = element_image(key) {
-            ui.add(
-                egui::Image::new(source)
-                    .fit_to_exact_size(Vec2::splat(17.))
-                    .tint(color),
-            );
+            ui.add(egui::Image::new(source).fit_to_exact_size(Vec2::splat(17.)));
         }
         ui.label(RichText::new(element_name(key)).color(color).strong());
     });

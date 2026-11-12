@@ -75,6 +75,8 @@ pub fn apply(ctx: &egui::Context, name: &str) {
     v.selection.bg_fill = p.selected;
     v.selection.stroke = Stroke::new(1., p.accent);
     v.window_stroke = Stroke::new(1., p.line);
+    v.window_corner_radius = egui::CornerRadius::same(14);
+    v.menu_corner_radius = egui::CornerRadius::same(8);
     for widget in [
         &mut v.widgets.noninteractive,
         &mut v.widgets.inactive,
@@ -82,7 +84,7 @@ pub fn apply(ctx: &egui::Context, name: &str) {
         &mut v.widgets.active,
         &mut v.widgets.open,
     ] {
-        widget.corner_radius = egui::CornerRadius::same(6);
+        widget.corner_radius = egui::CornerRadius::same(8);
         widget.bg_stroke = Stroke::new(1., p.line);
         widget.fg_stroke = Stroke::new(1., p.ink);
         widget.bg_fill = p.soft;
@@ -116,7 +118,7 @@ pub fn card(ui: &egui::Ui) -> egui::Frame {
     egui::Frame::new()
         .fill(p.surface)
         .stroke(Stroke::new(1., p.line))
-        .corner_radius(10)
+        .corner_radius(12)
         .inner_margin(12)
 }
 pub fn section(ui: &mut egui::Ui, title: &str) {

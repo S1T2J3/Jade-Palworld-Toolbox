@@ -1324,7 +1324,7 @@ impl Breeding {
             let width = (ui.available_width() - (cols - 1) as f32 * 8.) / cols as f32;
             egui::ScrollArea::vertical()
                 .id_salt("offspring-results")
-                .max_height(550.)
+                .max_height((ui.available_height() - 42.).clamp(90., 550.))
                 .show_rows(ui, 90., rows.len().div_ceil(cols), |ui, range| {
                     for row in range {
                         ui.horizontal_top(|ui| {
@@ -1635,7 +1635,8 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
         .unwrap_or_default();
     ui.horizontal(|ui| {
         ui.add(
-            egui::TextEdit::singleline(&mut query).hint_text("搜索词条名称或效果（留空显示全部）"),
+            egui::TextEdit::singleline(&mut query)
+                .hint_text("模糊搜索词条名称或效果（留空显示全部）"),
         );
         if icon_action(ui, "reset", "清空搜索").clicked() {
             query.clear();
@@ -1644,19 +1645,22 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
     ui.data_mut(|m| m.insert_temp(query_id, query.clone()));
     let mut traits: Vec<_> = array(&d.get("trait-data")["traits"])
         .iter()
-        .filter(|t| {
-            query.is_empty()
-                || search(t, &query)
-                || search(
-                    &d.get("pal-details-data")["passives"][text(t, "key")],
-                    &query,
-                )
-        })
+        .filter(|t| crate::search::trait_matches(d, text(t, "key"), &query))
         .collect();
-    traits.sort_by_key(|t| std::cmp::Reverse(t["rank"].as_i64().unwrap_or(0)));
+    traits.sort_by_key(|t| {
+        (
+            crate::search::trait_score(d, text(t, "key"), &query).unwrap_or(u32::MAX),
+            std::cmp::Reverse(t["rank"].as_i64().unwrap_or(0)),
+        )
+    });
     ui.label(format!(
-        "已选 {}/4 · 按稀有度从高到低 · {} 项",
+        "已选 {}/4 · {} · {} 项",
         keys.len(),
+        if query.trim().is_empty() {
+            "按稀有度从高到低"
+        } else {
+            "按匹配度排列"
+        },
         traits.len()
     ));
     ui.horizontal_wrapped(|ui| {
@@ -1783,6 +1787,16 @@ pub fn trait_checkbox(
     selected: &mut bool,
     enabled: bool,
 ) -> egui::Response {
+    trait_checkbox_with_suffix(ui, d, key, selected, enabled, "")
+}
+pub fn trait_checkbox_with_suffix(
+    ui: &mut egui::Ui,
+    d: &Data,
+    key: &str,
+    selected: &mut bool,
+    enabled: bool,
+    suffix: &str,
+) -> egui::Response {
     ui.horizontal(|ui| {
         let rank = array(&d.get("trait-data")["traits"])
             .iter()
@@ -1792,7 +1806,10 @@ pub fn trait_checkbox(
         let emblem = passive_rank(ui, d, rank, 15.).interact(egui::Sense::click());
         track_test_rect(ui, &emblem, &format!("trait-emblem:{key}"));
         let mut response = ui
-            .add_enabled(enabled, egui::Checkbox::new(selected, d.trait_name(key)))
+            .add_enabled(
+                enabled,
+                egui::Checkbox::new(selected, format!("{}{suffix}", d.trait_name(key))),
+            )
             .on_hover_text(text(&d.get("pal-details-data")["passives"][key], "effect"));
         if enabled && emblem.clicked() {
             *selected = !*selected;
@@ -2083,12 +2100,12 @@ fn paint_element_badge(ui: &egui::Ui, key: &str, rect: egui::Rect) {
     let color = element_color(key);
     ui.painter()
         .rect_filled(rect, 3, color.gamma_multiply(0.12));
-    egui::Image::new(crate::design::icon_source(key))
-        .tint(color)
-        .paint_at(
+    if let Some(source) = crate::elements::source(key) {
+        egui::Image::new(source).paint_at(
             ui,
-            egui::Rect::from_center_size(rect.left_center() + Vec2::new(8., 0.), Vec2::splat(12.)),
+            egui::Rect::from_center_size(rect.left_center() + Vec2::new(8., 0.), Vec2::splat(14.)),
         );
+    }
     ui.painter().text(
         rect.left_center() + Vec2::new(17., 0.),
         egui::Align2::LEFT_CENTER,

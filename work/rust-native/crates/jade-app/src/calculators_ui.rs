@@ -49,6 +49,8 @@ pub struct Calculators {
     page_inputs: std::collections::HashMap<String, SharedInput>,
     work_relevant: bool,
     work_trait_query: String,
+    work_trait_feedback: String,
+    stat_trait_query: String,
 }
 #[derive(Clone)]
 struct SharedInput {
@@ -104,6 +106,8 @@ impl Default for Calculators {
             page_inputs: std::collections::HashMap::new(),
             work_relevant: true,
             work_trait_query: String::new(),
+            work_trait_feedback: String::new(),
+            stat_trait_query: String::new(),
         }
     }
 }
@@ -157,6 +161,7 @@ impl Calculators {
             .show(ui, |ui| {
                 if page == "details/stats" || page == "details/capture" {
                     panel(ui).show(ui, |ui| {
+                        ui.set_width(ui.available_width());
                         ui.horizontal_wrapped(|ui| {
                             d.portrait(ui, text(&d.species[self.pal], "key"), 50.);
                             pal_picker(ui, d, &mut self.pal, &mut self.query);
@@ -164,6 +169,22 @@ impl Calculators {
                             if ui.link("图鉴资料").clicked() {
                                 nav =
                                     Some(format!("#paldex/{}", text(&d.species[self.pal], "key")));
+                            }
+                            let key = text(&d.species[self.pal], "key");
+                            let skill_name = text(&d.get("partner-skills-data")[key], "name");
+                            if !skill_name.is_empty()
+                                && crate::design::small_action(
+                                    ui,
+                                    "branch",
+                                    &format!("伙伴技能 · {skill_name}"),
+                                )
+                                .clicked()
+                            {
+                                nav = Some(format!("#details/partner/{key}"));
+                            }
+                            if crate::design::small_action(ui, "pin", "刷新位置").clicked() {
+                                nav =
+                                    Some(format!("#spawns/{}", text(&d.species[self.pal], "key")));
                             }
                         });
                     });
@@ -204,10 +225,10 @@ impl Calculators {
     }
     fn stats(&mut self, ui: &mut egui::Ui, d: &Data, nav: &mut Option<String>) {
         panel(ui).show(ui, |ui| {
+            ui.set_width(ui.available_width());
             ui.horizontal_wrapped(|ui| {
                 crate::design::section(ui, "培养参数");
-                if ui
-                    .button("满练参数")
+                if crate::design::action(ui, "check", "满练参数")
                     .on_hover_text("等级80、浓缩4星、信赖10、个体值和帕鲁之魂升满")
                     .clicked()
                 {
@@ -217,7 +238,7 @@ impl Calculators {
                     self.iv = [100; 3];
                     self.souls = [20; 4];
                 }
-                if ui.button("重置").clicked() {
+                if crate::design::action(ui, "reset", "重置").clicked() {
                     self.level = 1;
                     self.stars = 0;
                     self.trust = 0;
@@ -242,7 +263,7 @@ impl Calculators {
             egui::Grid::new("stat-cultivation-grid")
                 .num_columns(5)
                 .striped(true)
-                .min_col_width((ui.available_width() / 6.).min(120.))
+                .min_col_width(((ui.available_width() - 64.) / 5.).max(80.))
                 .spacing(egui::vec2(16., 10.))
                 .show(ui, |ui| {
                     for h in ["属性", "个体值 0–100", "魂强化 0–20", "面板值", "远征值"]
@@ -313,13 +334,16 @@ impl Calculators {
         });
         ui.add_space(10.);
         panel(ui).show(ui, |ui| {
+            ui.set_width(ui.available_width());
             ui.horizontal(|ui| {
                 crate::design::section(ui, "面板被动词条");
                 crate::design::badge(ui, format!("{} / 4", self.traits.len()));
-                if ui.button("选择词条").clicked() {
+                if crate::design::action(ui, "list", "选择全部词条").clicked() {
                     self.picker = true;
                 }
-                if !self.traits.is_empty() && ui.button("清空词条").clicked() {
+                if !self.traits.is_empty()
+                    && crate::design::action(ui, "close", "清空词条").clicked()
+                {
                     self.traits.clear();
                 }
             });
@@ -335,12 +359,60 @@ impl Calculators {
                 }
             });
             if self.traits.iter().any(|key| key == "MutationPal_Mutant") {
-                ui.small("突变词条含条件效果；结果按所选词条已经生效计算。");
+                ui.small("「特殊体质」的防御加成按帕鲁在队伍中时计算。");
             }
+            ui.add(
+                egui::TextEdit::singleline(&mut self.stat_trait_query)
+                    .hint_text("模糊搜索会影响面板的词条名称或效果"),
+            );
+            let mut choices: Vec<_> = array(&d.get("trait-data")["traits"])
+                .iter()
+                .filter(|t| {
+                    d.get("stat-data")["modifiers"][text(t, "key")].is_object()
+                        && crate::search::trait_matches(d, text(t, "key"), &self.stat_trait_query)
+                })
+                .collect();
+            choices.sort_by_key(|t| {
+                (
+                    crate::search::trait_score(d, text(t, "key"), &self.stat_trait_query)
+                        .unwrap_or(u32::MAX),
+                    std::cmp::Reverse(t["rank"].as_i64().unwrap_or(0)),
+                )
+            });
+            let cols = ((ui.available_width() / 150.) as usize).max(1);
+            egui::Grid::new("stat-relevant-passives")
+                .num_columns(cols)
+                .spacing([7., 5.])
+                .show(ui, |ui| {
+                    for (index, t) in choices.into_iter().enumerate() {
+                        let key = text(t, "key");
+                        let mut selected = self.traits.iter().any(|k| k == key);
+                        let enabled = selected || self.traits.len() < 4;
+                        if trait_checkbox(ui, d, key, &mut selected, enabled).changed() {
+                            self.traits.retain(|k| k != key);
+                            if selected {
+                                self.traits.push(key.into());
+                            }
+                        }
+                        if (index + 1) % cols == 0 {
+                            ui.end_row();
+                        }
+                    }
+                });
+        });
+        ui.collapsing("计算口径与数据来源",|ui| {
+            ui.label("个体值每点为对应属性的等级成长提供 0.3% 加成。每级帕鲁之魂增加该属性 3%，每星浓缩提高生命、攻击、防御各 5%，并为基础工作速度增加 7。");
+            ui.label("觉醒使物种成长系数提高 10%，信赖根据物种和形态增加成长系数。头目或天然稀有个体使用头目系数；仅继承「稀有」词条的个体按其实际形态选择。");
+            ui.label("战斗属性在基础成长与最终加成后分别向下取整。面板值按队伍常态推算，不计食物、装备、其他帕鲁的伙伴技能和世界设置。远征值剔除被动加成，战力为（远征生命 ÷ 5 向下取整 ＋ 远征攻击 ＋ 远征防御）×（浓缩星级 ＋ 1）²。");
+            ui.horizontal_wrapped(|ui| {
+                ui.hyperlink_to("物种与形态参数", "https://paldb.cc/cn/Pal_Calc");
+                ui.hyperlink_to("属性取整公式", "https://github.com/FruityShuffles/pal-analyzer/blob/main/docs/FORMULAS.md");
+                ui.hyperlink_to("远征战力", "https://paldb.cc/cn/Pal_Expedition_Station");
+            });
         });
     }
     fn capture(&mut self, ui: &mut egui::Ui, d: &Data, nav: &mut Option<String>) {
-        if ui.available_width() > 810. {
+        if ui.available_width() > 960. {
             ui.columns(2, |columns| {
                 panel(&columns[0]).show(&mut columns[0], |ui| self.capture_controls(ui, d, nav));
                 panel(&columns[1]).show(&mut columns[1], |ui| self.capture_results(ui, d, nav));
@@ -391,6 +463,11 @@ impl Calculators {
         self.module = self.module.min(modules.len());
         crate::design::section(ui, "捕捉装备");
         ui.horizontal_wrapped(|ui| {
+            if let Some(sphere) = spheres.get(self.sphere) {
+                if item_picture(ui, d, text(sphere, "id"), 28.).clicked() {
+                    *nav = Some(format!("#items/{}", text(sphere, "id")));
+                }
+            }
             egui::ComboBox::from_id_salt("capture-sphere")
                 .selected_text(
                     spheres
@@ -403,6 +480,11 @@ impl Calculators {
                         ui.selectable_value(&mut self.sphere, i, text(s, "name"));
                     }
                 });
+            if self.module > 0
+                && item_picture(ui, d, text(&modules[self.module - 1], "id"), 28.).clicked()
+            {
+                *nav = Some(format!("#items/{}", text(&modules[self.module - 1], "id")));
+            }
             egui::ComboBox::from_id_salt("capture-module")
                 .selected_text(if self.module == 0 {
                     "未装备模块"
@@ -504,7 +586,12 @@ impl Calculators {
                 ui.end_row();
                 for (i, sphere) in spheres.iter().enumerate() {
                     let row = &rows[i];
-                    ui.selectable_value(&mut self.sphere, i, text(sphere, "name"));
+                    ui.horizontal(|ui| {
+                        if item_picture(ui, d, text(sphere, "id"), 26.).clicked() {
+                            self.sphere = i;
+                        }
+                        ui.selectable_value(&mut self.sphere, i, text(sphere, "name"));
+                    });
                     ui.label(number(&row["power"]));
                     ui.label(percent(row["chance"].as_f64().unwrap_or(0.)));
                     ui.label(percent(row["reticle"].as_f64().unwrap_or(0.)));
@@ -514,6 +601,10 @@ impl Calculators {
                     ui.end_row();
                 }
             });
+        ui.horizontal_wrapped(|ui| {
+            ui.hyperlink_to("捕捉公式", "https://paldb.cc/cn/Capture_Rate");
+            ui.hyperlink_to("物种系数", "https://github.com/Dhampyru/Palworld-Extracted/blob/d38105b4dc0cf6f36c5035997fbe54205bb2d753/Pal/Content/Pal/DataTable/Character/DT_PalMonsterParameter_Common.json");
+        });
     }
     fn pick_work(&mut self, d: &Data, world: &Value, requested_job: Option<&str>) {
         let (key, record) = if self.work_origin == "warehouse" {
@@ -817,26 +908,16 @@ impl Calculators {
         });
         let response = ui.add(
             egui::TextEdit::singleline(&mut self.work_trait_query)
-                .hint_text("搜索词条；输入准确名称，按回车添加"),
+                .hint_text("模糊搜索名称或效果；回车添加明确匹配，多个用顿号隔开"),
         );
+        if response.changed() {
+            self.work_trait_feedback.clear();
+        }
         if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-            for term in self
-                .work_trait_query
-                .split([',', '，', '、', ';', '；'])
-                .map(str::trim)
-                .filter(|t| !t.is_empty())
-            {
-                if let Some(t) = array(&d.get("trait-data")["traits"]).iter().find(|t| {
-                    ["key", "zh", "en"]
-                        .iter()
-                        .any(|field| text(t, field).eq_ignore_ascii_case(term))
-                }) {
-                    let key = text(t, "key").to_owned();
-                    if self.traits.len() < 4 && !self.traits.contains(&key) {
-                        self.traits.push(key);
-                    }
-                }
-            }
+            self.add_typed_work_traits(d);
+        }
+        if !self.work_trait_feedback.is_empty() {
+            ui.small(&self.work_trait_feedback);
         }
         let modifier = if self.job == "搬运" {
             "movement"
@@ -853,15 +934,21 @@ impl Calculators {
                         .as_f64()
                         .unwrap_or(0.)
                         != 0.)
-                    && search(t, &self.work_trait_query)
+                    && crate::search::trait_matches(d, text(t, "key"), &self.work_trait_query)
             })
             .collect();
-        choices.sort_by_key(|t| std::cmp::Reverse(t["rank"].as_i64().unwrap_or(0)));
+        choices.sort_by_key(|t| {
+            (
+                crate::search::trait_score(d, text(t, "key"), &self.work_trait_query)
+                    .unwrap_or(u32::MAX),
+                std::cmp::Reverse(t["rank"].as_i64().unwrap_or(0)),
+            )
+        });
         egui::ScrollArea::vertical()
             .id_salt("work-trait-options")
             .max_height(250.)
             .show(ui, |ui| {
-                let columns = ((ui.available_width() / 155.) as usize).max(1);
+                let columns = ((ui.available_width() / 185.) as usize).max(1);
                 egui::Grid::new("work-trait-grid")
                     .num_columns(columns)
                     .show(ui, |ui| {
@@ -869,7 +956,24 @@ impl Calculators {
                             let key = text(t, "key");
                             let mut checked = self.traits.iter().any(|k| k == key);
                             let enabled = checked || self.traits.len() < 4;
-                            if trait_checkbox(ui, d, key, &mut checked, enabled).changed() {
+                            let value = data["modifiers"][key][modifier].as_f64().unwrap_or(0.);
+                            let suffix = if value == 0. {
+                                String::new()
+                            } else if modifier == "ranch" {
+                                format!(" {value:+}级")
+                            } else {
+                                format!(" {value:+}%")
+                            };
+                            if crate::breeding_ui::trait_checkbox_with_suffix(
+                                ui,
+                                d,
+                                key,
+                                &mut checked,
+                                enabled,
+                                &suffix,
+                            )
+                            .changed()
+                            {
                                 self.traits.retain(|k| k != key);
                                 if checked {
                                     self.traits.push(key.into());
@@ -881,6 +985,47 @@ impl Calculators {
                         }
                     });
             });
+    }
+    fn add_typed_work_traits(&mut self, d: &Data) {
+        let mut unresolved = Vec::new();
+        for term in self
+            .work_trait_query
+            .split([',', '，', '、', ';', '；'])
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            let rows = array(&d.get("trait-data")["traits"]);
+            let exact = rows.iter().find(|t| {
+                ["key", "zh", "en"].iter().any(|field| {
+                    crate::data::normalize(text(t, field)) == crate::data::normalize(term)
+                })
+            });
+            let mut candidates: Vec<_> = rows
+                .iter()
+                .filter_map(|t| {
+                    crate::search::trait_score(d, text(t, "key"), term).map(|score| (score, t))
+                })
+                .collect();
+            candidates.sort_by_key(|(score, _)| *score);
+            let found = exact.or_else(|| (candidates.len() == 1).then(|| candidates[0].1));
+            if let Some(t) = found {
+                let key = text(t, "key").to_owned();
+                if !self.traits.contains(&key) {
+                    if self.traits.len() < 4 {
+                        self.traits.push(key);
+                    } else {
+                        unresolved.push(format!("{term}（已满4条）"));
+                    }
+                }
+            } else {
+                unresolved.push(term.to_owned());
+            }
+        }
+        self.work_trait_feedback = if unresolved.is_empty() {
+            String::new()
+        } else {
+            format!("请从下方确认匹配词条：{}", unresolved.join("、"))
+        };
     }
     fn work_result(
         &mut self,
@@ -1000,40 +1145,390 @@ impl Calculators {
             });
     }
     fn relic(&mut self, ui: &mut egui::Ui, d: &Data, route: &str, nav: &mut Option<String>) {
-        panel(ui).show(ui,|ui|{crate::design::section(ui,"古代文明遗物转换");
-        let data=d.get("relic-data");let tiers=array(&data["tiers"]);if tiers.is_empty(){ui.label("遗物资料正在准备中…");return}self.relic=self.relic.min(tiers.len()-1);
-        let items:std::collections::HashMap<&str,&Value>=array(&d.get("item-catalog-data")["items"]).iter().map(|i|(text(i,"id"),i)).collect();
-        let name=|id:&str|items.get(id).map(|i|text(i,"name")).unwrap_or(id).to_owned();
-        if self.relic_route!=route{self.relic_route=route.into();let args:Vec<String>=route.trim_start_matches('#').split('/').map(decode).collect();if args.get(2).is_some_and(|a|a=="item"){
-            self.relic_reverse=true;if let Some(id)=args.get(3){if array(&data["outputs"]).iter().any(|v|v.as_str()==Some(id)){self.relic_output=id.clone();}}
-        }else{self.relic_reverse=false;if let Some(id)=args.get(2){if let Some(index)=tiers.iter().position(|t|text(t,"id")==id){if self.relic!=index{self.simulated=Value::Null;}self.relic=index;}}}}
-        if self.relic_output.is_empty(){self.relic_output=array(&data["outputs"]).first().and_then(Value::as_str).unwrap_or("").into();}
-        ui.horizontal(|ui|{if ui.selectable_label(!self.relic_reverse,"按遗物查产出").clicked(){*nav=Some(format!("#work/relic/{}",text(&tiers[self.relic],"id")));}if ui.selectable_label(self.relic_reverse,"按产物反查").clicked(){*nav=Some(format!("#work/relic/item/{}",self.relic_output));}});
-        ui.add(egui::TextEdit::singleline(&mut self.relic_target).hint_text("搜索产物名称、英文名或物品 ID"));
-        let query=self.relic_target.to_lowercase();let item_matches=|id:&str|query.is_empty()||name(id).to_lowercase().contains(&query)||id.to_lowercase().contains(&query)||items.get(id).is_some_and(|item|search(item,&query));
-        if self.relic_reverse{
-            egui::ComboBox::from_id_salt("relic-output").width(400.).height(400.).selected_text(name(&self.relic_output)).show_ui(ui,|ui|{for id in array(&data["outputs"]).iter().filter_map(Value::as_str){if item_matches(id)&&ui.selectable_value(&mut self.relic_output,id.into(),name(id)).clicked(){*nav=Some(format!("#work/relic/item/{id}"));}}});
-            ui.heading(name(&self.relic_output));if ui.link("查看物品获取方式").clicked(){*nav=Some(format!("#items/{}",self.relic_output));}
-            egui::Grid::new("relic-reverse").striped(true).show(ui,|ui|{for title in ["投入遗物","获得数量","每件至少获得一次"]{ui.strong(title);}ui.end_row();for tier in tiers{
-                if ui.link(name(text(tier,"id"))).clicked(){*nav=Some(format!("#work/relic/{}",text(tier,"id")));}
-                let odds=jade_core::relic_product_odds(tier,&data["pools"]);if let Some(row)=array(&odds).iter().find(|r|text(r,"id")==self.relic_output){ui.label(format!("{}–{}",number(&row["min"]),number(&row["max"])));ui.label(format!("{:.5}%",row["probability"].as_f64().unwrap_or(0.)*100.));}else{ui.label("—");ui.label("无此产物");}ui.end_row();
-            }});
-        }else{
-            ui.horizontal_wrapped(|ui|{for (i,t) in tiers.iter().enumerate(){if ui.selectable_label(self.relic==i,name(text(t,"id"))).clicked(){*nav=Some(format!("#work/relic/{}",text(t,"id")));}}});
-            let tier=&tiers[self.relic];ui.label(format!("每次消耗 1 件遗物 · 处理工作量 {}",number(&tier["work"])));if ui.link("查看该遗物获取方式").clicked(){*nav=Some(format!("#items/{}",text(tier,"id")));}
-            let odds=jade_core::relic_product_odds(tier,&data["pools"]);
-            ui.horizontal_wrapped(|ui|{ui.strong("必得材料");for row in array(&odds).iter().filter(|r|r["probability"].as_f64()==Some(1.)){if ui.link(format!("{} ×{}–{}",name(text(row,"id")),number(&row["min"]),number(&row["max"]))).clicked(){*nav=Some(format!("#items/{}",text(row,"id")));}}});
-            if ui.button("模拟转换一次").clicked(){let mut x=uuid::Uuid::new_v4().as_u128()as u64;if x==0{x=1}self.simulated=jade_core::simulate_relic(tier,&data["pools"],move||{x^=x<<13;x^=x>>7;x^=x<<17;((x>>11)as f64)/(1u64<<53)as f64});}
-            if !self.simulated.is_null(){ui.horizontal_wrapped(|ui|{ui.strong("模拟结果");for row in array(&self.simulated){let id=row[0].as_str().unwrap_or("");if ui.link(format!("{} ×{}",name(id),row[1])).clicked(){*nav=Some(format!("#items/{id}"));}}});}
-            let mut categories:Vec<String>=array(&data["outputs"]).iter().filter_map(Value::as_str).filter_map(|id|items.get(id)).map(|i|text(i,"category").into()).collect();categories.sort();categories.dedup();egui::ComboBox::from_id_salt("relic-category").selected_text(if self.relic_category.is_empty(){"全部类别"}else{&self.relic_category}).show_ui(ui,|ui|{ui.selectable_value(&mut self.relic_category,String::new(),"全部类别");for category in categories{ui.selectable_value(&mut self.relic_category,category.clone(),category);}});
-            let mut rows:Vec<_>=array(&odds).iter().filter(|r|item_matches(text(r,"id"))&&(self.relic_category.is_empty()||items.get(text(r,"id")).is_some_and(|i|text(i,"category")==self.relic_category))).collect();rows.sort_by(|a,b|b["probability"].as_f64().unwrap_or(0.).total_cmp(&a["probability"].as_f64().unwrap_or(0.)));
-            ui.label(format!("{} 种产物",rows.len()));
-            let columns=((ui.available_width()/290.)as usize).clamp(1,4);
-            let width=(ui.available_width()-(columns-1)as f32*8.)/columns as f32;
-            egui::ScrollArea::vertical().id_salt("relic-products").max_height(420.).show_rows(ui,61.,rows.len().div_ceil(columns),|ui,range|{for row_index in range{ui.horizontal_top(|ui|{for column in 0..columns{let Some(row)=rows.get(row_index*columns+column)else{break};let id=text(row,"id");panel(ui).inner_margin(5).show(ui,|ui|{ui.set_width(width-10.);ui.horizontal(|ui|{d.item_icon(ui,id,28.);ui.vertical(|ui|{if ui.link(name(id)).clicked(){*nav=Some(format!("#work/relic/item/{id}"));}ui.small(format!("{}–{} 个 · {:.5}%",number(&row["min"]),number(&row["max"]),row["probability"].as_f64().unwrap_or(0.)*100.));});});});}});}});
-            ui.collapsing("各奖励槽的触发率",|ui|{let names=["神秘木材","帕鲁树晶矿","辉石①","辉石②","辉石③","辉石④","辉石⑤","耗材植入体","古代文明核心","果实及养成物品①","果实及养成物品②","果实及养成物品③","装备设计图","稀有耗材植入体"];for (i,slot) in array(&tier["slots"]).iter().enumerate(){ui.label(format!("{} · {}%",names.get(i).unwrap_or(&"奖励槽"),number(&slot["probability"])));}});
+        let data = d.get("relic-data");
+        let tiers = array(&data["tiers"]);
+        if tiers.is_empty() {
+            ui.label("遗物资料正在准备中…");
+            return;
         }
-        ui.collapsing("转换器与概率说明",|ui|{ui.label("科技 74 级解锁古代文明遗物转换器。接通电力并指派手工作业帕鲁，每次处理 1 件遗物。");ui.horizontal_wrapped(|ui|{ui.label("建造材料：");for (id,quantity) in [("WorldTreeIngot",50),("Wood_WorldTree",50),("PalCrystal_Ex",30),("AncientParts2",20)]{if ui.link(format!("{} ×{quantity}",name(id))).clicked(){*nav=Some(format!("#items/{id}"));}}});if ui.link("世界树圣水：处理效率变为 1.5 倍").clicked(){*nav=Some("#items/WorldTreeHolyWater".into());}ui.label("每个奖励槽独立判定，触发后按权重抽取。这里显示每次转换至少获得一次的概率，同一物品可能来自多个槽。");});
+        self.relic = self.relic.min(tiers.len() - 1);
+        let items: std::collections::HashMap<&str, &Value> =
+            array(&d.get("item-catalog-data")["items"])
+                .iter()
+                .map(|i| (text(i, "id"), i))
+                .collect();
+        if self.relic_route != route {
+            self.relic_route = route.into();
+            let args: Vec<String> = route
+                .trim_start_matches('#')
+                .split('/')
+                .map(decode)
+                .collect();
+            self.relic_reverse = args.get(2).is_some_and(|a| a == "item");
+            if self.relic_reverse {
+                if let Some(id) = args.get(3).filter(|id| {
+                    array(&data["outputs"])
+                        .iter()
+                        .any(|v| v.as_str() == Some(id))
+                }) {
+                    self.relic_output = id.clone();
+                }
+            } else if let Some(index) = args
+                .get(2)
+                .and_then(|id| tiers.iter().position(|t| text(t, "id") == id))
+            {
+                if self.relic != index {
+                    self.simulated = Value::Null;
+                }
+                self.relic = index;
+            }
+        }
+        if self.relic_output.is_empty() {
+            self.relic_output = array(&data["outputs"])
+                .first()
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .into();
+        }
+        ui.horizontal_wrapped(|ui| {
+            if crate::design::action(ui, "relic", "按遗物查产出").clicked() {
+                *nav = Some(format!("#work/relic/{}", text(&tiers[self.relic], "id")));
+            }
+            if crate::design::action(ui, "items", "按产物反查").clicked() {
+                *nav = Some(format!("#work/relic/item/{}", self.relic_output));
+            }
+        });
+        ui.add_space(8.);
+        if !self.relic_reverse {
+            let width = ((ui.available_width() - 8. * (tiers.len() - 1) as f32)
+                / tiers.len() as f32)
+                .max(115.);
+            ui.horizontal_wrapped(|ui| {
+                for (index, tier) in tiers.iter().enumerate() {
+                    if item_choice(
+                        ui,
+                        d,
+                        text(tier, "id"),
+                        ["普通", "少见", "稀有", "史诗", "传说"]
+                            .get(index)
+                            .unwrap_or(&"遗物"),
+                        width,
+                        index == self.relic,
+                    )
+                    .clicked()
+                    {
+                        *nav = Some(format!("#work/relic/{}", text(tier, "id")));
+                    }
+                }
+            });
+            ui.add_space(8.);
+        }
+        let full = ui.available_width();
+        let side = if full > 900. {
+            full * 0.31
+        } else {
+            full * 0.40
+        };
+        let left = (full - side - 12.).max(230.);
+        let height = ui.available_height().min(650.);
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = 12.;
+            ui.allocate_ui_with_layout(
+                egui::vec2(left, height),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    panel(ui).show(ui, |ui| {
+                        ui.set_width((left - 24.).max(200.));
+                        crate::design::section(
+                            ui,
+                            if self.relic_reverse {
+                                "选择产物"
+                            } else {
+                                "可能产物"
+                            },
+                        );
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.relic_target)
+                                .hint_text("查找名称、英文名或物品 ID")
+                                .desired_width(ui.available_width()),
+                        );
+                        if !self.relic_reverse {
+                            let mut categories: Vec<_> = items
+                                .values()
+                                .map(|i| text(i, "category"))
+                                .filter(|s| !s.is_empty())
+                                .collect();
+                            categories.sort();
+                            categories.dedup();
+                            egui::ComboBox::from_id_salt("relic-category")
+                                .selected_text(if self.relic_category.is_empty() {
+                                    "全部类别"
+                                } else {
+                                    &self.relic_category
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut self.relic_category,
+                                        String::new(),
+                                        "全部类别",
+                                    );
+                                    for category in categories {
+                                        ui.selectable_value(
+                                            &mut self.relic_category,
+                                            category.into(),
+                                            category,
+                                        );
+                                    }
+                                });
+                        }
+                        let q = crate::data::normalize(&self.relic_target);
+                        let matches = |id: &str| {
+                            q.is_empty()
+                                || items.get(id).is_some_and(|item| search(item, &q))
+                                || crate::data::normalize(id).contains(&q)
+                        };
+                        let odds =
+                            jade_core::relic_product_odds(&tiers[self.relic], &data["pools"]);
+                        let mut rows: Vec<Value> = if self.relic_reverse {
+                            array(&data["outputs"])
+                                .iter()
+                                .filter_map(Value::as_str)
+                                .filter(|id| matches(id))
+                                .map(|id| json!({"id":id}))
+                                .collect()
+                        } else {
+                            array(&odds)
+                                .iter()
+                                .filter(|r| {
+                                    matches(text(r, "id"))
+                                        && (self.relic_category.is_empty()
+                                            || items.get(text(r, "id")).is_some_and(|i| {
+                                                text(i, "category") == self.relic_category
+                                            }))
+                                })
+                                .cloned()
+                                .collect()
+                        };
+                        if !self.relic_reverse {
+                            rows.sort_by(|a, b| {
+                                b["probability"]
+                                    .as_f64()
+                                    .unwrap_or(0.)
+                                    .total_cmp(&a["probability"].as_f64().unwrap_or(0.))
+                            });
+                        }
+                        ui.small(format!("{} 种产物", rows.len()));
+                        let cols = ((ui.available_width() + 6.) / 190.).floor().max(1.) as usize;
+                        let width = (ui.available_width() - 6. * (cols - 1) as f32) / cols as f32;
+                        egui::ScrollArea::vertical()
+                            .id_salt(("relic-products", self.relic_reverse))
+                            .auto_shrink([false, false])
+                            .max_height((height - 145.).max(180.))
+                            .show_rows(ui, 48., rows.len().div_ceil(cols), |ui, range| {
+                                for row_index in range {
+                                    ui.horizontal_top(|ui| {
+                                        ui.spacing_mut().item_spacing.x = 6.;
+                                        for row in rows.iter().skip(row_index * cols).take(cols) {
+                                            let id = text(row, "id");
+                                            let subtitle = if self.relic_reverse {
+                                                items
+                                                    .get(id)
+                                                    .map(|i| text(i, "category"))
+                                                    .unwrap_or("")
+                                                    .to_owned()
+                                            } else {
+                                                format!(
+                                                    "{}–{} 个 · {}",
+                                                    number(&row["min"]),
+                                                    number(&row["max"]),
+                                                    relic_percent(
+                                                        row["probability"].as_f64().unwrap_or(0.)
+                                                    )
+                                                )
+                                            };
+                                            if item_choice(
+                                                ui,
+                                                d,
+                                                id,
+                                                &subtitle,
+                                                width,
+                                                self.relic_reverse && self.relic_output == id,
+                                            )
+                                            .clicked()
+                                            {
+                                                *nav = Some(format!("#work/relic/item/{id}"));
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                    });
+                },
+            );
+            ui.allocate_ui_with_layout(
+                egui::vec2(side, height),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    panel(ui).show(ui, |ui| {
+                        ui.set_width((side - 24.).max(180.));
+                        let id = if self.relic_reverse {
+                            self.relic_output.as_str()
+                        } else {
+                            text(&tiers[self.relic], "id")
+                        };
+                        ui.horizontal_wrapped(|ui| {
+                            item_picture(ui, d, id, 40.);
+                            ui.strong(d.item_name(id));
+                        });
+                        if crate::design::action(ui, "items", "查看物品获取方式").clicked()
+                        {
+                            *nav = Some(format!("#items/{id}"));
+                        }
+                        ui.separator();
+                        if self.relic_reverse {
+                            ui.strong("每件遗物的产出概率");
+                            egui::Grid::new("relic-reverse")
+                                .striped(true)
+                                .spacing([8., 7.])
+                                .show(ui, |ui| {
+                                    ui.strong("投入遗物");
+                                    ui.strong("数量");
+                                    ui.strong("至少一次");
+                                    ui.end_row();
+                                    for tier in tiers {
+                                        let tier_id = text(tier, "id");
+                                        ui.horizontal(|ui| {
+                                            if item_picture(ui, d, tier_id, 24.).clicked() {
+                                                *nav = Some(format!("#work/relic/{tier_id}"));
+                                            }
+                                            if ui
+                                                .link(d.item_name(tier_id).replace("古代文明", ""))
+                                                .clicked()
+                                            {
+                                                *nav = Some(format!("#work/relic/{tier_id}"));
+                                            }
+                                        });
+                                        let odds =
+                                            jade_core::relic_product_odds(tier, &data["pools"]);
+                                        if let Some(row) = array(&odds)
+                                            .iter()
+                                            .find(|r| text(r, "id") == self.relic_output)
+                                        {
+                                            ui.label(format!(
+                                                "{}–{}",
+                                                number(&row["min"]),
+                                                number(&row["max"])
+                                            ));
+                                            ui.label(relic_percent(
+                                                row["probability"].as_f64().unwrap_or(0.),
+                                            ));
+                                        } else {
+                                            ui.label("—");
+                                            ui.label("无此产物");
+                                        }
+                                        ui.end_row();
+                                    }
+                                });
+                        } else {
+                            let tier = &tiers[self.relic];
+                            ui.strong("单次转换");
+                            ui.label(format!("消耗遗物 1 件 · 工作量 {}", number(&tier["work"])));
+                            ui.separator();
+                            ui.strong("必得材料");
+                            let odds = jade_core::relic_product_odds(tier, &data["pools"]);
+                            for row in array(&odds)
+                                .iter()
+                                .filter(|r| r["probability"].as_f64() == Some(1.))
+                            {
+                                let id = text(row, "id");
+                                ui.horizontal_wrapped(|ui| {
+                                    if item_picture(ui, d, id, 23.).clicked() {
+                                        *nav = Some(format!("#items/{id}"));
+                                    }
+                                    if ui
+                                        .link(format!(
+                                            "{} ×{}–{}",
+                                            d.item_name(id),
+                                            number(&row["min"]),
+                                            number(&row["max"])
+                                        ))
+                                        .clicked()
+                                    {
+                                        *nav = Some(format!("#items/{id}"));
+                                    }
+                                });
+                            }
+                            ui.separator();
+                            ui.strong("模拟结果");
+                            if crate::design::action(ui, "refresh", "模拟转换一次").clicked()
+                            {
+                                let mut x = uuid::Uuid::new_v4().as_u128() as u64;
+                                if x == 0 {
+                                    x = 1;
+                                }
+                                self.simulated =
+                                    jade_core::simulate_relic(tier, &data["pools"], move || {
+                                        x ^= x << 13;
+                                        x ^= x >> 7;
+                                        x ^= x << 17;
+                                        ((x >> 11) as f64) / (1u64 << 53) as f64
+                                    });
+                            }
+                            if self.simulated.is_null() {
+                                ui.small("选择遗物后可试转。");
+                            } else {
+                                for row in array(&self.simulated) {
+                                    let id = row[0].as_str().unwrap_or("");
+                                    ui.horizontal_wrapped(|ui| {
+                                        if item_picture(ui, d, id, 23.).clicked() {
+                                            *nav = Some(format!("#items/{id}"));
+                                        }
+                                        if ui
+                                            .link(format!("{} ×{}", d.item_name(id), row[1]))
+                                            .clicked()
+                                        {
+                                            *nav = Some(format!("#items/{id}"));
+                                        }
+                                    });
+                                }
+                            }
+                            ui.collapsing("各奖励槽的触发率", |ui| {
+                                let names = [
+                                    "神秘木材",
+                                    "帕鲁树晶矿",
+                                    "辉石①",
+                                    "辉石②",
+                                    "辉石③",
+                                    "辉石④",
+                                    "辉石⑤",
+                                    "耗材植入体",
+                                    "古代文明核心",
+                                    "果实及养成物品①",
+                                    "果实及养成物品②",
+                                    "果实及养成物品③",
+                                    "装备设计图",
+                                    "稀有耗材植入体",
+                                ];
+                                for (index, slot) in array(&tier["slots"]).iter().enumerate() {
+                                    ui.label(format!(
+                                        "{} · {}%",
+                                        names.get(index).unwrap_or(&"奖励槽"),
+                                        number(&slot["probability"])
+                                    ));
+                                }
+                            });
+                        }
+                    });
+                },
+            );
+        });
+        ui.collapsing("转换器与概率说明",|ui| {
+            ui.label("科技 74 级解锁古代文明遗物转换器。接通电力并指派手工作业帕鲁，每次处理 1 件遗物。");
+            ui.horizontal_wrapped(|ui|{ui.label("建造材料：");for (id,quantity) in [("WorldTreeIngot",50),("Wood_WorldTree",50),("PalCrystal_Ex",30),("AncientParts2",20)] {
+                if item_picture(ui,d,id,23.).clicked(){*nav=Some(format!("#items/{id}"));}if ui.link(format!("{} ×{quantity}",d.item_name(id))).clicked(){*nav=Some(format!("#items/{id}"));}
+            }});
+            if crate::design::action(ui,"items","世界树圣水：处理效率变为1.5倍").clicked(){*nav=Some("#items/WorldTreeHolyWater".into());}
+            ui.label("每个奖励槽独立判定，触发后按权重抽取。这里显示每次转换至少获得一次的概率，同一物品可能来自多个槽。");
         });
     }
     pub fn suitability(&mut self, ui: &mut egui::Ui, d: &Data, route: &str) -> Option<String> {
@@ -1073,6 +1568,103 @@ impl Calculators {
             &mut self.suitability_dark,
             context.as_deref(),
         )
+    }
+}
+fn item_source(d: &Data, id: &str) -> Option<egui::ImageSource<'static>> {
+    let icons = d.get("item-icons");
+    let index = icons["ids"][id].as_u64()? as usize;
+    icons["images"][index]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(|uri| d.image_source(uri))
+}
+fn item_picture(ui: &mut egui::Ui, d: &Data, id: &str, size: f32) -> egui::Response {
+    let response = if let Some(source) = item_source(d, id) {
+        ui.add(
+            egui::Image::new(source)
+                .fit_to_exact_size(egui::Vec2::splat(size))
+                .sense(egui::Sense::click()),
+        )
+    } else {
+        ui.allocate_exact_size(egui::Vec2::splat(size), egui::Sense::click())
+            .1
+    };
+    #[cfg(test)]
+    ui.ctx()
+        .data_mut(|m| m.insert_temp(egui::Id::new(("calc-picture", id)), response.rect));
+    response
+        .on_hover_text(d.item_name(id))
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+}
+fn item_choice(
+    ui: &mut egui::Ui,
+    d: &Data,
+    id: &str,
+    subtitle: &str,
+    width: f32,
+    selected: bool,
+) -> egui::Response {
+    let p = crate::design::palette(ui.ctx());
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, 44.), egui::Sense::click());
+    let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
+    painter.rect_filled(
+        rect,
+        7,
+        if selected || response.hovered() {
+            p.selected
+        } else {
+            p.soft
+        },
+    );
+    painter.rect_stroke(
+        rect,
+        7,
+        egui::Stroke::new(1_f32, p.line),
+        egui::StrokeKind::Inside,
+    );
+    if let Some(source) = item_source(d, id) {
+        egui::Image::new(source).paint_at(
+            ui,
+            egui::Rect::from_center_size(
+                rect.left_center() + egui::vec2(18., 0.),
+                egui::Vec2::splat(28.),
+            ),
+        );
+    }
+    let mut text_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(egui::Rect::from_min_max(
+                rect.min + egui::vec2(36., 3.),
+                rect.max - egui::vec2(4., 3.),
+            ))
+            .layout(egui::Layout::top_down(egui::Align::Min)),
+    );
+    text_ui.set_clip_rect(rect.intersect(ui.clip_rect()));
+    text_ui.spacing_mut().item_spacing.y = 2.;
+    text_ui.add(
+        egui::Label::new(egui::RichText::new(d.item_name(id)).size(12.).strong())
+            .truncate()
+            .selectable(false),
+    );
+    text_ui.add(
+        egui::Label::new(egui::RichText::new(subtitle).size(10.).color(p.muted))
+            .truncate()
+            .selectable(false),
+    );
+    #[cfg(test)]
+    ui.ctx()
+        .data_mut(|m| m.insert_temp(egui::Id::new(("calc-choice", id)), response.rect));
+    response
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(format!("{}\n{subtitle}", d.item_name(id)))
+}
+fn relic_percent(value: f64) -> String {
+    if value == 1. {
+        "100%".into()
+    } else if value < 0.0001 {
+        format!("{:.5}%", value * 100.)
+    } else {
+        format!("{:.3}%", value * 100.)
     }
 }
 fn number_field(
@@ -1233,6 +1825,7 @@ mod tests {
                 {"key":"Five","zh":"戊","rank":1}
             ]})),
         );
+        d.trait_search = crate::search::TraitIndex::new(d.get("trait-data"));
         let ctx = egui::Context::default();
         crate::design::apply(&ctx, "moon");
         let mut calc = Calculators::default();
@@ -1378,5 +1971,110 @@ mod tests {
         assert!(!calc.relic_reverse);
         assert_eq!(calc.relic, 4);
         remove_fixture(d);
+    }
+    #[test]
+    fn typed_work_trait_input_does_not_guess_ambiguous_matches_or_exceed_four() {
+        let d = fixture();
+        let mut calc = Calculators::default();
+        calc.work_trait_query = "i".into();
+        calc.add_typed_work_traits(&d);
+        assert!(
+            calc.traits.is_empty(),
+            "a fragment matching Artisan and Swift must be confirmed"
+        );
+        assert!(!calc.work_trait_feedback.is_empty());
+        calc.work_trait_query = "Artisan、Swift".into();
+        calc.add_typed_work_traits(&d);
+        assert_eq!(calc.traits, vec!["Artisan", "Swift"]);
+        calc.traits = vec!["One".into(), "Two".into(), "Three".into(), "Four".into()];
+        calc.work_trait_query = "Artisan".into();
+        calc.add_typed_work_traits(&d);
+        assert_eq!(calc.traits.len(), 4);
+        assert!(calc.work_trait_feedback.contains("已满4条"));
+        remove_fixture(d);
+    }
+    #[test]
+    fn relic_product_picture_opens_reverse_query_and_ball_picture_selects_equipment() {
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        crate::design::apply(&ctx, "moon");
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
+        let mut d = Data::new(root, ctx.clone()).unwrap();
+        let start = std::time::Instant::now();
+        while d.pending > 0 && start.elapsed().as_secs() < 10 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            d.poll();
+        }
+        assert_eq!(d.pending, 0);
+        assert!(d.errors.is_empty());
+        let mut calc = Calculators::default();
+        let mut time = 0.;
+        let mut draw =
+            |calc: &mut Calculators, page: &str, route: &str, events: Vec<egui::Event>| {
+                time += 0.02;
+                let mut out = None;
+                let _ = ctx.run(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1300., 1000.),
+                        )),
+                        time: Some(time),
+                        events,
+                        ..Default::default()
+                    },
+                    |ctx| {
+                        egui::CentralPanel::default()
+                            .show(ctx, |ui| out = calc.show(ui, &d, page, &json!({}), route));
+                    },
+                );
+                out
+            };
+        let pointer = |pos, pressed| {
+            vec![
+                egui::Event::PointerMoved(pos),
+                egui::Event::PointerButton {
+                    pos,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ]
+        };
+        let route = "#work/relic";
+        for _ in 0..3 {
+            draw(&mut calc, "work/relic", route, vec![]);
+        }
+        let id = "Wood_WorldTree";
+        let pos = ctx
+            .data(|m| m.get_temp::<egui::Rect>(egui::Id::new(("calc-choice", id))))
+            .expect("relic output picture")
+            .center();
+        draw(&mut calc, "work/relic", route, pointer(pos, true));
+        assert_eq!(
+            draw(&mut calc, "work/relic", route, pointer(pos, false)),
+            Some(format!("#work/relic/item/{id}"))
+        );
+        for _ in 0..3 {
+            draw(&mut calc, "details/capture", "#details/capture", vec![]);
+        }
+        let sphere = text(&d.get("capture-data")["spheres"][1], "id");
+        let pos = ctx
+            .data(|m| m.get_temp::<egui::Rect>(egui::Id::new(("calc-picture", sphere))))
+            .expect("sphere comparison picture")
+            .center();
+        draw(
+            &mut calc,
+            "details/capture",
+            "#details/capture",
+            pointer(pos, true),
+        );
+        draw(
+            &mut calc,
+            "details/capture",
+            "#details/capture",
+            pointer(pos, false),
+        );
+        assert_eq!(calc.sphere, 1);
     }
 }

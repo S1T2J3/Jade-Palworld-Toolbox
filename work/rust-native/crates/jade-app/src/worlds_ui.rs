@@ -410,17 +410,14 @@ impl Worlds {
             ui.set_width((ctx.content_rect().width()-70.).min(521.).max(280.));
             ui.set_max_height((ctx.content_rect().height()*0.90-34.).max(300.));
             ui.spacing_mut().item_spacing=egui::Vec2::new(8.,8.);
-            ui.horizontal(|ui|{
-                crate::design::icon(ui,"worldmap",22.);ui.label(egui::RichText::new("世界档案").size(20.).strong());
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center),|ui|{if crate::design::icon_button(ui,"close","关闭").clicked(){self.open=false;}});
-            });
+            if crate::design::dialog_header(ui,"layers","世界档案").clicked(){self.open=false;}
             ui.small("每个游戏世界都有独立的仓库、配种计划和探索记录。");ui.separator();
             egui::ScrollArea::vertical().id_salt("world-archive-body").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded).max_height((ctx.content_rect().height()*0.90-108.).max(260.)).show(ui,|ui|{
                 crate::design::section(ui,"当前世界");
                 let world=store.world().clone();let current=text(&world,"id").to_owned();let mut chosen=current.clone();
                 ui.horizontal(|ui|{
                     ui.add_enabled_ui(!self.busy&&self.result.is_none(),|ui|{
-                        egui::ComboBox::from_id_salt("archive-current-world").width((ui.available_width()-180.).max(160.)).selected_text(text(&world,"name")).show_ui(ui,|ui|{
+                        egui::ComboBox::from_id_salt("archive-current-world").width((ui.available_width()-220.).max(140.)).selected_text(text(&world,"name")).show_ui(ui,|ui|{
                             for w in array(&store.state["worlds"]){ui.selectable_value(&mut chosen,text(w,"id").to_owned(),text(w,"name"));}
                         });
                     });
@@ -514,8 +511,11 @@ impl Worlds {
     fn confirmations(&mut self, ctx: &egui::Context, store: &mut Store) {
         if let Some((id, mut name)) = self.rename.clone() {
             let mut keep = true;
-            egui::Modal::new(egui::Id::new("rename-world-modal")).show(ctx, |ui| {
-                ui.strong("重命名世界");
+            let modal = egui::Modal::new(egui::Id::new("rename-world-modal")).show(ctx, |ui| {
+                ui.set_width(400f32.min(ctx.content_rect().width() - 72.));
+                if crate::design::dialog_header(ui, "edit", "重命名世界").clicked() {
+                    keep = false;
+                }
                 ui.add(egui::TextEdit::singleline(&mut name).char_limit(256));
                 ui.horizontal(|ui| {
                     if crate::design::action(ui, "save", "保存名称").clicked() {
@@ -529,6 +529,9 @@ impl Worlds {
                     }
                 });
             });
+            if modal.should_close() {
+                keep = false;
+            }
             self.rename = keep.then_some((id, name));
         }
         for removing in [true, false] {
@@ -539,7 +542,23 @@ impl Worlds {
             };
             if let Some(id) = pending {
                 let mut keep = true;
-                egui::Modal::new(egui::Id::new(if removing{"delete-world-modal"}else{"unlink-world-modal"})).show(ctx,|ui|{ui.set_width(420.);ui.strong(if removing{"确认删除世界"}else{"确认解除关联"});let name=array(&store.state["worlds"]).iter().find(|w|w["id"]==id).map(|w|text(w,"name")).unwrap_or("");ui.label(if removing{format!("删除「{name}」的工具箱仓库、计划和地图标记？游戏存档不受影响。建议先导出备份。")}else{format!("解除「{name}」的自动刷新关联？现有仓库和记录仍保留。")});ui.horizontal(|ui|{if ui.button(if removing{"确认删除"}else{"确认解除"}).clicked(){let result=if removing{store.remove_world(&id)}else{store.unlink(&id)};match result{Ok(())=>keep=false,Err(e)=>self.message=e}}if crate::design::action(ui,"close","取消").clicked(){keep=false;}});});
+                let modal = egui::Modal::new(egui::Id::new(if removing {"delete-world-modal"} else {"unlink-world-modal"})).show(ctx,|ui|{
+                    ui.set_width(420f32.min(ctx.content_rect().width() - 72.));
+                    if crate::design::dialog_header(ui, if removing {"trash"} else {"close"}, if removing {"确认删除世界"} else {"确认解除关联"}).clicked() { keep = false; }
+                    let name=array(&store.state["worlds"]).iter().find(|w|w["id"]==id).map(|w|text(w,"name")).unwrap_or("");
+                    ui.label(if removing {format!("删除「{name}」的工具箱仓库、计划和地图标记？游戏存档不受影响。建议先导出备份。")}
+                        else {format!("解除「{name}」的自动刷新关联？现有仓库和记录仍保留。")});
+                    ui.horizontal_wrapped(|ui|{
+                        if crate::design::action(ui, if removing {"trash"} else {"close"}, if removing {"确认删除"} else {"确认解除"}).clicked(){
+                            let result=if removing {store.remove_world(&id)} else {store.unlink(&id)};
+                            match result {Ok(())=>keep=false,Err(e)=>self.message=e}
+                        }
+                        if crate::design::action(ui,"close","取消").clicked(){keep=false;}
+                    });
+                });
+                if modal.should_close() {
+                    keep = false;
+                }
                 if removing {
                     self.delete = keep.then_some(id);
                 } else {
@@ -708,6 +727,54 @@ fn import_terminal(
 mod tests {
     use super::*;
     use crate::store::tests::{Temp, record};
+    #[test]
+    fn dismissing_world_confirmations_never_mutates_the_archive() {
+        let temp = Temp::new();
+        let mut store = Store::open(temp.0.clone());
+        let before = store.state.clone();
+        let id = text(store.world(), "id").to_owned();
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        let mut worlds = Worlds::default();
+        let render = |worlds: &mut Worlds, store: &mut Store, escape: bool| {
+            let events = vec![egui::Event::Key {
+                key: egui::Key::Escape,
+                physical_key: None,
+                pressed: escape,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }];
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(960., 620.),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| worlds.confirmations(ctx, store),
+            );
+        };
+        for kind in 0..3 {
+            match kind {
+                0 => worlds.rename = Some((id.clone(), "未保存的新名称".into())),
+                1 => worlds.delete = Some(id.clone()),
+                _ => worlds.unlink = Some(id.clone()),
+            }
+            for _ in 0..2 {
+                render(&mut worlds, &mut store, false);
+            }
+            render(&mut worlds, &mut store, true);
+            assert!(worlds.rename.is_none() && worlds.delete.is_none() && worlds.unlink.is_none());
+            assert_eq!(
+                store.state, before,
+                "dismiss must not rename, delete or unlink a world"
+            );
+            // Release Escape before opening the next modal.
+            render(&mut worlds, &mut store, false);
+        }
+    }
     const OWNER: &str = "00000000000000000000000000000001";
     const OTHER: &str = "74e02bf7000000000000000000000000";
     fn game() -> Value {

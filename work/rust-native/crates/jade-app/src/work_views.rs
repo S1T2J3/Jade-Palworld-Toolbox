@@ -73,12 +73,12 @@ fn picture_choice(
         );
     }
     if meta.contains("暗属性") {
-        egui::Image::new(crate::design::icon_source("dark"))
-            .tint(Color32::from_rgb(113, 73, 148))
-            .paint_at(
+        if let Some(source) = crate::elements::source("dark") {
+            egui::Image::new(source).paint_at(
                 ui,
                 Rect::from_center_size(rect.right_center() - Vec2::new(14., 0.), Vec2::splat(16.)),
             );
+        }
     }
     let name = if pal {
         d.pal_name(key)

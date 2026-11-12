@@ -19,6 +19,7 @@ pub struct Data {
     pub pairs: Vec<Value>,
     pub tables: HashMap<String, Arc<Value>>,
     pub routes: HashMap<String, (String, String)>,
+    pub trait_search: crate::search::TraitIndex,
     receiver: mpsc::Receiver<(String, Result<Value, String>)>,
     pub errors: Vec<String>,
     pub pending: usize,
@@ -94,12 +95,14 @@ impl Data {
                 std::thread::sleep(std::time::Duration::from_millis(15));
             }
         });
+        let trait_search = crate::search::TraitIndex::new(&tables["trait-data"]);
         Ok(Self {
             root,
             species,
             pairs,
             tables,
             routes: HashMap::new(),
+            trait_search,
             receiver,
             errors: vec![],
             pending: ids.len(),
@@ -117,6 +120,9 @@ impl Data {
             self.pending = self.pending.saturating_sub(1);
             match result {
                 Ok(v) => {
+                    if id == "pal-details-data" {
+                        self.trait_search.add_details(&v);
+                    }
                     if id == "search-index-data" {
                         self.routes.clear();
                         for row in array(&v) {

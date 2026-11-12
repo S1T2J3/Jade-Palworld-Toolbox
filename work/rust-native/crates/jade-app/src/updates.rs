@@ -135,7 +135,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"恢复顶部页签、窗口关闭等矢量按钮、公告双卡和自动已阅弹窗、牧场图片与反查、工作适应性等级排行；修正被动与手术台词条图的大小、颜色和负阶级方向，补上可配子代父母头像及箭头。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"逐页对照原版，补齐被动效果和手术台持有勾选、手记目录、获取方式筛选、遗物与捕捉道具图片、地图草稿重选等操作。使用游戏内九属性原图，加入圆角窗口和面板。词条搜索支持片段、跳字简称与长名称少量错字，优先显示更接近的结果。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.
@@ -440,19 +440,21 @@ impl UpdateState {
     fn notices_card(&mut self, ui: &mut egui::Ui, state: &mut Value, width: f32) {
         crate::design::card(ui).inner_margin(18).show(ui, |ui| {
             ui.set_width((width - 36.).max(180.));
-            ui.horizontal_wrapped(|ui| {
+            ui.horizontal(|ui| {
                 crate::design::icon(ui, "bell", 21.);
                 ui.label(egui::RichText::new("公告").size(20.).strong());
                 let unread = self.unread_count(state);
                 if unread > 0 {
                     crate::design::badge(ui, format!("{unread} 条未读"));
-                    let response = crate::design::action(ui, "check", "全部标为已读");
-                    update_test_rect(ui, "notice-read-all", &response);
-                    if response.clicked() {
-                        for notice in &self.notices {
-                            mark_notice_read(state, &notice.id);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let response = crate::design::small_action(ui, "check", "全部标为已读");
+                        update_test_rect(ui, "notice-read-all", &response);
+                        if response.clicked() {
+                            for notice in &self.notices {
+                                mark_notice_read(state, &notice.id);
+                            }
                         }
-                    }
+                    });
                 }
             });
             ui.add_space(8.);
@@ -492,11 +494,11 @@ impl UpdateState {
                         crate::design::badge(ui, "未读");
                     }
                 });
-                let date = notice_date(&notice.published_at);
-                if !date.is_empty() {
-                    ui.weak(date);
-                }
                 if self.open_notices.contains(&notice.id) {
+                    let date = notice_date(&notice.published_at);
+                    if !date.is_empty() {
+                        ui.weak(date);
+                    }
                     ui.add_space(6.);
                     ui.label(&notice.body);
                     let response = crate::design::action(ui, "bell", "弹窗查看");
@@ -513,10 +515,12 @@ impl UpdateState {
     fn updates_card(&mut self, ui: &mut egui::Ui, state: &mut Value, width: f32) {
         crate::design::card(ui).inner_margin(18).show(ui, |ui| {
             ui.set_width((width - 36.).max(180.));
-            ui.horizontal_wrapped(|ui| {
+            ui.horizontal(|ui| {
                 crate::design::icon(ui, "download", 21.);
                 ui.label(egui::RichText::new("软件更新").size(20.).strong());
-                ui.weak(format!("当前版本 v{VERSION}"));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.weak(format!("当前版本 v{VERSION}"));
+                });
             });
             ui.add_space(10.);
             ui.label(&self.status);

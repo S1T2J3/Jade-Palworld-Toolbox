@@ -20,6 +20,7 @@ struct Pin {
     raw: Value,
     search: String,
 }
+#[derive(Clone)]
 struct Editor {
     id: String,
     name: String,
@@ -46,6 +47,7 @@ pub struct MapState {
     cluster: Vec<String>,
     coordinate: Option<Vec2>,
     picking: bool,
+    pick_draft: Option<Editor>,
     editor: Option<Editor>,
     delete_confirm: bool,
     x: f64,
@@ -80,6 +82,7 @@ impl Default for MapState {
             cluster: vec![],
             coordinate: None,
             picking: false,
+            pick_draft: None,
             editor: None,
             delete_confirm: false,
             x: 0.,
@@ -103,6 +106,7 @@ impl MapState {
             self.world_id = id.into();
             self.editor = None;
             self.picking = false;
+            self.pick_draft = None;
             self.delete_confirm = false;
             self.selected.clear();
             self.cluster.clear();
@@ -110,6 +114,31 @@ impl MapState {
             self.custom_signature.clear();
         }
     }
+}
+fn start_picking(state: &mut MapState) {
+    state.pick_draft = state.editor.take();
+    state.picking = true;
+}
+fn cancel_picking(state: &mut MapState) {
+    state.picking = false;
+    if let Some(draft) = state.pick_draft.take() {
+        state.editor = Some(draft);
+    }
+}
+fn accept_picked_position(state: &mut MapState, x: f64, y: f64) {
+    let mut draft = state.pick_draft.take().unwrap_or(Editor {
+        id: String::new(),
+        name: String::new(),
+        note: String::new(),
+        x,
+        y,
+        error: String::new(),
+    });
+    draft.x = x;
+    draft.y = y;
+    draft.error.clear();
+    state.editor = Some(draft);
+    state.picking = false;
 }
 fn number(v: &Value, k: &str) -> f64 {
     v[k].as_f64().unwrap_or_default()
@@ -407,6 +436,7 @@ fn map_header(ui: &mut egui::Ui, state: &mut MapState) {
         state.selected.clear();
         state.cluster.clear();
         state.picking = false;
+        state.pick_draft = None;
         state.editor = None;
         state.delete_confirm = false;
     }
@@ -683,7 +713,7 @@ fn coordinate_tools(ui: &mut egui::Ui, state: &mut MapState) {
         ui.add(egui::DragValue::new(&mut state.x));
         ui.label("Y");
         ui.add(egui::DragValue::new(&mut state.y));
-        if ui.small_button("定位").clicked() {
+        if crate::design::small_action(ui, "pin", "定位").clicked() {
             if let Some(uv) = position(&state.region, state.x, state.y) {
                 state.center = uv;
                 state.coordinate = Some(uv);
@@ -693,7 +723,7 @@ fn coordinate_tools(ui: &mut egui::Ui, state: &mut MapState) {
         }
     });
     if crate::design::action(ui, "plus", "输入坐标添加").clicked() {
-        state.editor = Some(Editor {
+        let mut draft = state.pick_draft.take().unwrap_or(Editor {
             id: String::new(),
             name: String::new(),
             note: String::new(),
@@ -701,6 +731,11 @@ fn coordinate_tools(ui: &mut egui::Ui, state: &mut MapState) {
             y: state.y,
             error: String::new(),
         });
+        draft.x = state.x;
+        draft.y = state.y;
+        draft.error.clear();
+        state.editor = Some(draft);
+        state.picking = false;
     }
 }
 fn filtered<'a>(points: &'a [Pin], state: &MapState, done: &HashSet<String>) -> Vec<&'a Pin> {
@@ -787,6 +822,43 @@ fn marker_geometry(group: &[&Pin], map_rect: Rect) -> (Vec2, egui::Pos2, Rect) {
     let pos = map_rect.min + uv * map_rect.width();
     let rect = Rect::from_center_size(pos, Vec2::splat(if group.len() > 1 { 32. } else { 28. }));
     (uv, pos, rect)
+}
+/// Images and pins share a rectangular GPU clip. Cover the four small corner
+/// sectors afterwards so zoomed terrain cannot paint over the rounded viewport.
+fn rounded_map_mask(painter: &egui::Painter, clip: Rect, fill: Color32, border: Color32) {
+    let radius = 15f32.min(clip.width() * 0.5).min(clip.height() * 0.5);
+    let mut mesh = egui::Mesh::default();
+    for (corner, sx, sy) in [
+        (clip.left_top(), 1., 1.),
+        (clip.right_top(), -1., 1.),
+        (clip.right_bottom(), -1., -1.),
+        (clip.left_bottom(), 1., -1.),
+    ] {
+        let base = mesh.vertices.len() as u32;
+        mesh.colored_vertex(corner, fill);
+        for step in 0..=10 {
+            let angle =
+                -std::f32::consts::FRAC_PI_2 - step as f32 * std::f32::consts::FRAC_PI_2 / 10.;
+            mesh.colored_vertex(
+                corner
+                    + Vec2::new(
+                        sx * radius * (1. + angle.cos()),
+                        sy * radius * (1. + angle.sin()),
+                    ),
+                fill,
+            );
+        }
+        for step in 0..10 {
+            mesh.add_triangle(base, base + step + 1, base + step + 2);
+        }
+    }
+    painter.add(egui::Shape::mesh(mesh));
+    painter.rect_stroke(
+        clip,
+        radius,
+        Stroke::new(1., border),
+        egui::StrokeKind::Inside,
+    );
 }
 fn overlapping_markers<'a>(
     groups: &[Vec<&'a Pin>],
@@ -1032,19 +1104,13 @@ fn scene(
                 let uv = (pos - map_rect.min) / side;
                 if (0.0..=1.0).contains(&uv.x) && (0.0..=1.0).contains(&uv.y) {
                     let (x, y) = coordinates(&state.region, uv);
-                    state.editor = Some(Editor {
-                        id: String::new(),
-                        name: String::new(),
-                        note: String::new(),
-                        x,
-                        y,
-                        error: String::new(),
-                    });
-                    state.picking = false;
+                    accept_picked_position(state, x, y);
                 }
             }
         }
     }
+    let palette = crate::design::palette(ui.ctx());
+    rounded_map_mask(&painter, clip, palette.bg, palette.line);
     ui.set_clip_rect(old_clip);
     route
 }
@@ -1054,7 +1120,33 @@ fn nav(
     label: impl Into<egui::WidgetText>,
     route: String,
 ) {
-    if ui.link(label).clicked() {
+    let icon = if route.starts_with("#paldex/") {
+        "paldex"
+    } else if route.starts_with("#spawns/") || route.starts_with("#map/") {
+        "pin"
+    } else if route.starts_with("#items/") {
+        "items"
+    } else if route.starts_with("#enemies/") {
+        "enemy"
+    } else if route.starts_with("#work/") {
+        "ranch"
+    } else {
+        "book"
+    };
+    let color = crate::design::palette(ui.ctx()).accent;
+    if ui
+        .add(
+            egui::Button::image_and_text(
+                egui::Image::new(crate::design::icon_source(icon))
+                    .fit_to_exact_size(Vec2::splat(14.))
+                    .tint(color),
+                label,
+            )
+            .frame(false)
+            .wrap_mode(egui::TextWrapMode::Wrap),
+        )
+        .clicked()
+    {
         *out = Some(route)
     }
 }
@@ -1066,7 +1158,12 @@ fn details(
     notes: &mut Value,
 ) -> Option<String> {
     let mut out = None;
-    ui.label(egui::RichText::new(&p.name).size(17.).strong());
+    ui.horizontal_wrapped(|ui| {
+        if !p.art.is_empty() {
+            data.image(ui, &p.art, Vec2::splat(32.));
+        }
+        ui.label(egui::RichText::new(&p.name).size(17.).strong());
+    });
     ui.label(format!("坐标 {:.0}，{:.0}", p.x, p.y));
     if !p.levels.is_empty() {
         ui.label(&p.levels);
@@ -1200,42 +1297,49 @@ fn edit_window(ctx: &egui::Context, state: &mut MapState, notes: &mut Value) {
     };
     let mut save = false;
     let mut close = false;
-    egui::Window::new(if editor.id.is_empty() {
+    let mut repick = false;
+    let title = if editor.id.is_empty() {
         "添加我的点位"
     } else {
         "编辑我的点位"
-    })
-    .id(egui::Id::new("map-editor"))
-    .collapsible(false)
-    .resizable(false)
-    .show(ctx, |ui| {
-        ui.label("名称");
-        ui.add(
-            egui::TextEdit::singleline(&mut editor.name)
-                .char_limit(80)
-                .desired_width(340.),
-        );
-        ui.horizontal(|ui| {
-            ui.label("X");
-            ui.add(egui::DragValue::new(&mut editor.x));
-            ui.label("Y");
-            ui.add(egui::DragValue::new(&mut editor.y));
+    };
+    egui::Window::new(title)
+        .id(egui::Id::new("map-editor"))
+        .title_bar(false)
+        .resizable(false)
+        .show(ctx, |ui| {
+            if crate::design::dialog_header(ui, "pin", title).clicked() {
+                close = true;
+            }
+            ui.separator();
+            ui.label("名称");
+            ui.add(
+                egui::TextEdit::singleline(&mut editor.name)
+                    .char_limit(80)
+                    .desired_width(340.),
+            );
+            ui.horizontal(|ui| {
+                ui.label("X");
+                ui.add(egui::DragValue::new(&mut editor.x));
+                ui.label("Y");
+                ui.add(egui::DragValue::new(&mut editor.y));
+            });
+            ui.small(region_name(&state.region));
+            ui.label("备注");
+            ui.add(
+                egui::TextEdit::multiline(&mut editor.note)
+                    .char_limit(600)
+                    .desired_width(340.),
+            );
+            if !editor.error.is_empty() {
+                ui.colored_label(Color32::LIGHT_RED, &editor.error);
+            }
+            ui.horizontal_wrapped(|ui| {
+                repick = crate::design::action(ui, "pin", "在地图上选位置").clicked();
+                save = crate::design::action(ui, "save", "保存点位").clicked();
+                close = crate::design::action(ui, "close", "取消").clicked();
+            });
         });
-        ui.small(region_name(&state.region));
-        ui.label("备注");
-        ui.add(
-            egui::TextEdit::multiline(&mut editor.note)
-                .char_limit(600)
-                .desired_width(340.),
-        );
-        if !editor.error.is_empty() {
-            ui.colored_label(Color32::LIGHT_RED, &editor.error);
-        }
-        ui.horizontal(|ui| {
-            save = crate::design::action(ui, "save", "保存点位").clicked();
-            close = crate::design::action(ui, "close", "取消").clicked();
-        });
-    });
     if save {
         if editor.name.trim().is_empty() {
             editor.error = "请输入点位名称".into();
@@ -1264,7 +1368,9 @@ fn edit_window(ctx: &egui::Context, state: &mut MapState, notes: &mut Value) {
             editor.error = "坐标超出当前地图范围".into();
         }
     }
-    if close {
+    if repick {
+        start_picking(state);
+    } else if close {
         state.editor = None;
     }
 }
@@ -1311,7 +1417,11 @@ pub fn show(
             )
             .clicked()
             {
-                state.picking = !state.picking;
+                if state.picking {
+                    cancel_picking(state);
+                } else {
+                    start_picking(state);
+                }
             }
             ui.small("点位进度随当前世界保存");
         });
@@ -1736,9 +1846,9 @@ pub fn show_spawns(
                                             for element in
                                                 array(&p["types"]).iter().filter_map(Value::as_str)
                                             {
-                                                crate::design::badge(
-                                                    ui,
-                                                    match element {
+                                                ui.horizontal(|ui| {
+                                                    crate::elements::image(ui, element, 17.);
+                                                    ui.small(match element {
                                                         "neutral" => "无",
                                                         "fire" => "火",
                                                         "water" => "水",
@@ -1749,8 +1859,8 @@ pub fn show_spawns(
                                                         "dark" => "暗",
                                                         "dragon" => "龙",
                                                         other => other,
-                                                    },
-                                                );
+                                                    });
+                                                });
                                             }
                                         });
                                     }
@@ -1769,25 +1879,42 @@ pub fn show_spawns(
                             ui.horizontal_wrapped(|ui| {
                                 for work in array(&facts["work"]) {
                                     let name = work[0].as_str().unwrap_or("");
-                                    nav(
-                                        ui,
-                                        &mut out,
-                                        format!("{} {}", name, work[1]),
-                                        format!(
+                                    let image =
+                                        data.get("pal-details-data")["workIcons"][name].as_str();
+                                    let label = format!("{} {}", name, work[1]);
+                                    let response = if let Some(uri) = image {
+                                        ui.add(
+                                            egui::Button::image_and_text(
+                                                egui::Image::new(data.image_source(uri))
+                                                    .fit_to_exact_size(Vec2::splat(16.)),
+                                                label,
+                                            )
+                                            .frame(false)
+                                            .wrap_mode(egui::TextWrapMode::Wrap),
+                                        )
+                                    } else {
+                                        ui.link(label)
+                                    };
+                                    if response.clicked() {
+                                        out = Some(format!(
                                             "#work/efficiency/{}/{}",
                                             encode(&state.spawn_key),
                                             encode(name)
-                                        ),
-                                    );
+                                        ));
+                                    }
                                 }
                             });
                             if let Some(partner) = facts["partner"].as_str() {
-                                ui.small(format!("伙伴技能：{partner}"));
+                                nav(
+                                    ui,
+                                    &mut out,
+                                    format!("伙伴技能 · {partner}"),
+                                    format!("#details/partner/{}", encode(&state.spawn_key)),
+                                );
                             }
                             ui.horizontal_wrapped(|ui| {
                                 for (name, prefix) in [
                                     ("帕鲁图鉴", "#paldex/"),
-                                    ("伙伴技能", "#details/partner/"),
                                     ("捕捉概率", "#details/capture/"),
                                     ("属性计算", "#details/stats/"),
                                 ] {
@@ -1864,6 +1991,118 @@ pub fn show_spawns(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_editor_repick_keeps_the_original_record_and_draft_text() {
+        let ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&ctx);
+        let mut state = MapState::default();
+        state.editor = Some(Editor {
+            id: "custom-kept".into(),
+            name: "我的矿点".into(),
+            note: "保留备注".into(),
+            x: 10.,
+            y: 20.,
+            error: String::new(),
+        });
+        let mut notes = json!({"completed":[],"custom":[]});
+        let input = |events| egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(900., 700.))),
+            events,
+            ..Default::default()
+        };
+        for _ in 0..2 {
+            let _ = ctx.run(input(vec![]), |ctx| {
+                edit_window(ctx, &mut state, &mut notes)
+            });
+        }
+        let output = ctx.run(input(vec![]), |ctx| {
+            edit_window(ctx, &mut state, &mut notes)
+        });
+        let pos = output
+            .shapes
+            .iter()
+            .find_map(|s| match &s.shape {
+                egui::Shape::Text(t) if t.galley.job.text == "在地图上选位置" => {
+                    Some(t.pos + t.galley.size() * 0.5)
+                }
+                _ => None,
+            })
+            .expect("reposition action is visible");
+        for pressed in [true, false] {
+            let _ = ctx.run(
+                input(vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ]),
+                |ctx| edit_window(ctx, &mut state, &mut notes),
+            );
+        }
+        assert!(state.picking && state.editor.is_none());
+        assert_eq!(state.pick_draft.as_ref().unwrap().id, "custom-kept");
+        accept_picked_position(&mut state, 120., -220.);
+        let edited = state.editor.as_ref().unwrap();
+        assert_eq!(
+            (&*edited.id, &*edited.name, &*edited.note),
+            ("custom-kept", "我的矿点", "保留备注")
+        );
+        assert_eq!((edited.x, edited.y), (120., -220.));
+        start_picking(&mut state);
+        cancel_picking(&mut state);
+        assert!(!state.picking && state.pick_draft.is_none());
+        assert_eq!(state.editor.as_ref().unwrap().note, "保留备注");
+        assert_eq!(notes, json!({"completed":[],"custom":[]}));
+    }
+    #[test]
+    fn rounded_viewport_covers_each_corner_but_keeps_the_map_center_clear() {
+        let ctx = egui::Context::default();
+        let clip = Rect::from_min_size(egui::pos2(20., 20.), Vec2::new(250., 180.));
+        let output = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                rounded_map_mask(ui.painter(), clip, Color32::RED, Color32::GRAY);
+            });
+        });
+        let masks: Vec<_> = output
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Mesh(m) => Some(m),
+                _ => None,
+            })
+            .collect();
+        let covered = |p: egui::Pos2| {
+            masks.iter().any(|mesh| {
+                mesh.indices.chunks_exact(3).any(|ids| {
+                    let a = mesh.vertices[ids[0] as usize].pos;
+                    let b = mesh.vertices[ids[1] as usize].pos;
+                    let c = mesh.vertices[ids[2] as usize].pos;
+                    let cross = |x: Vec2, y: Vec2| x.x * y.y - x.y * y.x;
+                    let signs = [
+                        cross(b - a, p - a),
+                        cross(c - b, p - b),
+                        cross(a - c, p - c),
+                    ];
+                    signs.iter().all(|s| *s >= -0.001) || signs.iter().all(|s| *s <= 0.001)
+                })
+            })
+        };
+        for p in [
+            clip.left_top() + Vec2::splat(0.5),
+            clip.right_top() + Vec2::new(-0.5, 0.5),
+            clip.left_bottom() + Vec2::new(0.5, -0.5),
+            clip.right_bottom() - Vec2::splat(0.5),
+        ] {
+            assert!(covered(p), "zoomed imagery must be covered at {p:?}");
+        }
+        assert!(
+            !covered(clip.center()),
+            "rounded corners must not cover map contents"
+        );
+    }
     fn marker(id: &str, category: &str, x: f32, y: f32) -> Pin {
         Pin {
             id: id.into(),

@@ -251,7 +251,9 @@ impl Probe {
                         current.phase = 4;
                     }
                 } else if current.phase == 8 {
-                    current.result["actions"].as_array_mut().unwrap().push(json!({"action":current.actions[current.action_step],"screenshot":file,"imageHash":hash,"routeAfter":route.as_str()}));
+                    let shape =
+                        ctx.data(|m| m.get_temp::<Value>(egui::Id::new("jade-window-shape")));
+                    current.result["actions"].as_array_mut().unwrap().push(json!({"action":current.actions[current.action_step],"screenshot":file,"imageHash":hash,"routeAfter":route.as_str(),"windowShape":shape}));
                     current.action_step += 1;
                     current.action_frame = 0;
                     current.phase = if current.action_step >= current.actions.len() {
@@ -287,6 +289,9 @@ impl Probe {
                         );
                     }
                 } else if current.action_frame == 0 {
+                    if let Some(maximized) = action["maximize"].as_bool() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(maximized));
+                    }
                     if let Some(point) = action["hover"].as_array() {
                         self.mouse(
                             0,
@@ -395,6 +400,11 @@ impl Probe {
                 self.report["tables"] = json!(data.tables.len());
                 self.report["palCount"] = json!(data.species.len());
                 self.report["finishedAt"] = json!(now());
+                if let Some(shape) =
+                    ctx.data(|m| m.get_temp::<Value>(egui::Id::new("jade-window-shape")))
+                {
+                    self.report["windowShape"] = shape;
+                }
                 let _ = std::fs::create_dir_all(output.parent().unwrap());
                 let _ = std::fs::write(output, serde_json::to_vec_pretty(&self.report).unwrap());
                 return true;

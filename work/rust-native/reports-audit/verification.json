@@ -1,0 +1,742 @@
+{
+  "version": "2.0.0-beta.5",
+  "exeSha256": "f16daa4eddf2d3f7df641a120beb1a3a94612e6ef184c838b4fd122ead35edea",
+  "automatedChecks": 98,
+  "coreGoldenCases": 1942,
+  "publicFixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "pageScenes": [
+    {
+      "route": "#lookup",
+      "size": "1440x900",
+      "imageHash": "5fcc6bdaa29032d129fa9a0ab48f72fc44dab6c9e315ca8da7a279e02ec5abc0",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#warehouse",
+      "size": "1440x900",
+      "imageHash": "852366c2faa958a5bcc59715d332630e173f0a7bda3f51a1a8a87fd08e9c1dfc",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#offspring",
+      "size": "1440x900",
+      "imageHash": "ccc49cb8f8c40226afd4c62969607d5841ca68d90c18dafc6e7b7c86aef7f348",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#planner",
+      "size": "1440x900",
+      "imageHash": "b88d08c0687d091d4b85089db9eefe3d1d57de6c7801cdd4990e497f953d3203",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/stats",
+      "size": "1440x900",
+      "imageHash": "51eda6773f65c176ba8f18aae282d1ebc916818a0a38ec45a0a90baf5156bd8b",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/capture",
+      "size": "1440x900",
+      "imageHash": "a960470a066302b08b41930705614ee8d769eafe9c14f191121c907b6f819e22",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/efficiency",
+      "size": "1440x900",
+      "imageHash": "406cbf172f7ebad2273190b89a283d8c8c628a8a18766d7fa17ee819080935a3",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/relic",
+      "size": "1440x900",
+      "imageHash": "d27b8c0ffa25aae4f5bef225e0b5cadf07a284cd716c1fc1656a28759da67fae",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/relic/item/Wood_WorldTree",
+      "size": "1440x900",
+      "imageHash": "bc1fafc5bf09f1b0e45d58df78c131ea8d5a9b31b2c1eb85d5c1cfbb84dcf945",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#paldex",
+      "size": "1440x900",
+      "imageHash": "d48813f402ad56368a7dc443d6ec90f9119545aff01ecb3be05de6dd352e413a",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#enemies",
+      "size": "1440x900",
+      "imageHash": "85826381341680464c83a38eacfa96958dfb6728c1d0ef019332485d13e7ce4e",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#merchants",
+      "size": "1440x900",
+      "imageHash": "a82158d8acd0fb74fb645d09b2b1d07ff1b959869e584e786a94c59fb73ba971",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#neutrals",
+      "size": "1440x900",
+      "imageHash": "7e7e0a0038de0171e28f63d3f6e5b578aec0e758955481c2a585f63d1584c838",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/active",
+      "size": "1440x900",
+      "imageHash": "dc4ab86fbf50ebd20a3c2b9836a3d5bbb8f92e164db361a44ec2e81c4a37ae06",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/passive",
+      "size": "1440x900",
+      "imageHash": "cbb09d2e45a932abed0878cb1291024122e173dc8be7dcc70ab9b7007a82e03c",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/partner",
+      "size": "1440x900",
+      "imageHash": "d20f7304468ffb61dcdf062d44c5fbe57f8abbe38ef6a46c94eda4666aff9bb4",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/fruits",
+      "size": "1440x900",
+      "imageHash": "a641aef2745740c720723e056f9e2b3d246f3658bfee8ca419d2e8b25bbd6bdf",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/surgery",
+      "size": "1440x900",
+      "imageHash": "dba2ba3fa14dd1c2df435a9fdbd9be654dd182032d892eac20387e6a95f04ab3",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#map",
+      "size": "1440x900",
+      "imageHash": "6a3e4c303815fa5ce7f208c6b77777679caecabd5059040ff004a5f2d38bc360",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#spawns/SheepBall",
+      "size": "1440x900",
+      "imageHash": "6741917197b3af7c5a9c2e985b5ea887c28b5ea08b4babe1d234cafef1c62d52",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/suitability",
+      "size": "1440x900",
+      "imageHash": "ba57efc3f996887aa321a8b0143455bb30e2d0e5317103f82b255d6a2e28adc5",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/facilities",
+      "size": "1440x900",
+      "imageHash": "d661a1af8247cbab0c6548e2c0060163cb518132379090301bcc221a0448d941",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/production",
+      "size": "1440x900",
+      "imageHash": "b0b2693e629f95e5f7bc2f953771e33268d792a02d724d602084c2bbae983b96",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/ranch",
+      "size": "1440x900",
+      "imageHash": "bbc6637d39c4744fbf87ed9b2c35108a4336eea186c38bbc6e49ccf8abe12466",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/expeditions",
+      "size": "1440x900",
+      "imageHash": "b05bcbf1ef338233e652322a2eaa175d5f836679577d0a642ebcb811e7172f76",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#items",
+      "size": "1440x900",
+      "imageHash": "b1592a32b51341f4bbc03989a91cebe2d11830a8460157a73da53674bc1cff49",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/elements",
+      "size": "1440x900",
+      "imageHash": "dff260c93efbd55806aec54bc62d4e196f46942d4eacd8905d73e9b50eda473b",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/status",
+      "size": "1440x900",
+      "imageHash": "cd488a9ec5df1c7184e515d305d64f7b785b401f1b8d044a5fee7459c674da11",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/gathering",
+      "size": "1440x900",
+      "imageHash": "d3bb6e1fcaa97698d240071fefe67bc2a58b1c7a9054bef127c1dd1bc4072043",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/loot",
+      "size": "1440x900",
+      "imageHash": "62ef8fd95b54aa9ef2bd9f3a7466c742fff967ab8f72b09efb144de587e3d2db",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/quests",
+      "size": "1440x900",
+      "imageHash": "3fc486ffc3aaeacd3148a007b7e7b8d9399aa3bbb4d8700c2ab3c59b74bce2a9",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/journals",
+      "size": "1440x900",
+      "imageHash": "7775494eba7fc6782aa1e5a7a2ee0934e0500c9a592b2fd1e13d7f6421a9cb82",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#settings/skins",
+      "size": "1440x900",
+      "imageHash": "9cfa6d3363498a02c8663a24a181d6aeefd2daa8e692c0eda0b2b81c24275dd8",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#settings/updates",
+      "size": "1440x900",
+      "imageHash": "e63ac2c5aef90e4685686ca2ebfed7d929ec8b09430606589d08b055d835affc",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/active/move/ThunderFunnel",
+      "size": "1440x900",
+      "imageHash": "03ce58676855eae7005f603cfc5b5fb02401efeb6cc06131df565a724a125dfb",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/passive/trait/Legend",
+      "size": "1440x900",
+      "imageHash": "ccc5fd2b8314ee7493e295cffe2eb4d62b4d33cffa3d01674ac3a908480ec9d6",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/partner/Anubis",
+      "size": "1440x900",
+      "imageHash": "12d2b5c13b11a8d5d34c17e37b9b15153b01637fa7f147db43d31d17dc2ba95d",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/fruits/move/AquaJet",
+      "size": "1440x900",
+      "imageHash": "9fa01de902c3f2e07005fef0788684e4863edb430bca5d7235083860bcf68f4f",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/surgery/trait/CraftSpeed_up3",
+      "size": "1440x900",
+      "imageHash": "5693e39843366ee5b1b421b217a7020fc1945a263fb8a753543ec939e8199cb1",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#items/Cake",
+      "size": "1440x900",
+      "imageHash": "3d1feec7a463582b06734a925cb35400d6df3b3ea4f30d6cc606072215cbe979",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#enemies/Hunter_Rifle",
+      "size": "1440x900",
+      "imageHash": "85826381341680464c83a38eacfa96958dfb6728c1d0ef019332485d13e7ce4e",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#merchants/SalesPerson",
+      "size": "1440x900",
+      "imageHash": "a82158d8acd0fb74fb645d09b2b1d07ff1b959869e584e786a94c59fb73ba971",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#neutrals/MobuCitizen",
+      "size": "1440x900",
+      "imageHash": "7e7e0a0038de0171e28f63d3f6e5b578aec0e758955481c2a585f63d1584c838",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/facilities/Primitive_Workbench",
+      "size": "1440x900",
+      "imageHash": "601a1a8d6c347223c2ec91670df5da8972778c34b4595e3a273030251224bbfe",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/expeditions/Expedition_Grass",
+      "size": "1440x900",
+      "imageHash": "b05bcbf1ef338233e652322a2eaa175d5f836679577d0a642ebcb811e7172f76",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/status/burn",
+      "size": "1440x900",
+      "imageHash": "9f1c2d44fa5d5d8a3870d07fa29e90d3031f20b443afd5a5c99c1edc09f6cc65",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/gathering/Wood",
+      "size": "1440x900",
+      "imageHash": "d3bb6e1fcaa97698d240071fefe67bc2a58b1c7a9054bef127c1dd1bc4072043",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/production/StonePit",
+      "size": "1440x900",
+      "imageHash": "b0b2693e629f95e5f7bc2f953771e33268d792a02d724d602084c2bbae983b96",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/loot/SuppliesLoots/Grass_Supply",
+      "size": "1440x900",
+      "imageHash": "62ef8fd95b54aa9ef2bd9f3a7466c742fff967ab8f72b09efb144de587e3d2db",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/quests/activate-great-eagle-statue",
+      "size": "1440x900",
+      "imageHash": "3fc486ffc3aaeacd3148a007b7e7b8d9399aa3bbb4d8700c2ab3c59b74bce2a9",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/journals/Day-xx",
+      "size": "1440x900",
+      "imageHash": "de84477849478f96de657d982e406ce1a34205fdeb6fa64c65e00981d8a5ad36",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#lookup",
+      "size": "960x620",
+      "imageHash": "c8bfd97844e77401e1b557ba2473dcf9adaa281f048b1a35555a8f64d5cde5b2",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#warehouse",
+      "size": "960x620",
+      "imageHash": "f123bdd22ee287e738882ae3d6b0e85224fd2a63716ba3d7249661e48640ed45",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#offspring",
+      "size": "960x620",
+      "imageHash": "97f6513fee7f8c619230376e2938fe89425bf559b3fc3dad9a88ff974d6b12e7",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#planner",
+      "size": "960x620",
+      "imageHash": "60e3873d9829a410315910b90cae83c6ea0b22fdebf7a9a7d58df75a1d9d1514",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/stats",
+      "size": "960x620",
+      "imageHash": "9dd7fec297ed998b470842235ec17aa4627b2acae65a09ec82f575ccbd1b17e7",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/capture",
+      "size": "960x620",
+      "imageHash": "8a5d7e98df50ba332083015a15f0677aedfa92e1380639a3c11188daffb7eb9d",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/efficiency",
+      "size": "960x620",
+      "imageHash": "7a423ddcb386bcd7838b5b3a4ea729604f9ee6a368aca1b537efe052fcfd7bed",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/relic",
+      "size": "960x620",
+      "imageHash": "3c3bd968f6c21d8e427b0c725a03e497b7e13746b1f4400aad882d0f269ec0ec",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/relic/item/Wood_WorldTree",
+      "size": "960x620",
+      "imageHash": "7c7bdfbe9977644d8736ac1b8d7c77e77764388a36ec1c97c43a226346e2d810",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#paldex",
+      "size": "960x620",
+      "imageHash": "23ad8ca1ea18c8f46d63706e69b55b8931b5318087762f16cde65a80db3afb81",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#enemies",
+      "size": "960x620",
+      "imageHash": "0c906d7c75b31b9482b12d209227a46f6c7ae758890ce1e5c71aa84abdbdaa8f",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#merchants",
+      "size": "960x620",
+      "imageHash": "ed842103232b789664d6215b70241a3eb68f49e820a306e180dc9e4f4fdc4176",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#neutrals",
+      "size": "960x620",
+      "imageHash": "a476fca477fb1bd79ef07fdc07bf53745a742d1c8b848cdf987620641989adaa",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/active",
+      "size": "960x620",
+      "imageHash": "c954a905e4c7cfb8e6c5c17f546ed2c49d59bc369447d76de8017d4727e75a37",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/passive",
+      "size": "960x620",
+      "imageHash": "c188f9f91c3f5200835ce74d914feb32a8d66ac7e14da86e788a5a48637fa2f5",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/partner",
+      "size": "960x620",
+      "imageHash": "8e1b66df1e1bf09001290812bb5334f154d67c65fccc402f07c8b3a5d44deaa1",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/fruits",
+      "size": "960x620",
+      "imageHash": "90c13c7927fc6546110a7279920a3d3331402b643cee6ffea9785216e9e4f925",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/surgery",
+      "size": "960x620",
+      "imageHash": "fa03e07aa7a317d2244be0dbac08c7a64fe65b87a87b6202e7a33a34ecd7e76a",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#map",
+      "size": "960x620",
+      "imageHash": "f8f9a9728c2b2526df61a93ac57a9a2141a24f47dd275ac7e4c5690e0f96a322",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#spawns/SheepBall",
+      "size": "960x620",
+      "imageHash": "8607e45fbbcea7a56068c876d82d6b4ed6876bc60468407a69bd1458b5a3e161",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/suitability",
+      "size": "960x620",
+      "imageHash": "7c15538319b5cde8e975719d19d0921398dd4a2db32c1ae343c4d6d7aa365eab",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/facilities",
+      "size": "960x620",
+      "imageHash": "4d122707d104bc839e8a6c1e54661d54fa06ac891f009dedf5a238a4ceb5b6c4",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/production",
+      "size": "960x620",
+      "imageHash": "d1c0c7c6c2f579664f866784ac9f1a478672369a4fd0db35f61582240082937e",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/ranch",
+      "size": "960x620",
+      "imageHash": "bc4a9d2d1e434d47c57f3a18b218f386dbbf35ee222a420c9ad4eb8e1c6a6486",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/expeditions",
+      "size": "960x620",
+      "imageHash": "96877868b81d676caf752fa49282b74797e035b6b302094907a30ea8e3b7c504",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#items",
+      "size": "960x620",
+      "imageHash": "adfdc743bdd9306683b7cb8de0c6f2d152e68b76df70d09390366261383e04b9",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/elements",
+      "size": "960x620",
+      "imageHash": "ec0108f9a7366f5687ffce07294a6d39eac55c49b8bfafbc134dc5474b600403",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/status",
+      "size": "960x620",
+      "imageHash": "3320886752507be6222dd7c727ee52fb0e5da2bb49ccfa71e472ee811238f1b7",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/gathering",
+      "size": "960x620",
+      "imageHash": "20b51ef3c4df2fd2c574af956ac092e2d15ba99d4455fba9bf8f8fbaa84b9afc",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/loot",
+      "size": "960x620",
+      "imageHash": "56c5a5aa1a6c037f056724585c194431feaaf7fc246eaf738e338789bd0ba89a",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/quests",
+      "size": "960x620",
+      "imageHash": "1af86b82b11ffb056ea9632c4c4c7ad235d1d38aa95352ec910f0baf530b9673",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/journals",
+      "size": "960x620",
+      "imageHash": "6df9f770a799c1f8d2eee8239ec2c3738078d48b682d5b4b2bf4ce584e58809b",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#settings/skins",
+      "size": "960x620",
+      "imageHash": "25537cd2acfe7b8b2dfc5537f053530e4c8b0548767e7258dfcc1aa69da579e8",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#settings/updates",
+      "size": "960x620",
+      "imageHash": "947ea4b488daff728c08309475959406cdfc0df70ed0ec1be53e0b56bb297aa5",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/active/move/ThunderFunnel",
+      "size": "960x620",
+      "imageHash": "d4dc95f23bd94e84d2ff0c331b30828b60b8e138484933a691629429a5205e66",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/passive/trait/Legend",
+      "size": "960x620",
+      "imageHash": "99cb3c935947d731a0d2ebb12cd69f7bd44c69c7559f8cb177dddaec8d3402eb",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/partner/Anubis",
+      "size": "960x620",
+      "imageHash": "27c9206fd087766eadc21b78110da8c60ba4efef1b5b7e1e7cf6cd6951e99ce1",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/fruits/move/AquaJet",
+      "size": "960x620",
+      "imageHash": "1a2c1db383df0084fb119ac98d6fd640a32851a65af19c00fa9a569a0c2512cf",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#details/surgery/trait/CraftSpeed_up3",
+      "size": "960x620",
+      "imageHash": "316df72c041154b39c3a64e6275c7eaf3894fb427af3e39e85fde9eb2d9fdc6c",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#items/Cake",
+      "size": "960x620",
+      "imageHash": "1064b2cdd7d715ff7a30feb0f6a2840470baaf68278a84f0fc3146095bda0ad1",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#enemies/Hunter_Rifle",
+      "size": "960x620",
+      "imageHash": "0c906d7c75b31b9482b12d209227a46f6c7ae758890ce1e5c71aa84abdbdaa8f",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#merchants/SalesPerson",
+      "size": "960x620",
+      "imageHash": "ed842103232b789664d6215b70241a3eb68f49e820a306e180dc9e4f4fdc4176",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#neutrals/MobuCitizen",
+      "size": "960x620",
+      "imageHash": "a476fca477fb1bd79ef07fdc07bf53745a742d1c8b848cdf987620641989adaa",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/facilities/Primitive_Workbench",
+      "size": "960x620",
+      "imageHash": "4d122707d104bc839e8a6c1e54661d54fa06ac891f009dedf5a238a4ceb5b6c4",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/expeditions/Expedition_Grass",
+      "size": "960x620",
+      "imageHash": "96877868b81d676caf752fa49282b74797e035b6b302094907a30ea8e3b7c504",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/status/burn",
+      "size": "960x620",
+      "imageHash": "3320886752507be6222dd7c727ee52fb0e5da2bb49ccfa71e472ee811238f1b7",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/gathering/Wood",
+      "size": "960x620",
+      "imageHash": "20b51ef3c4df2fd2c574af956ac092e2d15ba99d4455fba9bf8f8fbaa84b9afc",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#work/production/StonePit",
+      "size": "960x620",
+      "imageHash": "d1c0c7c6c2f579664f866784ac9f1a478672369a4fd0db35f61582240082937e",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/loot/SuppliesLoots/Grass_Supply",
+      "size": "960x620",
+      "imageHash": "56c5a5aa1a6c037f056724585c194431feaaf7fc246eaf738e338789bd0ba89a",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/quests/activate-great-eagle-statue",
+      "size": "960x620",
+      "imageHash": "1af86b82b11ffb056ea9632c4c4c7ad235d1d38aa95352ec910f0baf530b9673",
+      "preservedRecords": 467
+    },
+    {
+      "route": "#guide/journals/Day-xx",
+      "size": "960x620",
+      "imageHash": "8f02d9d89ca2383be124b29cf3620741bc7623aaada6b3074e8c2c8774c2dcbe",
+      "preservedRecords": 467
+    }
+  ],
+  "interactions": [
+    {
+      "name": "notice-popup",
+      "routeAfter": "#settings/updates",
+      "preservedRecords": 467,
+      "passed": true,
+      "windowShape": {
+        "width": 2160,
+        "height": 1350,
+        "dpi": 144,
+        "maximized": false,
+        "regionKind": 3,
+        "cornerIncluded": false,
+        "centerIncluded": true
+      }
+    },
+    {
+      "name": "worlds",
+      "routeAfter": "#lookup",
+      "preservedRecords": 467,
+      "passed": true,
+      "windowShape": {
+        "width": 1440,
+        "height": 930,
+        "dpi": 144,
+        "maximized": false,
+        "regionKind": 3,
+        "cornerIncluded": false,
+        "centerIncluded": true
+      }
+    },
+    {
+      "name": "global-fuzzy",
+      "routeAfter": "#details/passive/trait/CraftSpeed_up2",
+      "preservedRecords": 467,
+      "passed": true,
+      "windowShape": {
+        "width": 2160,
+        "height": 1350,
+        "dpi": 144,
+        "maximized": false,
+        "regionKind": 3,
+        "cornerIncluded": false,
+        "centerIncluded": true
+      }
+    },
+    {
+      "name": "external",
+      "routeAfter": "#settings/skins",
+      "preservedRecords": 467,
+      "passed": true,
+      "windowShape": {
+        "width": 2160,
+        "height": 1350,
+        "dpi": 144,
+        "maximized": false,
+        "regionKind": 3,
+        "cornerIncluded": false,
+        "centerIncluded": true
+      }
+    },
+    {
+      "name": "passive-fuzzy",
+      "routeAfter": "#details/passive",
+      "preservedRecords": 467,
+      "passed": true,
+      "windowShape": {
+        "width": 2160,
+        "height": 1350,
+        "dpi": 144,
+        "maximized": false,
+        "regionKind": 3,
+        "cornerIncluded": false,
+        "centerIncluded": true
+      }
+    },
+    {
+      "name": "window-round",
+      "routeAfter": "#lookup",
+      "preservedRecords": 467,
+      "passed": true,
+      "windowShape": {
+        "width": 2160,
+        "height": 1350,
+        "dpi": 144,
+        "maximized": false,
+        "regionKind": 3,
+        "cornerIncluded": false,
+        "centerIncluded": true
+      },
+      "steps": [
+        {
+          "width": 2160,
+          "height": 1350,
+          "dpi": 144,
+          "maximized": false,
+          "regionKind": 3,
+          "cornerIncluded": false,
+          "centerIncluded": true
+        },
+        {
+          "width": 3862,
+          "height": 2110,
+          "dpi": 144,
+          "maximized": true,
+          "regionKind": 0,
+          "cornerIncluded": false,
+          "centerIncluded": false
+        },
+        {
+          "width": 2160,
+          "height": 1350,
+          "dpi": 144,
+          "maximized": false,
+          "regionKind": 3,
+          "cornerIncluded": false,
+          "centerIncluded": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "verified": true,
+  "changedFiles": [
+    "Jade-Palworld-Rust.exe",
+    "README.md",
+    "data/announcements.json"
+  ],
+  "reusedFiles": 2120,
+  "deltaBytes": 7870626,
+  "fullBytes": 17623136,
+  "gameDataUnchanged": true
+}

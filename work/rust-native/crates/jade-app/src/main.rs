@@ -3,12 +3,17 @@ mod breeding_ui;
 mod calculators_ui;
 mod catalog;
 mod catalog_views;
+mod chrome;
 mod data;
 mod design;
+mod elements;
+mod external;
 mod instance;
 mod links;
 mod map;
 mod qa;
+mod search;
+mod skins;
 mod store;
 mod updates;
 mod work_views;
@@ -106,6 +111,22 @@ fn page_for(route: &str) -> String {
         .unwrap_or("lookup")
         .into()
 }
+fn map_origin(history: &[String]) -> Option<(&str, &'static str)> {
+    let route = history
+        .iter()
+        .rev()
+        .find(|route| !matches!(page_for(route).as_str(), "map" | "spawns"))?;
+    if !route.trim_start_matches('#').contains('/') {
+        return None;
+    }
+    let source = page_for(route);
+    let label = SECTIONS
+        .iter()
+        .flat_map(|(_, _, tabs)| tabs.iter())
+        .find(|(_, id)| *id == source)
+        .map(|(label, _)| *label)?;
+    Some((route.as_str(), label))
+}
 fn now_ms() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -132,9 +153,15 @@ fn decode_route(s: &str) -> String {
     String::from_utf8(out).unwrap_or_else(|_| s.into())
 }
 
-fn page_header(ui: &mut egui::Ui, page: &str, heading: &str, d: &Data) {
+fn page_header(
+    ui: &mut egui::Ui,
+    page: &str,
+    heading: &str,
+    d: &Data,
+    origin: Option<(&str, &str)>,
+) -> Option<String> {
     let p = design::palette(ui.ctx());
-    if page == "lookup" {
+    if ["lookup", "warehouse", "offspring", "planner"].contains(&page) {
         let (rect, _) =
             ui.allocate_exact_size(Vec2::new(ui.available_width(), 100.), egui::Sense::hover());
         ui.painter().rect_filled(rect, 14, p.soft);
@@ -163,23 +190,30 @@ fn page_header(ui: &mut egui::Ui, page: &str, heading: &str, d: &Data) {
             egui::Stroke::new(1., p.line),
             egui::StrokeKind::Inside,
         );
-        for (dy, size, text) in [
-            (15., 28., "帕鲁配种查询".to_string()),
-            (
-                51.,
-                13.,
-                "选一只帕鲁，查找配种伙伴，或反查它的双亲。".into(),
-            ),
-            (
+        let title = if page == "lookup" {
+            "帕鲁配种查询"
+        } else {
+            heading
+        };
+        let subtitle = match page {
+            "warehouse" => "查看每只帕鲁的词条、性别和个体名称。",
+            "offspring" => "从仓库出发，查找指定步数内可配出的帕鲁。",
+            "planner" => "选择目标和词条，规划仓库帕鲁的配种路线。",
+            _ => "选一只帕鲁，查找配种伙伴，或反查它的双亲。",
+        };
+        let mut lines = vec![(15., 28., title.to_owned()), (51., 13., subtitle.into())];
+        if page == "lookup" {
+            lines.push((
                 74.,
                 12.,
                 format!(
-                    "{} 个图鉴条目    ·    {:} 条配方",
+                    "{} 个图鉴条目    ·    {} 条配方",
                     d.species.len(),
                     d.pairs.len()
                 ),
-            ),
-        ] {
+            ));
+        }
+        for (dy, size, text) in lines {
             ui.painter().text(
                 rect.min + Vec2::new(22., dy),
                 egui::Align2::LEFT_TOP,
@@ -189,7 +223,7 @@ fn page_header(ui: &mut egui::Ui, page: &str, heading: &str, d: &Data) {
             );
         }
         ui.add_space(6.);
-        return;
+        return None;
     }
     let description = match page {
         "warehouse" => "逐只管理你的帕鲁，保存昵称、性别和词条；数据按世界独立保存。",
@@ -225,19 +259,28 @@ fn page_header(ui: &mut egui::Ui, page: &str, heading: &str, d: &Data) {
         "settings/skins" => "选择辉月伊配色，或使用普通颜色主题。",
         _ => "",
     };
-    ui.label(
-        RichText::new(heading)
-            .size(if page == "map" || page == "spawns" {
-                24.
-            } else {
-                30.
-            })
-            .strong(),
-    );
+    let mut nav = None;
+    ui.horizontal_wrapped(|ui| {
+        ui.label(
+            RichText::new(heading)
+                .size(if page == "map" || page == "spawns" {
+                    24.
+                } else {
+                    30.
+                })
+                .strong(),
+        );
+        if let Some((route, label)) = origin {
+            if design::small_action(ui, "left", &format!("返回{label}")).clicked() {
+                nav = Some(route.to_owned());
+            }
+        }
+    });
     if !description.is_empty() {
         ui.label(RichText::new(description).size(13.).color(p.muted));
     }
     ui.add_space(5.);
+    nav
 }
 
 struct App {
@@ -269,6 +312,8 @@ struct App {
     qa: Value,
     updates: updates::UpdateState,
     probe: qa::Probe,
+    chrome: chrome::WindowChrome,
+    external: external::Directory,
 }
 impl App {
     fn new(
@@ -333,9 +378,11 @@ impl App {
             frames: 0,
             started: Instant::now(),
             qa_output,
-            qa: json!({"runtime":"Rust native egui/glow","version":"2.0.0-beta.1","createdAt":now_ms()}),
+            qa: json!({"runtime":"Rust native egui/glow","version":env!("CARGO_PKG_VERSION"),"createdAt":now_ms()}),
             updates,
             probe: qa::Probe::default(),
+            chrome: chrome::WindowChrome::default(),
+            external: external::Directory::default(),
         })
     }
     fn go(&mut self, route: String) {
@@ -424,7 +471,7 @@ impl App {
                 ui.separator();
                 let input = ui.add(
                     egui::TextEdit::singleline(&mut self.search)
-                        .hint_text("中文名、英文名或游戏编号")
+                        .hint_text("中文名、英文名或编号；词条支持简称")
                         .desired_width(f32::INFINITY),
                 );
                 if self.search_focus {
@@ -457,22 +504,45 @@ impl App {
                 let mut found: Vec<_> = rows
                     .iter()
                     .enumerate()
-                    .filter(|(index, r)| {
-                        (self.search_kind.is_empty() || text(r, "kind") == self.search_kind)
-                            && q.split_whitespace()
-                                .all(|word| self.search_terms[*index].contains(word))
+                    .filter_map(|(index, r)| {
+                        if !self.search_kind.is_empty() && text(r, "kind") != self.search_kind {
+                            return None;
+                        }
+                        let href = text(r, "href");
+                        let passive = href
+                            .strip_prefix("#details/passive/trait/")
+                            .or_else(|| href.strip_prefix("#details/surgery/trait/"));
+                        let fuzzy =
+                            passive.and_then(|key| search::trait_score(&self.data, key, &q));
+                        let literal = q
+                            .split_whitespace()
+                            .all(|word| self.search_terms[index].contains(word));
+                        if !literal && fuzzy.is_none() {
+                            return None;
+                        }
+                        let name = &self.search_names[index];
+                        let literal_score = if q.is_empty() || *name == q {
+                            0
+                        } else if name.starts_with(&q) {
+                            20
+                        } else if name.contains(&q) {
+                            30
+                        } else {
+                            70
+                        };
+                        let score = if q.is_empty() {
+                            0
+                        } else {
+                            fuzzy.unwrap_or(u32::MAX).min(if literal {
+                                literal_score
+                            } else {
+                                u32::MAX
+                            })
+                        };
+                        Some((score, r))
                     })
                     .collect();
-                found.sort_by_cached_key(|(index, _)| {
-                    let name = &self.search_names[*index];
-                    if *name == q {
-                        0
-                    } else if name.starts_with(&q) {
-                        1
-                    } else {
-                        2
-                    }
-                });
+                found.sort_by_key(|(score, _)| *score);
                 let found: Vec<_> = found.into_iter().map(|(_, r)| r).collect();
                 self.search_selected = self.search_selected.min(found.len().saturating_sub(1));
                 let down =
@@ -524,15 +594,8 @@ impl App {
                             breeding_ui::passive_rank(&mut row, &self.data, rank, 22.);
                         } else if let Some(source) = self.catalog.image_for_route(&self.data, href)
                         {
-                            let mut image =
+                            let image =
                                 egui::Image::new(source).fit_to_exact_size(Vec2::splat(30.));
-                            if href.starts_with("#details/active/") {
-                                let key = href.rsplit('/').next().unwrap_or("");
-                                image = image.tint(breeding_ui::element_color(text(
-                                    &self.data.get("pal-details-data")["moves"][key],
-                                    "type",
-                                )));
-                            }
                             row.add(image);
                         } else {
                             row.allocate_space(Vec2::splat(30.));
@@ -574,88 +637,17 @@ impl App {
     }
     fn settings(&mut self, ui: &mut egui::Ui, page: &str) {
         if page == "settings/skins" {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                design::card(ui).show(ui, |ui| {
-                    design::section(ui, "界面皮肤");
-                    ui.horizontal_top(|ui| {
-                        ui.vertical(|ui| {
-                            ui.add(
-                                egui::Image::new(egui::include_image!(
-                                    "../assets/jade-selyne.webp"
-                                ))
-                                .fit_to_exact_size(Vec2::splat(260.)),
-                            );
-                            if ui
-                                .add_sized(
-                                    [260., 38.],
-                                    egui::Button::new("辉月伊 · 默认皮肤")
-                                        .selected(self.theme == "moon"),
-                                )
-                                .clicked()
-                            {
-                                self.store.state["theme"] = json!("moon");
-                                self.store.changed();
-                            }
-                        });
-                        ui.vertical(|ui| {
-                            design::section(ui, "纯色皮肤");
-                            for (id, label) in [
-                                ("jade", "玉绿"),
-                                ("blue", "海蓝"),
-                                ("rose", "玫瑰"),
-                                ("amber", "琥珀"),
-                                ("slate", "岩灰"),
-                            ] {
-                                let colors = design::colors(id);
-                                let (rect, response) = ui.allocate_exact_size(
-                                    Vec2::new(260., 52.),
-                                    egui::Sense::click(),
-                                );
-                                ui.painter().rect_filled(rect, 8, colors.surface);
-                                ui.painter().rect_stroke(
-                                    rect,
-                                    8,
-                                    egui::Stroke::new(
-                                        if self.theme == id { 2. } else { 1. },
-                                        colors.accent,
-                                    ),
-                                    egui::StrokeKind::Inside,
-                                );
-                                for (i, c) in [colors.rail, colors.accent, colors.selected]
-                                    .iter()
-                                    .enumerate()
-                                {
-                                    ui.painter().circle_filled(
-                                        rect.left_center() + Vec2::new(22. + i as f32 * 27., 0.),
-                                        10.,
-                                        *c,
-                                    );
-                                }
-                                ui.painter().text(
-                                    rect.left_center() + Vec2::new(112., 0.),
-                                    egui::Align2::LEFT_CENTER,
-                                    label,
-                                    egui::FontId::proportional(15.),
-                                    colors.ink,
-                                );
-                                if self.theme == id {
-                                    ui.painter().text(
-                                        rect.right_center() - Vec2::new(22., 0.),
-                                        egui::Align2::CENTER_CENTER,
-                                        "✓",
-                                        egui::FontId::proportional(18.),
-                                        colors.accent,
-                                    );
-                                }
-                                if response.clicked() {
-                                    self.store.state["theme"] = json!(id);
-                                    self.store.changed();
-                                }
-                            }
-                        });
-                    });
+            egui::ScrollArea::vertical()
+                .id_salt("skin-settings-page")
+                .show(ui, |ui| {
+                    if let Some(theme) = skins::show(ui, &self.theme) {
+                        self.store.state["theme"] = json!(theme);
+                        self.store.changed();
+                    }
+                    ui.add_space(18.);
+                    ui.separator();
+                    self.external.show(ui, &self.data);
                 });
-            });
         } else {
             let before = self.store.state.clone();
             if self.updates.show(ui, &mut self.store.state) == Some(updates::UpdateAction::Restart)
@@ -674,7 +666,8 @@ impl eframe::App for App {
     fn raw_input_hook(&mut self, _ctx: &egui::Context, input: &mut egui::RawInput) {
         self.probe.raw_input_hook(input);
     }
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.chrome.apply(ctx, frame);
         self.probe.begin_frame();
         self.frames += 1;
         if self.last_save.elapsed() > Duration::from_secs(1) {
@@ -827,7 +820,7 @@ impl eframe::App for App {
                     );
                 }
                 let compact = ui.available_height() < 700.;
-                let nav_height = if compact { 36. } else { 54. };
+                let nav_height = if compact { 30. } else { 54. };
                 ui.style_mut().visuals.override_text_color = Some(if self.theme == "moon" {
                     palette.ink
                 } else {
@@ -865,7 +858,7 @@ impl eframe::App for App {
                     .id_salt("sidebar")
                     .max_height((ui.available_height() - 113.).max(100.))
                     .show(ui, |ui| {
-                        ui.spacing_mut().item_spacing.y = 4.;
+                        ui.spacing_mut().item_spacing.y = if compact { 1. } else { 4. };
                         let icons = [
                             "egg", "worldmap", "paldex", "enemy", "book", "ranch", "items",
                             "compass", "settings",
@@ -1011,7 +1004,14 @@ impl eframe::App for App {
                     .find(|(_, id)| *id == page)
                     .map(|(name, _)| *name)
                     .unwrap_or("工具箱");
-                page_header(ui, &page, heading, &self.data);
+                let origin = if page == "map" || page == "spawns" {
+                    map_origin(&self.history)
+                } else {
+                    None
+                };
+                if let Some(route) = page_header(ui, &page, heading, &self.data, origin) {
+                    nav = Some(route);
+                }
                 if let Some(e) = &self.store.error {
                     ui.colored_label(Color32::DARK_RED, e);
                 }
@@ -1229,6 +1229,26 @@ fn main() -> eframe::Result {
 #[cfg(test)]
 mod navigation_tests {
     use super::*;
+    #[test]
+    fn map_source_survives_map_navigation_without_reusing_stale_item_history() {
+        let routes = |items: &[&str]| items.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let from_item = routes(&[
+            "#lookup",
+            "#items/Wool",
+            "#map/point/example",
+            "#spawns/SheepBall",
+        ]);
+        assert_eq!(map_origin(&from_item), Some(("#items/Wool", "物品查询")));
+        assert_eq!(
+            map_origin(&routes(&["#items/Wool", "#lookup", "#map"])),
+            None
+        );
+        let from_journal = routes(&["#guide/journals/one", "#map"]);
+        assert_eq!(
+            map_origin(&from_journal),
+            Some(("#guide/journals/one", "探索手记"))
+        );
+    }
     #[test]
     fn unicode_routes_and_all_search_destinations() {
         assert_eq!(
