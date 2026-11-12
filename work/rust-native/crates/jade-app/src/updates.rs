@@ -135,7 +135,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"补上月亮领主两种形态的游戏原图。全局搜索新增地图分类与具体点位，支持防空炮等别名、省略、少量错字和有限词序变化，显示多个候选、坐标与匹配原因。地图和图鉴筛选同步扩展；搜索缓存按需建立，不增加首页加载。11个物品暂未找到可信对应原图，详细联网核验见报告。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"查配种伙伴改为「当前亲代 + 配种伙伴 → 子代」，每组最左边加入当前选定帕鲁的头像、名称和编号。保留多列布局、属性和文字筛选、分页及刷新位置跳转；特殊配方同时标出两位亲代所需性别。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.

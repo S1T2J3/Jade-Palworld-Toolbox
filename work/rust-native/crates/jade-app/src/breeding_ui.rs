@@ -366,10 +366,10 @@ impl Breeding {
             ui.small(if self.reverse {
                 "亲代 A ＋ 亲代 B → 当前目标；特殊配方需满足标注性别"
             } else {
-                "配种伙伴 → 孵化子代；点击名称查看刷新位置"
+                "当前亲代 ＋ 配种伙伴 → 孵化子代；点击名称查看刷新位置"
             });
             let width = ui.available_width();
-            let cols = ((width / 285.) as usize).clamp(1, 4);
+            let cols = ((width / if self.reverse { 285. } else { 340. }) as usize).clamp(1, 4);
             let cell = (width - (cols - 1) as f32 * 6.) / cols as f32;
             egui::ScrollArea::vertical()
                 .id_salt("pair-results")
@@ -1888,27 +1888,39 @@ fn compact_lookup_pair(
     let a = pair[0].as_u64().unwrap() as usize;
     let b = pair[1].as_u64().unwrap() as usize;
     let c = pair[2].as_u64().unwrap() as usize;
-    let first = if reverse {
-        a
-    } else if a == selected {
-        b
+    let partner = if a == selected { b } else { a };
+    let members = if reverse {
+        [a, b, c]
     } else {
-        a
+        [selected, partner, c]
     };
-    let second = if reverse { b } else { c };
-    let special = pair.as_array().is_some_and(|p| p.len() == 5);
-    let member = (width - 26.) / 2.;
-    egui::Image::new(crate::design::icon_source(if reverse {
-        "plus"
+    let count = if reverse { 2 } else { 3 };
+    let parent_sides = if reverse || a == selected {
+        [0, 1]
     } else {
-        "arrow"
-    }))
-    .tint(ui.visuals().text_color())
-    .paint_at(
-        ui,
-        egui::Rect::from_center_size(rect.center(), Vec2::splat(14.)),
-    );
-    for (i, index) in [first, second].into_iter().enumerate() {
+        [1, 0]
+    };
+    let special = pair.as_array().is_some_and(|p| p.len() == 5);
+    let member = (width - 8. - (count - 1) as f32 * 18.) / count as f32;
+    for i in 0..count - 1 {
+        egui::Image::new(crate::design::icon_source(if reverse || i == 0 {
+            "plus"
+        } else {
+            "arrow"
+        }))
+        .tint(ui.visuals().text_color())
+        .paint_at(
+            ui,
+            egui::Rect::from_center_size(
+                egui::pos2(
+                    rect.left() + 4. + (i + 1) as f32 * member + i as f32 * 18. + 9.,
+                    rect.center().y,
+                ),
+                Vec2::splat(14.),
+            ),
+        );
+    }
+    for (i, index) in members.into_iter().take(count).enumerate() {
         let pal = &d.species[index];
         let key = text(pal, "key");
         let left = rect.left() + 4. + i as f32 * (member + 18.);
@@ -1924,14 +1936,8 @@ fn compact_lookup_pair(
                 egui::Image::new(d.image_source(uri)).fit_to_exact_size(Vec2::splat(28.)),
             );
         }
-        let sex = if special && (reverse || i == 0) {
-            let side = if reverse {
-                i
-            } else if a == selected {
-                1
-            } else {
-                0
-            };
+        let sex = if special && i < 2 {
+            let side = parent_sides[i];
             match pair[3 + side].as_str().unwrap_or("") {
                 "M" => " ♂",
                 "F" => " ♀",
@@ -1971,15 +1977,34 @@ fn compact_lookup_pair(
             egui::FontId::proportional(10.),
             ui.visuals().weak_text_color(),
         );
-        if !reverse && i == 1 {
+        if !reverse && i == 2 {
             let mut x = number.right() + 3.;
-            for kind in array(&pal["types"]).iter().filter_map(Value::as_str) {
-                paint_element_badge(
-                    ui,
-                    kind,
-                    egui::Rect::from_min_size(egui::pos2(x, rect.top() + 22.), Vec2::new(29., 14.)),
-                );
-                x += 32.;
+            let types: Vec<_> = array(&pal["types"])
+                .iter()
+                .filter_map(Value::as_str)
+                .collect();
+            let full_badges = rect.right() - 4. - x >= types.len() as f32 * 32. - 3.;
+            for kind in types {
+                if full_badges {
+                    paint_element_badge(
+                        ui,
+                        kind,
+                        egui::Rect::from_min_size(
+                            egui::pos2(x, rect.top() + 22.),
+                            Vec2::new(29., 14.),
+                        ),
+                    );
+                    x += 32.;
+                } else if let Some(source) = crate::elements::source(kind) {
+                    egui::Image::new(source).paint_at(
+                        ui,
+                        egui::Rect::from_min_size(
+                            egui::pos2(x, rect.top() + 22.),
+                            Vec2::splat(13.),
+                        ),
+                    );
+                    x += 15.;
+                }
             }
         }
     }

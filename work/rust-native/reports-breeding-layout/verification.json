@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0-beta.7",
+  "exeSha256": "221986a9b748484e696728a1d592e3dde93ecd817bcd19ff418e2b766cc2044b",
+  "breedingChecks": 9,
+  "coreGoldenCases": 1942,
+  "visualScenarios": 5,
+  "clickDestinations": [
+    {
+      "member": "selected",
+      "routeAfter": "#spawns/SheepBall",
+      "preservedRecords": 467,
+      "passed": true
+    },
+    {
+      "member": "partner",
+      "routeAfter": "#spawns/PinkCat",
+      "preservedRecords": 467,
+      "passed": true
+    },
+    {
+      "member": "child",
+      "routeAfter": "#spawns/DreamDemon",
+      "preservedRecords": 467,
+      "passed": true
+    }
+  ],
+  "publicFixtureRecords": 467
+}
