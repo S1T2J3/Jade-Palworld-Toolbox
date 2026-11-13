@@ -247,6 +247,24 @@ impl Data {
             self.image(ui, uri, Vec2::splat(size));
         }
     }
+    /// Species identities always open the same overview; explicit actions keep
+    /// their own destinations (map, breeding, skills, and calculators).
+    pub fn portrait_link(&self, ui: &mut egui::Ui, key: &str, size: f32) -> bool {
+        let Some(p) = self.pal(key) else {
+            return false;
+        };
+        let Some(uri) = self.get("portraits")[text(p, "en")].as_str() else {
+            return false;
+        };
+        ui.add(
+            egui::Image::new(self.image_source(uri))
+                .fit_to_exact_size(Vec2::splat(size))
+                .sense(egui::Sense::click()),
+        )
+        .on_hover_text(format!("查看{}的资料与功能入口", self.pal_name(key)))
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
+    }
     pub fn item_icon(&self, ui: &mut egui::Ui, key: &str, size: f32) {
         if let Some(i) = self.get("item-icons")["ids"][key].as_u64() {
             let uri = self.get("item-icons")["images"][i as usize]

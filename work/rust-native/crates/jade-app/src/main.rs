@@ -398,9 +398,25 @@ impl App {
         if route == self.route {
             return;
         }
-        self.history.push(self.route.clone());
+        self.history.push(self.navigation_snapshot());
         self.forward.clear();
         self.activate(route);
+    }
+    fn navigation_snapshot(&self) -> String {
+        if page_for(&self.route) == "lookup" {
+            if let Some(p) = self.data.species.get(self.breeding.lookup_pal) {
+                return format!(
+                    "#lookup/{}{}",
+                    if self.breeding.reverse {
+                        "parents/"
+                    } else {
+                        ""
+                    },
+                    text(p, "key")
+                );
+            }
+        }
+        self.route.clone()
     }
     fn activate(&mut self, route: String) {
         self.route = decode_route(&route);
@@ -412,9 +428,16 @@ impl App {
             .strip_prefix(&page)
             .unwrap_or("")
             .trim_start_matches('/');
+        let (key, reverse) = if page == "lookup" {
+            key.strip_prefix("parents/")
+                .map(|key| (key, true))
+                .unwrap_or((key, false))
+        } else {
+            (key, false)
+        };
         if let Some(i) = self.data.species.iter().position(|p| text(p, "key") == key) {
             if page == "lookup" {
-                self.breeding.lookup_pal = i;
+                self.breeding.activate_lookup(i, reverse);
             } else if page == "planner" {
                 self.breeding.pal = i;
             }
@@ -425,13 +448,13 @@ impl App {
     }
     fn back(&mut self) {
         if let Some(r) = self.history.pop() {
-            self.forward.push(self.route.clone());
+            self.forward.push(self.navigation_snapshot());
             self.activate(r);
         }
     }
     fn next(&mut self) {
         if let Some(r) = self.forward.pop() {
-            self.history.push(self.route.clone());
+            self.history.push(self.navigation_snapshot());
             self.activate(r);
         }
     }
@@ -1145,11 +1168,15 @@ impl eframe::App for App {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
         }
+        let probe_route = self.route.clone();
         if self
             .probe
             .tick(ctx, &mut self.route, &self.data, &self.store)
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+        if self.route != probe_route {
+            self.activate(self.route.clone());
         }
     }
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

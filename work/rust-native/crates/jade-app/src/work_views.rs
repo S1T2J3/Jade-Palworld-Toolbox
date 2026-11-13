@@ -258,8 +258,8 @@ impl RanchState {
                         let empty = Value::Null;
                         let p = pals.get(&selected).unwrap_or(&empty);
                         ui.horizontal_wrapped(|ui| {
-                            if let Some(source)=image(d,!reverse,&selected){ui.add(egui::Image::new(source).fit_to_exact_size(Vec2::splat(54.)));}
-                            ui.vertical(|ui| {ui.label(RichText::new(if reverse {d.item_name(&selected)} else {d.pal_name(&selected)}).size(22.).strong());
+                            if let Some(source)=image(d,!reverse,&selected){let response=ui.add(egui::Image::new(source).fit_to_exact_size(Vec2::splat(54.)).sense(if reverse {egui::Sense::hover()} else {egui::Sense::click()}));if !reverse && response.on_hover_cursor(egui::CursorIcon::PointingHand).clicked(){nav=Some(format!("#paldex/{selected}"));}}
+                            ui.vertical(|ui| {let name=RichText::new(if reverse {d.item_name(&selected)} else {d.pal_name(&selected)}).size(22.).strong(); if reverse {ui.label(name);} else if ui.add(egui::Link::new(name)).clicked(){nav=Some(format!("#paldex/{selected}"));}
                                 ui.small(if reverse {format!("{} 种帕鲁可放牧产出",count_suppliers(d,&selected))} else {format!("基础牧场 Lv.{} · 满浓缩 Lv.{}",p["base"],p["condensed"])});
                             });
                             if tracked(crate::design::action(ui,if reverse {"items"} else {"paldex"},if reverse {"物品图鉴"} else {"帕鲁图鉴"}),"ranch-dex").clicked(){nav=Some(format!("#{}{selected}",if reverse {"items/"} else {"paldex/"}));}
@@ -287,7 +287,7 @@ impl RanchState {
                                 let drop=if effective<natural {None} else {array(&data["tiers"][effective.saturating_sub(1)]).iter().find(|row|text(row,"item")==item)};
                                 let first=array(&data["tiers"]).iter().enumerate().find(|(i,t)|i+1>=natural&&array(t).iter().any(|r|text(r,"item")==item)).map(|(i,_)|i+1).unwrap_or(0);
                                 let subtitle=if reverse {format!("牧场 Lv.{effective}")} else {"反查放牧来源".into()};
-                                if picture_link(ui,d,reverse,&other,&subtitle,165.).clicked(){nav=Some(format!("#work/ranch/{}{other}",if reverse {""} else {"item/"}));}
+                                if picture_link(ui,d,reverse,&other,&subtitle,165.).clicked(){nav=Some(if reverse {format!("#paldex/{other}")} else {format!("#work/ranch/item/{other}")});}
                                 if let Some(drop)=drop {ui.label(quantity(drop));ui.label(format!("{}%",drop["chance"]));} else {ui.weak(if effective<natural {format!("基础 Lv.{natural}")} else {format!("Lv.{first} 起")});ui.weak("—");}
                                 if tracked(crate::design::icon_button(ui,if reverse {"paldex"} else {"items"},if reverse {"帕鲁图鉴"} else {"物品图鉴"}),&format!("ranch-wiki:{reverse}:{other}")).clicked(){nav=Some(format!("#{}{other}",if reverse {"paldex/"} else {"items/"}));}
                                 ui.end_row();
@@ -388,8 +388,12 @@ pub fn suitability(
     if let Some(key) = context.filter(|key| d.pal(key).is_some()) {
         crate::design::card(ui).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
-                d.portrait(ui, key, 42.);
-                ui.strong(d.pal_name(key));
+                if d.portrait_link(ui, key, 42.) {
+                    nav = Some(format!("#paldex/{key}"));
+                }
+                if ui.link(d.pal_name(key)).clicked() {
+                    nav = Some(format!("#paldex/{key}"));
+                }
                 if crate::design::action(ui, "paldex", "帕鲁图鉴").clicked() {
                     nav = Some(format!("#paldex/{key}"));
                 }
@@ -617,7 +621,7 @@ mod tests {
         assert_eq!(
             h.frame(Harness::pointer(pos, false), |ui, d| state
                 .show(ui, d, &reverse)),
-            Some("#work/ranch/SheepBall".into())
+            Some("#paldex/SheepBall".into())
         );
         let pos = h.pos("ranch-dex");
         h.frame(Harness::pointer(pos, true), |ui, d| {

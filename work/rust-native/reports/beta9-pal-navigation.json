@@ -1,0 +1,198 @@
+{
+  "version": "2.0.0-beta.9",
+  "binarySha256": "efbe1117b16a73570e669024c780b49ed9d19dd2fca0513916b7785e0cebb5e5",
+  "checks": {
+    "app": 105,
+    "coreGoldenSuite": 1,
+    "goldenCases": 1942,
+    "total": 106
+  },
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "cases": {
+    "ninePages": {
+      "records": 467,
+      "inventoryUnchanged": true,
+      "mapNotesUnchanged": true,
+      "errors": [],
+      "scenes": [
+        {
+          "route": "#paldex/Anubis",
+          "actions": [
+            "#paldex/Anubis"
+          ]
+        },
+        {
+          "route": "#lookup/Anubis",
+          "actions": [
+            "#lookup/Anubis"
+          ]
+        },
+        {
+          "route": "#lookup/parents/Anubis",
+          "actions": [
+            "#lookup/parents/Anubis"
+          ]
+        },
+        {
+          "route": "#warehouse",
+          "actions": [
+            "#warehouse"
+          ]
+        },
+        {
+          "route": "#details/partner/Anubis",
+          "actions": [
+            "#details/partner/Anubis"
+          ]
+        },
+        {
+          "route": "#spawns/Anubis",
+          "actions": [
+            "#spawns/Anubis"
+          ]
+        },
+        {
+          "route": "#offspring",
+          "actions": [
+            "#offspring"
+          ]
+        },
+        {
+          "route": "#work/ranch/item/Wool",
+          "actions": [
+            "#work/ranch/item/Wool"
+          ]
+        },
+        {
+          "route": "#details/capture/Anubis",
+          "actions": [
+            "#details/capture/Anubis"
+          ]
+        }
+      ]
+    },
+    "flow": {
+      "records": 467,
+      "inventoryUnchanged": true,
+      "mapNotesUnchanged": true,
+      "errors": [],
+      "scenes": [
+        {
+          "route": "#lookup/Anubis",
+          "actions": [
+            "#paldex/HoodGhost",
+            "#spawns/HoodGhost",
+            "#paldex/HoodGhost",
+            "#lookup/Anubis",
+            "#paldex/Anubis",
+            "#lookup/parents/Anubis",
+            "#paldex/Anubis",
+            "#lookup/parents/Anubis"
+          ]
+        }
+      ]
+    },
+    "goal": {
+      "records": 467,
+      "inventoryUnchanged": true,
+      "mapNotesUnchanged": true,
+      "errors": [],
+      "scenes": [
+        {
+          "route": "#paldex/Anubis",
+          "actions": [
+            "#planner/Anubis",
+            "#paldex/Anubis",
+            "#lookup/Anubis"
+          ]
+        }
+      ]
+    },
+    "small": {
+      "records": 467,
+      "inventoryUnchanged": true,
+      "mapNotesUnchanged": true,
+      "errors": [],
+      "scenes": [
+        {
+          "route": "#paldex/Anubis",
+          "actions": [
+            "#paldex/Anubis"
+          ]
+        },
+        {
+          "route": "#lookup/parents/Anubis",
+          "actions": [
+            "#lookup/parents/Anubis"
+          ]
+        },
+        {
+          "route": "#offspring",
+          "actions": [
+            "#offspring"
+          ]
+        }
+      ]
+    },
+    "offspringRoute": {
+      "records": 467,
+      "inventoryUnchanged": true,
+      "mapNotesUnchanged": true,
+      "errors": [],
+      "scenes": [
+        {
+          "route": "#offspring",
+          "actions": [
+            "#offspring"
+          ]
+        }
+      ]
+    }
+  },
+  "delta": {
+    "verified": true,
+    "changedFiles": [
+      "Jade-Palworld-Rust.exe",
+      "README.md",
+      "data/announcements.json"
+    ],
+    "reusedFiles": 2121,
+    "deltaBytes": 8017053,
+    "fullBytes": 17846794,
+    "gameDataUnchanged": true
+  },
+  "package": {
+    "passed": true,
+    "files": 2125,
+    "installerExecuted": false,
+    "registryAndShortcutsModified": false,
+    "installerSha256": "5a8d88f84a3216c5f158e53c1b83b4002137869719cf8773aad500242de4bd4e",
+    "archiveSha256": "4fbcf176f35acc0bc18b3b7b9d45c6d195a613fa7a2a96f9d6140cc612e48140"
+  },
+  "updater": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    }
+  ]
+}

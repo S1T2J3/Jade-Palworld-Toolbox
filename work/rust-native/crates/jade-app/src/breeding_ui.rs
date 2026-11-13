@@ -102,6 +102,14 @@ impl Default for Breeding {
     }
 }
 impl Breeding {
+    pub fn activate_lookup(&mut self, pal: usize, reverse: bool) {
+        if self.lookup_pal != pal || self.reverse != reverse {
+            self.lookup_page = 0;
+            self.lookup_query.clear();
+        }
+        self.lookup_pal = pal;
+        self.reverse = reverse;
+    }
     pub fn invalidate(&mut self) {
         self.epoch += 1;
         self.result = Value::Null;
@@ -251,7 +259,9 @@ impl Breeding {
             let key = text(p, "key");
             ui.separator();
             ui.horizontal(|ui| {
-                d.portrait(ui, key, 44.);
+                if d.portrait_link(ui, key, 44.) {
+                    *nav = Some(format!("#paldex/{key}"));
+                }
                 ui.vertical(|ui| {
                     ui.spacing_mut().item_spacing.y = 1.;
                     ui.spacing_mut().interact_size.y = 14.;
@@ -261,7 +271,14 @@ impl Breeding {
                         "当前亲代"
                     });
                     ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(text(p, "zh")).size(20.).strong());
+                        if ui
+                            .add(egui::Link::new(
+                                egui::RichText::new(text(p, "zh")).size(20.).strong(),
+                            ))
+                            .clicked()
+                        {
+                            *nav = Some(format!("#paldex/{key}"));
+                        }
                         element_badges(ui, &p["types"]);
                     });
                     ui.horizontal_wrapped(|ui| {
@@ -366,7 +383,7 @@ impl Breeding {
             ui.small(if self.reverse {
                 "亲代 A ＋ 亲代 B → 当前目标；特殊配方需满足标注性别"
             } else {
-                "当前亲代 ＋ 配种伙伴 → 孵化子代；点击名称查看刷新位置"
+                "当前亲代 ＋ 配种伙伴 → 孵化子代；点击帕鲁查看资料与功能入口"
             });
             let width = ui.available_width();
             let cols = ((width / if self.reverse { 285. } else { 340. }) as usize).clamp(1, 4);
@@ -518,7 +535,9 @@ impl Breeding {
                                 let key = text(p, "speciesKey");
                                 let species = d.species.iter().find(|s| text(s, "key") == key);
                                 ui.horizontal(|ui| {
-                                    d.portrait(ui, key, 54.);
+                                    if d.portrait_link(ui, key, 54.) {
+                                        nav = Some(format!("#paldex/{key}"));
+                                    }
                                     ui.vertical(|ui| {
                                         ui.small(format!(
                                             "{}  {}",
@@ -535,7 +554,7 @@ impl Breeding {
                                             ))
                                             .clicked()
                                         {
-                                            nav = Some(format!("#spawns/{key}"));
+                                            nav = Some(format!("#paldex/{key}"));
                                         }
                                         let name = text(p, "name");
                                         if !name.is_empty() && name != d.pal_name(key) {
@@ -899,9 +918,13 @@ impl Breeding {
         if !offspring {
             let key = text(&d.species[self.pal], "key");
             ui.horizontal(|ui| {
-                d.portrait(ui, key, 58.);
+                if d.portrait_link(ui, key, 58.) {
+                    *nav = Some(format!("#paldex/{key}"));
+                }
                 ui.vertical(|ui| {
-                    ui.strong(d.pal_name(key));
+                    if ui.link(d.pal_name(key)).clicked() {
+                        *nav = Some(format!("#paldex/{key}"));
+                    }
                     element_badges(ui, &d.species[self.pal]["types"]);
                 });
             });
@@ -1334,7 +1357,8 @@ impl Breeding {
                                 };
                                 let id = r["id"].as_u64().unwrap() as usize;
                                 let p = &d.species[id];
-                                let response = Card(
+                                let mut open_route = false;
+                                let _card = Card(
                                     egui::Frame::new()
                                         .fill(ui.visuals().faint_bg_color)
                                         .corner_radius(5)
@@ -1358,32 +1382,60 @@ impl Breeding {
                                                 {
                                                     ui.horizontal(|ui| {
                                                         ui.spacing_mut().item_spacing.x = 3.;
-                                                        d.portrait(ui, text(p, "key"), 22.);
-                                                        ui.add(
-                                                            egui::Label::new(
-                                                                egui::RichText::new(text(p, "zh"))
+                                                        if d.portrait_link(ui, text(p, "key"), 22.)
+                                                        {
+                                                            *nav = Some(format!(
+                                                                "#paldex/{}",
+                                                                text(p, "key")
+                                                            ));
+                                                        }
+                                                        let response = ui
+                                                            .add(
+                                                                egui::Label::new(
+                                                                    egui::RichText::new(text(
+                                                                        p, "zh",
+                                                                    ))
                                                                     .size(12.),
+                                                                )
+                                                                .truncate()
+                                                                .sense(egui::Sense::click()),
                                                             )
-                                                            .truncate(),
-                                                        )
-                                                        .on_hover_text(format!(
-                                                            "亲代{}：{}",
-                                                            index + 1,
-                                                            text(p, "zh")
-                                                        ));
+                                                            .on_hover_cursor(
+                                                                egui::CursorIcon::PointingHand,
+                                                            )
+                                                            .on_hover_text(format!(
+                                                                "亲代{}：{} · 查看资料与功能入口",
+                                                                index + 1,
+                                                                text(p, "zh")
+                                                            ));
+                                                        if response.clicked() {
+                                                            *nav = Some(format!(
+                                                                "#paldex/{}",
+                                                                text(p, "key")
+                                                            ));
+                                                        }
                                                     });
                                                 }
                                             }
                                         });
                                         crate::design::icon(ui, "arrow", 16.);
-                                        d.portrait(ui, text(p, "key"), 36.);
+                                        if d.portrait_link(ui, text(p, "key"), 36.) {
+                                            *nav = Some(format!("#paldex/{}", text(p, "key")));
+                                        }
                                         ui.vertical(|ui| {
-                                            ui.add(
-                                                egui::Label::new(
-                                                    egui::RichText::new(text(p, "zh")).strong(),
+                                            if ui
+                                                .add(
+                                                    egui::Label::new(
+                                                        egui::RichText::new(text(p, "zh")).strong(),
+                                                    )
+                                                    .truncate()
+                                                    .sense(egui::Sense::click()),
                                                 )
-                                                .truncate(),
-                                            );
+                                                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                                                .clicked()
+                                            {
+                                                *nav = Some(format!("#paldex/{}", text(p, "key")));
+                                            }
                                             ui.small(format!(
                                                 "#{} · {} 步",
                                                 text(p, "dex"),
@@ -1392,15 +1444,16 @@ impl Breeding {
                                             if r["conditional"] == true {
                                                 ui.small("需确认性别");
                                             }
+                                            if crate::design::small_action(ui, "branch", "配种路线")
+                                                .clicked()
+                                            {
+                                                open_route = true;
+                                            }
                                         });
                                     });
                                 })
                                 .response;
-                                if response
-                                    .interact(egui::Sense::click())
-                                    .on_hover_text("查看配种路线")
-                                    .clicked()
-                                {
+                                if open_route {
                                     self.offspring_selected = Some(id);
                                 }
                             }
@@ -1416,8 +1469,8 @@ impl Breeding {
             {
                 let mut open = true;
                 let mut requested_close = false;
-                egui::Window::new("配种路线").title_bar(false).id(egui::Id::new("offspring-route")).open(&mut open).default_width(740.).vscroll(true).show(ui.ctx(),|ui|{if crate::design::dialog_header(ui,"branch","配种路线").clicked(){requested_close=true;}let p=&d.species[id];ui.horizontal(|ui|{d.portrait(ui,text(p,"key"),56.);ui.vertical(|ui|{ui.heading(text(p,"zh"));ui.label(format!("{} {} 代 · {} 组配对",if r["minimumCertain"]==true{"最少"}else{"此路线"},r["depth"],array(&r["steps"]).len()));});if icon_action(ui,"pin","刷新位置").clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}});
-            for step in array(&r["steps"]){panel(ui).show(ui,|ui|{ui.strong(format!("第 {} 步",step["depth"]));ui.horizontal_wrapped(|ui|{for (i,parent) in array(&step["parents"]).iter().enumerate(){if i>0{crate::design::icon(ui,"plus",16.);}if let Some(p)=parent["species"].as_u64().and_then(|i|d.species.get(i as usize)){d.portrait(ui,text(p,"key"),34.);ui.vertical(|ui|{if ui.link(format!("{} {}",text(p,"zh"),sex_label(text(parent,"sex")))).clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}if let Some(stock)=array(&store.world()["inventory"]["records"]).iter().find(|r|r["id"]==parent["stockId"]){ui.small(format!("仓库：{}",text(stock,"name")));}if parent["unknown"]==true{ui.small("性别待确认");}});}}crate::design::icon(ui,"arrow",16.);if let Some(p)=step["child"].as_u64().and_then(|i|d.species.get(i as usize)){d.portrait(ui,text(p,"key"),34.);if ui.link(text(p,"zh")).clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}}});});ui.add_space(7.);}
+                egui::Window::new("配种路线").title_bar(false).id(egui::Id::new("offspring-route")).open(&mut open).default_width(740.).vscroll(true).show(ui.ctx(),|ui|{if crate::design::dialog_header(ui,"branch","配种路线").clicked(){requested_close=true;}let p=&d.species[id];ui.horizontal(|ui|{if d.portrait_link(ui,text(p,"key"),56.){*nav=Some(format!("#paldex/{}",text(p,"key")));}ui.vertical(|ui|{if ui.link(text(p,"zh")).clicked(){*nav=Some(format!("#paldex/{}",text(p,"key")));}ui.label(format!("{} {} 代 · {} 组配对",if r["minimumCertain"]==true{"最少"}else{"此路线"},r["depth"],array(&r["steps"]).len()));});if icon_action(ui,"pin","刷新位置").clicked(){*nav=Some(format!("#spawns/{}",text(p,"key")));}});
+            for step in array(&r["steps"]){panel(ui).show(ui,|ui|{ui.strong(format!("第 {} 步",step["depth"]));ui.horizontal_wrapped(|ui|{for (i,parent) in array(&step["parents"]).iter().enumerate(){if i>0{crate::design::icon(ui,"plus",16.);}if let Some(p)=parent["species"].as_u64().and_then(|i|d.species.get(i as usize)){if d.portrait_link(ui,text(p,"key"),34.){*nav=Some(format!("#paldex/{}",text(p,"key")));}ui.vertical(|ui|{if ui.link(format!("{} {}",text(p,"zh"),sex_label(text(parent,"sex")))).clicked(){*nav=Some(format!("#paldex/{}",text(p,"key")));}if let Some(stock)=array(&store.world()["inventory"]["records"]).iter().find(|r|r["id"]==parent["stockId"]){ui.small(format!("仓库：{}",text(stock,"name")));}if parent["unknown"]==true{ui.small("性别待确认");}});}}crate::design::icon(ui,"arrow",16.);if let Some(p)=step["child"].as_u64().and_then(|i|d.species.get(i as usize)){if d.portrait_link(ui,text(p,"key"),34.){*nav=Some(format!("#paldex/{}",text(p,"key")));}if ui.link(text(p,"zh")).clicked(){*nav=Some(format!("#paldex/{}",text(p,"key")));}}});});ui.add_space(7.);}
             ui.small("子代用于后续配对时，请留下路线要求的性别。标注待确认的仓库个体需要先核对性别。");});
                 if requested_close {
                     open = false;
@@ -1947,7 +2000,7 @@ fn compact_lookup_pair(
             ""
         };
         let name = format!("{}{sex}", text(pal, "zh"));
-        if child
+        let _name = child
             .scope_builder(
                 egui::UiBuilder::new()
                     .max_rect(egui::Rect::from_min_size(
@@ -1957,18 +2010,23 @@ fn compact_lookup_pair(
                     .layout(egui::Layout::top_down(egui::Align::Min)),
                 |ui| {
                     ui.add(
-                        egui::Label::new(egui::RichText::new(&name).size(12.).strong())
-                            .truncate()
-                            .sense(egui::Sense::click()),
+                        egui::Label::new(egui::RichText::new(&name).size(12.).strong()).truncate(),
                     )
                 },
             )
-            .inner
-            .on_hover_text(&name)
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .clicked()
-        {
-            *nav = Some(format!("#spawns/{key}"));
+            .inner;
+        let link = child
+            .interact(
+                member_rect,
+                child.id().with((a, b, c, i)),
+                egui::Sense::click(),
+            )
+            .on_hover_text(format!("{name} · 查看资料与功能入口"))
+            .on_hover_cursor(egui::CursorIcon::PointingHand);
+        #[cfg(test)]
+        track_test_rect(ui, &link, &format!("lookup-pal:{i}"));
+        if link.clicked() {
+            *nav = Some(format!("#paldex/{key}"));
         }
         let number = ui.painter().text(
             egui::pos2(left + 31., rect.top() + 23.),
@@ -2273,7 +2331,9 @@ fn render_plan(
                         .as_u64()
                         .and_then(|i| d.species.get(i as usize))
                     {
-                        d.portrait(ui, text(p, "key"), 32.);
+                        if d.portrait_link(ui, text(p, "key"), 32.) {
+                            *nav = Some(format!("#paldex/{}", text(p, "key")));
+                        }
                         if ui
                             .link(format!(
                                 "{} {}",
@@ -2312,7 +2372,9 @@ fn render_plan(
                     .as_u64()
                     .and_then(|i| d.species.get(i as usize))
                 {
-                    d.portrait(ui, text(p, "key"), 36.);
+                    if d.portrait_link(ui, text(p, "key"), 36.) {
+                        *nav = Some(format!("#paldex/{}", text(p, "key")));
+                    }
                     if ui.link(text(p, "zh")).clicked() {
                         *nav = Some(format!("#paldex/{}", text(p, "key")));
                     }
@@ -2387,9 +2449,11 @@ fn render_plan(
                     .find(|r| r["id"] == founder["stockId"]);
                 panel(ui).show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
-                        d.portrait(ui, text(p, "key"), 36.);
+                        if d.portrait_link(ui, text(p, "key"), 36.) {
+                            *nav = Some(format!("#paldex/{}", text(p, "key")));
+                        }
                         if ui.link(text(p, "zh")).clicked() {
-                            *nav = Some(format!("#spawns/{}", text(p, "key")));
+                            *nav = Some(format!("#paldex/{}", text(p, "key")));
                         }
                         ui.label(source.map(|r| text(r, "name")).unwrap_or("仓库个体"));
                         ui.label(if !text(founder, "assumedSex").is_empty() {
@@ -2438,7 +2502,9 @@ fn render_log(ui: &mut egui::Ui, d: &Data, log: &Value, nav: &mut Option<String>
     for (i, event) in array(log).iter().enumerate() {
         panel(ui).show(ui, |ui| {
             ui.horizontal(|ui| {
-                d.portrait(ui, text(event, "speciesKey"), 40.);
+                if d.portrait_link(ui, text(event, "speciesKey"), 40.) {
+                    *nav = Some(format!("#paldex/{}", text(event, "speciesKey")));
+                }
                 ui.vertical(|ui| {
                     ui.strong(format!(
                         "{}. {} · {}",
@@ -2628,6 +2694,60 @@ mod progress_tests {
         }
         let data = Data::new(temp.0.clone(), egui::Context::default()).unwrap();
         (data, temp)
+    }
+    #[test]
+    fn pair_parent_and_child_identity_clicks_all_open_the_overview() {
+        let (mut d, _temp) = ui_fixture();
+        d.species.extend([
+            json!({"key":"PinkCat","zh":"捣蛋猫","dex":"002"}),
+            json!({"key":"Ganesha","zh":"壶小象","dex":"011"}),
+        ]);
+        let ctx = egui::Context::default();
+        let pair = json!([0, 1, 2]);
+        let render = |events: Vec<egui::Event>| {
+            let mut nav = None;
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        Vec2::new(600., 160.),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        compact_lookup_pair(ui, &d, &pair, 0, false, 500., &mut nav)
+                    });
+                },
+            );
+            nav
+        };
+        for (i, key) in ["SheepBall", "PinkCat", "Ganesha"].iter().enumerate() {
+            render(vec![]);
+            render(vec![]);
+            let rect = ctx
+                .data(|m| {
+                    m.get_temp::<egui::Rect>(egui::Id::new(format!("test-widget:lookup-pal:{i}")))
+                })
+                .unwrap();
+            // Both avatar and name belong to this same identity target.
+            for pos in [egui::pos2(rect.left()+14.,rect.center().y), egui::pos2(rect.left()+50.,rect.top()+8.)] {
+                let event = |pressed| {
+                    vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: Default::default(),
+                        },
+                    ]
+                };
+                render(event(true));
+                assert_eq!(render(event(false)), Some(format!("#paldex/{key}")));
+            }
+        }
     }
     #[test]
     fn pagination_keeps_all_records_accessible_after_filtering() {

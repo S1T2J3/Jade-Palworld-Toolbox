@@ -135,7 +135,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"工具箱先打开首页，地图随后持续在后台加载帕洛斯群岛和世界树底图，不再因鼠标移动、切换页面而停止。提前进入地图会先显示预览，再自动换成清晰底图；共用加载结果避免重复解码。物品图鉴新增效果与属性，按编号区分不同品质的攻击、防御、生命、耐久、附加效果、食物恢复与限时增益，以及技能果实跳转。保留配方、合成路径、商人、掉落和地图关联。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"点击配种、仓库、地图、工作和计算器中的帕鲁名称或头像，统一先打开完整宽度的帕鲁资料页。页首先选择地图与刷新位置、查配种伙伴、反查双亲、目标配种、属性值计算或捕捉概率。明确标注的功能按钮仍直接跳转，帕鲁选择器继续用于选择。配种查询返回时保留原物种和查伙伴/反查双亲模式；子代结果保留独立配种路线入口。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.

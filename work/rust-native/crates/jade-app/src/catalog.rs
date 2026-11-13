@@ -753,7 +753,7 @@ impl Catalog {
                             ui.horizontal_top(|ui| {
                                 ui.spacing_mut().item_spacing.x = 8.;
                                 for e in row {
-                                    if entry_card(ui, d, page, e, width, false).clicked() {
+                                    if entry_card(ui, d, page, e, width, false).0.clicked() {
                                         navigate = Some(e.route.clone());
                                     }
                                 }
@@ -800,6 +800,29 @@ impl Catalog {
                 });
             return navigate;
         }
+        // A species opens a full overview with its function choices at the top.
+        // The catalogue index keeps its dense grid and remembers its filters.
+        if page == "paldex" {
+            if let Some(e) = selected {
+                egui::ScrollArea::vertical()
+                    .id_salt(("pal-overview", &e.id))
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        if let Some(route) = crate::catalog_views::show(
+                            ui,
+                            d,
+                            page,
+                            e,
+                            route,
+                            surgery,
+                            &mut self.detail,
+                        ) {
+                            navigate = Some(route);
+                        }
+                    });
+                return navigate;
+            }
+        }
         let total = ui.available_width();
         let list_width = if selected.is_some() {
             (total * 0.51).max(260.).min(total - 300.)
@@ -838,7 +861,7 @@ impl Catalog {
                             for row in range {
                                 ui.horizontal_top(|ui| {
                                     for e in matches.iter().skip(row * cols).take(cols) {
-                                        let response = entry_card(
+                                        let (response, identity) = entry_card(
                                             ui,
                                             d,
                                             page,
@@ -846,7 +869,9 @@ impl Catalog {
                                             width,
                                             selected.is_some_and(|s| s.id == e.id),
                                         );
-                                        if response.clicked() {
+                                        if let Some(route) = identity {
+                                            navigate = Some(route);
+                                        } else if response.clicked() {
                                             navigate = Some(e.route.clone());
                                         }
                                     }
@@ -1432,7 +1457,8 @@ fn entry_card(
     e: &Entry,
     width: f32,
     selected: bool,
-) -> egui::Response {
+) -> (egui::Response, Option<String>) {
+    let mut identity = None;
     let p = crate::design::palette(ui.ctx());
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 66.), egui::Sense::click());
     ui.painter()
@@ -1460,7 +1486,27 @@ fn entry_card(
     if matches!(page, "details/passive" | "details/surgery") {
         crate::breeding_ui::passive_rank(&mut cell, d, e.value["rank"].as_i64().unwrap_or(0), 22.);
     } else if let Some(source) = crate::catalog_views::entry_image(d, page, e) {
-        cell.add(egui::Image::new(source).fit_to_exact_size(Vec2::splat(36.)));
+        let response = cell.add(
+            egui::Image::new(source)
+                .fit_to_exact_size(Vec2::splat(36.))
+                .sense(if page == "details/partner" {
+                    egui::Sense::click()
+                } else {
+                    egui::Sense::hover()
+                }),
+        );
+        if page == "details/partner" {
+            #[cfg(test)]
+            cell.ctx().data_mut(|m| {
+                m.insert_temp(egui::Id::new(("catalog-pal-avatar", &e.id)), response.rect);
+            });
+            if response
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .clicked()
+            {
+                identity = Some(format!("#paldex/{}", e.id));
+            }
+        }
     }
     cell.vertical(|ui| {
         let title = if page == "details/partner" {
@@ -1470,7 +1516,27 @@ fn entry_card(
         } else {
             e.name.clone()
         };
-        ui.add(egui::Label::new(RichText::new(title).size(14.).strong()).truncate());
+        let response = ui.add(
+            egui::Label::new(RichText::new(title).size(14.).strong())
+                .truncate()
+                .sense(if page == "details/partner" {
+                    egui::Sense::click()
+                } else {
+                    egui::Sense::hover()
+                }),
+        );
+        if page == "details/partner" {
+            #[cfg(test)]
+            ui.ctx().data_mut(|m| {
+                m.insert_temp(egui::Id::new(("catalog-pal-name", &e.id)), response.rect);
+            });
+            if response
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .clicked()
+            {
+                identity = Some(format!("#paldex/{}", e.id));
+            }
+        }
         if page == "paldex" {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 3.;
@@ -1489,13 +1555,16 @@ fn entry_card(
         };
         ui.add(egui::Label::new(RichText::new(summary).size(11.).color(p.muted)).truncate());
     });
-    response
-        .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text(format!(
-            "{}\n{}",
-            e.name,
-            crate::catalog_views::summary(page, &e.value)
-        ))
+    (
+        response
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text(format!(
+                "{}\n{}",
+                e.name,
+                crate::catalog_views::summary(page, &e.value)
+            )),
+        identity,
+    )
 }
 fn group_label(s: &str) -> &str {
     match s {

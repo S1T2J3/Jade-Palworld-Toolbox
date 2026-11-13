@@ -57,7 +57,14 @@ impl CardHarness {
                     // Match the actual multi-column row: Frame inherits this
                     // horizontal layout unless the card resets it explicitly.
                     ui.horizontal_top(|ui| {
-                        nav = skill_overview_card(ui, &self.d, page, e, 230., &mut self.surgery);
+                        if page == "details/partner" {
+                            let (response, identity) =
+                                entry_card(ui, &self.d, page, e, 230., false);
+                            nav = identity.or_else(|| response.clicked().then(|| e.route.clone()));
+                        } else {
+                            nav =
+                                skill_overview_card(ui, &self.d, page, e, 230., &mut self.surgery);
+                        }
                         ui.allocate_exact_size(egui::vec2(100., 20.), egui::Sense::hover());
                     });
                 });
@@ -109,6 +116,47 @@ impl CardHarness {
         }
         None
     }
+}
+
+#[test]
+fn partner_card_identity_opens_overview_while_skill_stays_direct() {
+    let mut h = CardHarness::new();
+    let e = h.c.pages["details/partner"]
+        .iter()
+        .find(|e| e.id == "Anubis")
+        .unwrap()
+        .clone();
+    for control in ["catalog-pal-avatar", "catalog-pal-name"] {
+        h.frame("details/partner", &e, vec![]);
+        h.frame("details/partner", &e, vec![]);
+        assert_eq!(
+            h.click("details/partner", &e, control),
+            Some("#paldex/Anubis".into())
+        );
+    }
+    h.frame("details/partner", &e, vec![]);
+    h.frame("details/partner", &e, vec![]);
+    // The skill line in the same card remains an explicit partner-skill entry.
+    let pos = egui::pos2(90., 61.);
+    let mut nav = None;
+    for pressed in [true, false] {
+        nav = h
+            .frame(
+                "details/partner",
+                &e,
+                vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: Default::default(),
+                    },
+                ],
+            )
+            .0;
+    }
+    assert_eq!(nav, Some(e.route));
 }
 
 #[test]

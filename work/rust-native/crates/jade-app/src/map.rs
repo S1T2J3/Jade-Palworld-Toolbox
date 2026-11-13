@@ -1218,11 +1218,36 @@ fn details(
     notes: &mut Value,
 ) -> Option<String> {
     let mut out = None;
+    let pal_key = text(&p.raw, "palKey");
     ui.horizontal_wrapped(|ui| {
         if !p.art.is_empty() {
-            data.image(ui, &p.art, Vec2::splat(32.));
+            let response = ui.add(
+                egui::Image::new(data.image_source(&p.art))
+                    .fit_to_exact_size(Vec2::splat(32.))
+                    .sense(if pal_key.is_empty() {
+                        Sense::hover()
+                    } else {
+                        Sense::click()
+                    }),
+            );
+            if !pal_key.is_empty()
+                && response
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .clicked()
+            {
+                out = Some(format!("#paldex/{}", encode(pal_key)));
+            }
         }
-        ui.label(egui::RichText::new(&p.name).size(17.).strong());
+        if pal_key.is_empty() {
+            ui.label(egui::RichText::new(&p.name).size(17.).strong());
+        } else if ui
+            .add(egui::Link::new(
+                egui::RichText::new(&p.name).size(17.).strong(),
+            ))
+            .clicked()
+        {
+            out = Some(format!("#paldex/{}", encode(pal_key)));
+        }
     });
     ui.label(format!("坐标 {:.0}，{:.0}", p.x, p.y));
     if !p.levels.is_empty() {
@@ -1889,13 +1914,20 @@ pub fn show_spawns(
                         .max_height((height * 0.39).clamp(155., 260.))
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                data.portrait(ui, &state.spawn_key, 64.);
+                                if data.portrait_link(ui, &state.spawn_key, 64.) {
+                                    out = Some(format!("#paldex/{}", encode(&state.spawn_key)));
+                                }
                                 ui.vertical(|ui| {
-                                    ui.label(
-                                        egui::RichText::new(data.pal_name(&state.spawn_key))
-                                            .size(21.)
-                                            .strong(),
-                                    );
+                                    if ui
+                                        .add(egui::Link::new(
+                                            egui::RichText::new(data.pal_name(&state.spawn_key))
+                                                .size(21.)
+                                                .strong(),
+                                        ))
+                                        .clicked()
+                                    {
+                                        out = Some(format!("#paldex/{}", encode(&state.spawn_key)));
+                                    }
                                     if let Some(p) = data.pal(&state.spawn_key) {
                                         ui.small(format!(
                                             "#{} · {}",

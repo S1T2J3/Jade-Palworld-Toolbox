@@ -2,6 +2,27 @@ use super::*;
 use crate::catalog::Catalog;
 
 #[test]
+fn pal_overview_offers_explicit_actions_for_the_same_species() {
+    let mut h = Harness::new();
+    let e = h.entry("paldex", "Anubis");
+    for route in [
+        "#spawns/Anubis",
+        "#lookup/Anubis",
+        "#lookup/parents/Anubis",
+        "#planner/Anubis",
+        "#details/stats/Anubis",
+        "#details/capture/Anubis",
+    ] {
+        let screen = h.warm("paldex", &e, &e.route);
+        assert!(screen.contains("选择功能") && screen.contains("工作适应性"));
+        assert_eq!(
+            h.click("paldex", &e, &e.route, route).0.as_deref(),
+            Some(route)
+        );
+    }
+}
+
+#[test]
 fn every_item_has_exact_id_effects_and_quality_specific_stats() {
     let mut h = Harness::new();
     let effects = &h.d.get("item-effects-data")["items"];
@@ -37,11 +58,17 @@ fn every_item_has_exact_id_effects_and_quality_specific_stats() {
     }
     for (id, target) in [
         ("SkillCard_AquaJet", "#details/active/move/AquaJet"),
-        ("PalPassiveSkillChange_Consumable_Vampire", "#details/surgery/trait/Vampire"),
+        (
+            "PalPassiveSkillChange_Consumable_Vampire",
+            "#details/surgery/trait/Vampire",
+        ),
     ] {
         let e = h.entry("items", id);
         h.warm("items", &e, &e.route);
-        assert_eq!(h.click("items", &e, &e.route, target).0.as_deref(), Some(target));
+        assert_eq!(
+            h.click("items", &e, &e.route, target).0.as_deref(),
+            Some(target)
+        );
     }
 }
 

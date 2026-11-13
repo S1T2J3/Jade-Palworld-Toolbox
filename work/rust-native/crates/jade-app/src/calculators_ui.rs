@@ -163,7 +163,10 @@ impl Calculators {
                     panel(ui).show(ui, |ui| {
                         ui.set_width(ui.available_width());
                         ui.horizontal_wrapped(|ui| {
-                            d.portrait(ui, text(&d.species[self.pal], "key"), 50.);
+                            let key = text(&d.species[self.pal], "key");
+                            if d.portrait_link(ui, key, 50.) {
+                                nav = Some(format!("#paldex/{key}"));
+                            }
                             pal_picker(ui, d, &mut self.pal, &mut self.query);
                             element_badges(ui, &d.species[self.pal]["types"]);
                             if ui.link("图鉴资料").clicked() {

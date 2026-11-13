@@ -26,17 +26,17 @@ pub(super) fn paldex(
             ui.weak("夜间也能工作");
         }
     });
-    ui.horizontal_wrapped(|ui| {
-        for (path, label) in [
-            ("spawns", "刷新位置"),
-            ("lookup", "配种组合"),
-            ("details/stats", "属性值计算"),
-            ("details/capture", "捕捉概率"),
-        ] {
-            if path != "lookup" || text(v, "reason").is_empty() {
-                action(ui, format!("#{path}/{}", e.id), label, nav);
+    section(ui, "选择功能", |ui| {
+        ui.horizontal_wrapped(|ui| {
+            action(ui, format!("#spawns/{}", e.id), "地图与刷新位置", nav);
+            if text(v, "reason").is_empty() {
+                action(ui, format!("#lookup/{}", e.id), "查配种伙伴", nav);
+                action(ui, format!("#lookup/parents/{}", e.id), "反查双亲", nav);
+                action(ui, format!("#planner/{}", e.id), "目标配种", nav);
             }
-        }
+            action(ui, format!("#details/stats/{}", e.id), "属性值计算", nav);
+            action(ui, format!("#details/capture/{}", e.id), "捕捉概率", nav);
+        });
     });
     let left = |ui: &mut egui::Ui, nav: &mut Option<String>| {
         section(ui, "基础属性", |ui| {
@@ -268,17 +268,23 @@ pub(super) fn partner(
     nav: &mut Option<String>,
 ) {
     let v = &e.value;
-    let mut title = e.clone();
-    title.name = text(v, "name").into();
     let p = d.species.iter().find(|p| p["key"] == e.id);
-    hero(
-        ui,
-        d,
-        &title,
-        "pal",
-        &p.map(|p| format!("#{} · {}", text(p, "dex"), text(p, "zh")))
-            .unwrap_or_default(),
-    );
+    ui.horizontal_top(|ui| {
+        if d.portrait_link(ui, &e.id, 76.) {
+            *nav = Some(format!("#paldex/{}", e.id));
+        }
+        ui.vertical(|ui| {
+            if let Some(p) = p {
+                route(
+                    ui,
+                    format!("#paldex/{}", e.id),
+                    format!("#{} · {}", text(p, "dex"), text(p, "zh")),
+                    nav,
+                );
+            }
+            ui.label(RichText::new(text(v, "name")).size(25.).strong());
+        });
+    });
     ui.horizontal_wrapped(|ui| {
         for t in array(&v["tags"]).iter().filter_map(Value::as_str) {
             ui.label(
