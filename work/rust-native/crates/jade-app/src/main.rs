@@ -12,6 +12,7 @@ mod game_art;
 mod instance;
 mod links;
 mod map;
+mod navigation;
 mod qa;
 mod search;
 mod search_rows;
@@ -114,9 +115,10 @@ fn page_for(route: &str) -> String {
         .unwrap_or("lookup")
         .into()
 }
-fn map_origin(history: &[String]) -> Option<(&str, &'static str)> {
+fn map_origin<'a>(
+    history: impl DoubleEndedIterator<Item = &'a str>,
+) -> Option<(&'a str, &'static str)> {
     let route = history
-        .iter()
         .rev()
         .find(|route| !matches!(page_for(route).as_str(), "map" | "spawns"))?;
     if !route.trim_start_matches('#').contains('/') {
@@ -128,7 +130,7 @@ fn map_origin(history: &[String]) -> Option<(&str, &'static str)> {
         .flat_map(|(_, _, tabs)| tabs.iter())
         .find(|(_, id)| *id == source)
         .map(|(label, _)| *label)?;
-    Some((route.as_str(), label))
+    Some((route, label))
 }
 fn now_ms() -> f64 {
     SystemTime::now()
@@ -296,8 +298,8 @@ struct App {
     map: map::MapState,
     spawns: map::MapState,
     route: String,
-    history: Vec<String>,
-    forward: Vec<String>,
+    history: navigation::History<ViewBookmark>,
+    ui_ctx: egui::Context,
     search_open: bool,
     search: String,
     search_kind: String,
@@ -320,6 +322,30 @@ struct App {
     probe: qa::Probe,
     chrome: chrome::WindowChrome,
     external: external::Directory,
+}
+#[derive(Clone)]
+struct ViewBookmark {
+    world_id: String,
+    view: ViewState,
+    scrolls: Vec<navigation::ScrollBookmark>,
+}
+#[derive(Clone)]
+enum ViewState {
+    Breeding(breeding_ui::BreedingViewState),
+    Catalog(catalog::CatalogViewState),
+    Calculators(calculators_ui::ViewState),
+    Map(map::ViewState),
+    Spawns(map::ViewState),
+    Elements(Option<String>),
+    Other,
+}
+#[derive(Clone, Copy)]
+enum HistoryRequest {
+    Dismissed,
+    Back,
+    Forward,
+    BackSteps(usize),
+    ForwardSteps(usize),
 }
 impl App {
     fn new(
@@ -358,7 +384,22 @@ impl App {
             std::env::current_exe().map_err(|e| e.to_string())?,
         );
         let store = store::Store::open(root);
-        Ok(Self {
+        Ok(Self::from_components(
+            cc.egui_ctx.clone(),
+            data,
+            store,
+            updates,
+            qa_output,
+        ))
+    }
+    fn from_components(
+        ctx: egui::Context,
+        data: Data,
+        store: store::Store,
+        updates: updates::UpdateState,
+        qa_output: Option<PathBuf>,
+    ) -> Self {
+        Self {
             data,
             store,
             catalog: catalog::Catalog::default(),
@@ -368,8 +409,8 @@ impl App {
             map: map::MapState::default(),
             spawns: map::MapState::default(),
             route: std::env::var("JADE_QA_ROUTE").unwrap_or("#lookup".into()),
-            history: vec![],
-            forward: vec![],
+            history: navigation::History::default(),
+            ui_ctx: ctx,
             search_open: false,
             search: String::new(),
             search_kind: String::new(),
@@ -392,31 +433,292 @@ impl App {
             probe: qa::Probe::default(),
             chrome: chrome::WindowChrome::default(),
             external: external::Directory::default(),
-        })
-    }
-    fn go(&mut self, route: String) {
-        if route == self.route {
-            return;
         }
-        self.history.push(self.navigation_snapshot());
-        self.forward.clear();
-        self.activate(route);
     }
-    fn navigation_snapshot(&self) -> String {
-        if page_for(&self.route) == "lookup" {
-            if let Some(p) = self.data.species.get(self.breeding.lookup_pal) {
-                return format!(
-                    "#lookup/{}{}",
-                    if self.breeding.reverse {
-                        "parents/"
-                    } else {
-                        ""
-                    },
-                    text(p, "key")
-                );
-            }
+    fn canonical_route(&self) -> String {
+        let page = page_for(&self.route);
+        let pal = match page.as_str() {
+            "lookup" => Some(self.breeding.lookup_pal),
+            "planner" => Some(self.breeding.pal),
+            "details/stats" | "details/capture" => Some(self.calculators.pal),
+            _ => None,
+        };
+        if let Some(p) = pal.and_then(|i| self.data.species.get(i)) {
+            return format!(
+                "#{page}/{}{}",
+                if page == "lookup" && self.breeding.reverse {
+                    "parents/"
+                } else {
+                    ""
+                },
+                text(p, "key")
+            );
+        }
+        if page == "spawns" {
+            return format!("#spawns/{}", self.spawns.current_species());
         }
         self.route.clone()
+    }
+    fn navigation_label(&self, route: &str) -> String {
+        let page = page_for(route);
+        let base = SECTIONS
+            .iter()
+            .flat_map(|(_, _, tabs)| *tabs)
+            .find(|(_, id)| *id == page)
+            .map(|(name, _)| *name)
+            .unwrap_or("工具箱");
+        let tail = route
+            .trim_start_matches('#')
+            .strip_prefix(&page)
+            .unwrap_or("")
+            .trim_start_matches('/');
+        let key = tail.strip_prefix("parents/").unwrap_or(tail);
+        let base = if page == "lookup" {
+            if tail.starts_with("parents/") {
+                "反查双亲"
+            } else {
+                "查配种伙伴"
+            }
+        } else {
+            base
+        };
+        if let Some(pal) = self.data.pal(key) {
+            return format!("{} · {base}", text(pal, "zh"));
+        }
+        if page == "map" {
+            return self
+                .map
+                .selected_title()
+                .map(|name| format!("{name} · {base}"))
+                .unwrap_or(base.into());
+        }
+        let id = key
+            .strip_prefix("move/")
+            .or_else(|| key.strip_prefix("trait/"))
+            .unwrap_or(key);
+        let id = id.strip_suffix("/shops").unwrap_or(id);
+        let id = if ["details/active", "details/passive"].contains(&page.as_str()) {
+            id.split_once('/')
+                .filter(|(pal, _)| self.data.pal(pal).is_some())
+                .map(|(_, id)| id)
+                .unwrap_or(id)
+        } else {
+            id
+        };
+        if let Some(entry) = self
+            .catalog
+            .pages
+            .get(&page)
+            .and_then(|rows| rows.iter().find(|e| e.id == id))
+        {
+            return format!("{} · {base}", entry.name);
+        }
+        base.into()
+    }
+    fn navigation_snapshot(&self) -> navigation::Entry<ViewBookmark> {
+        let route = self.canonical_route();
+        let page = page_for(&route);
+        let view = match page.as_str() {
+            "lookup" | "warehouse" | "planner" | "offspring" => {
+                ViewState::Breeding(self.breeding.navigation_state(&page))
+            }
+            "map" => ViewState::Map(self.map.navigation_state()),
+            "spawns" => ViewState::Spawns(self.spawns.navigation_state()),
+            "details/stats" | "details/capture" | "work/efficiency" | "work/relic"
+            | "work/suitability" => {
+                ViewState::Calculators(self.calculators.navigation_state(&page))
+            }
+            "guide/elements" => ViewState::Elements(
+                self.ui_ctx
+                    .data(|m| m.get_temp::<String>(egui::Id::new("element-guide-selection"))),
+            ),
+            "settings/skins" | "settings/updates" => ViewState::Other,
+            _ => ViewState::Catalog(self.catalog.navigation_state(&page)),
+        };
+        navigation::Entry {
+            label: self.navigation_label(&route),
+            route,
+            state: ViewBookmark {
+                world_id: text(self.store.world(), "id").into(),
+                view,
+                scrolls: navigation::capture_scrolls(&self.ui_ctx),
+            },
+        }
+    }
+    fn go(&mut self, route: String) {
+        let target = decode_route(&route);
+        let current = self.navigation_snapshot();
+        self.go_from(target, current);
+    }
+    fn go_from(&mut self, target: String, current: navigation::Entry<ViewBookmark>) {
+        let page = page_for(&current.route);
+        let same_tool = target == format!("#{page}")
+            && [
+                "lookup",
+                "planner",
+                "details/stats",
+                "details/capture",
+                "work/efficiency",
+                "work/relic",
+                "work/suitability",
+                "work/ranch",
+                "map",
+                "spawns",
+            ]
+            .contains(&page.as_str());
+        if same_tool || !self.history.record(current, &target) {
+            return;
+        }
+        self.activate(target);
+    }
+    fn restore_entry(&mut self, entry: navigation::Entry<ViewBookmark>) {
+        self.route = entry.route;
+        self.search_open = false;
+        let same_world = entry.state.world_id == text(self.store.world(), "id");
+        let world_scoped = matches!(
+            &entry.state.view,
+            ViewState::Breeding(_) | ViewState::Map(_) | ViewState::Spawns(_)
+        ) || page_for(&self.route) == "work/efficiency";
+        if same_world || !world_scoped {
+            match &entry.state.view {
+                ViewState::Breeding(view) => self.breeding.restore_navigation(view, &self.route),
+                ViewState::Map(view) => {
+                    self.map.set_world_id(text(self.store.world(), "id"));
+                    self.map.restore_navigation(view, &self.route);
+                }
+                ViewState::Spawns(view) => {
+                    self.spawns.set_world_id(text(self.store.world(), "id"));
+                    self.spawns.restore_navigation(view, &self.route);
+                }
+                ViewState::Calculators(view) => {
+                    self.calculators.restore_navigation(view, &self.route)
+                }
+                ViewState::Catalog(view) => self.catalog.restore_navigation(view, &self.route),
+                ViewState::Elements(value) => self.ui_ctx.data_mut(|m| {
+                    if let Some(value) = value {
+                        m.insert_temp(egui::Id::new("element-guide-selection"), value.clone());
+                    }
+                }),
+                ViewState::Other => {}
+            }
+            navigation::restore_scrolls(&self.ui_ctx, &entry.state.scrolls);
+        } else {
+            self.activate(self.route.clone());
+        }
+        self.ui_ctx.memory_mut(|m| {
+            if let Some(id) = m.focused() {
+                m.surrender_focus(id);
+            }
+        });
+        self.ui_ctx.request_repaint();
+    }
+    fn has_overlay(&self) -> bool {
+        let page = page_for(&self.route);
+        egui::Popup::is_any_open(&self.ui_ctx)
+            || self.search_open
+            || self.about
+            || self.worlds.open
+            || self.updates.has_overlay()
+            || (["lookup", "warehouse", "planner", "offspring"].contains(&page.as_str())
+                && self.breeding.has_overlay_for(&page))
+            || ([
+                "details/stats",
+                "details/capture",
+                "work/efficiency",
+                "work/relic",
+            ]
+            .contains(&page.as_str())
+                && self.calculators.picker)
+            || (page == "map" && self.map.has_overlay())
+            || (page == "spawns" && self.spawns.has_overlay())
+    }
+    fn dismiss_overlay(&mut self) -> bool {
+        if egui::Popup::is_any_open(&self.ui_ctx) {
+            egui::Popup::close_all(&self.ui_ctx);
+            return true;
+        }
+        if self.worlds.dismiss_overlay() {
+            return true;
+        }
+        if self.updates.dismiss_overlay() {
+            return true;
+        }
+        if self.about {
+            self.about = false;
+            return true;
+        }
+        if self.search_open {
+            self.search_open = false;
+            return true;
+        }
+        let page = page_for(&self.route);
+        if ["lookup", "warehouse", "planner", "offspring"].contains(&page.as_str())
+            && self.breeding.dismiss_overlay_for(&page)
+        {
+            return true;
+        }
+        if [
+            "details/stats",
+            "details/capture",
+            "work/efficiency",
+            "work/relic",
+        ]
+        .contains(&page.as_str())
+            && self.calculators.picker
+        {
+            self.calculators.picker = false;
+            return true;
+        }
+        if page == "map" {
+            return self.map.dismiss_overlay();
+        }
+        if page == "spawns" {
+            return self.spawns.dismiss_overlay();
+        }
+        false
+    }
+    fn back(&mut self) {
+        if self.dismiss_overlay() {
+            self.ui_ctx.request_repaint();
+            return;
+        }
+        self.travel_back(1);
+    }
+    fn travel_back(&mut self, steps: usize) {
+        if !self.history_travel_allowed() {
+            return;
+        }
+        let current = self.navigation_snapshot();
+        if let Some(entry) = self.history.back_steps(current, steps) {
+            self.restore_entry(entry);
+        }
+    }
+    fn next(&mut self) {
+        if self.dismiss_overlay() {
+            self.ui_ctx.request_repaint();
+            return;
+        }
+        self.travel_forward(1);
+    }
+    fn travel_forward(&mut self, steps: usize) {
+        if !self.history_travel_allowed() {
+            return;
+        }
+        let current = self.navigation_snapshot();
+        if let Some(entry) = self.history.forward_steps(current, steps) {
+            self.restore_entry(entry);
+        }
+    }
+    fn history_travel_allowed(&mut self) -> bool {
+        if self.has_overlay() {
+            self.dismiss_overlay();
+            if self.has_overlay() {
+                self.breeding.notice = "已有暂存草稿，请先保存或关闭当前编辑窗口后再返回。".into();
+                self.ui_ctx.request_repaint();
+                return false;
+            }
+        }
+        true
     }
     fn activate(&mut self, route: String) {
         self.route = decode_route(&route);
@@ -444,18 +746,6 @@ impl App {
             if page == "details/stats" || page == "details/capture" {
                 self.calculators.activate_pal(&page, i);
             }
-        }
-    }
-    fn back(&mut self) {
-        if let Some(r) = self.history.pop() {
-            self.forward.push(self.navigation_snapshot());
-            self.activate(r);
-        }
-    }
-    fn next(&mut self) {
-        if let Some(r) = self.forward.pop() {
-            self.history.push(self.navigation_snapshot());
-            self.activate(r);
         }
     }
     fn new_window(&self) {
@@ -714,6 +1004,8 @@ impl eframe::App for App {
             .seed_local_notices(self.data.get("announcements"));
         self.data.preload(ctx);
         self.worlds.tick(&mut self.store);
+        self.map.set_world_id(text(self.store.world(), "id"));
+        self.spawns.set_world_id(text(self.store.world(), "id"));
         if self.frames == 1 && std::env::var_os("JADE_QA_WORLDS").is_some() {
             self.worlds.open = true;
         }
@@ -735,20 +1027,25 @@ impl eframe::App for App {
             self.last_tables = self.data.tables.len();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::CTRL, egui::Key::K)) {
-            self.search_open = true;
-            self.search_focus = true;
+            if !self.worlds.open && !self.updates.has_overlay() {
+                self.search_open = true;
+                self.search_focus = true;
+            }
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowLeft)) {
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowLeft))
+            || ctx.input(|i| i.pointer.button_clicked(egui::PointerButton::Extra1))
+        {
             self.back();
-        }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowRight)) {
+        } else if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowRight))
+            || ctx.input(|i| i.pointer.button_clicked(egui::PointerButton::Extra2))
+        {
             self.next();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::CTRL, egui::Key::N)) {
             self.new_window();
         }
-        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-            self.search_open = false;
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            self.dismiss_overlay();
         }
         let page = page_for(&self.route);
         let section = SECTIONS
@@ -756,6 +1053,8 @@ impl eframe::App for App {
             .position(|(_, _, tabs)| tabs.iter().any(|(_, p)| *p == page))
             .unwrap_or(0);
         let mut nav = None;
+        let mut history_request = None;
+        let mut departure_map = None;
         let palette = design::palette(ctx);
         egui::TopBottomPanel::top("titlebar")
             .exact_height(35.)
@@ -971,19 +1270,107 @@ impl eframe::App for App {
                     );
                 }
                 ui.horizontal_centered(|ui| {
-                    if ui
-                        .add_enabled_ui(!self.history.is_empty(), |ui| {
-                            design::action(ui, "left", "返回")
+                    let current = self.canonical_route();
+                    let overlay = self.has_overlay();
+                    let back_hint = if overlay {
+                        "关闭当前窗口或选择框".into()
+                    } else {
+                        self.history
+                            .peek_back(&current)
+                            .map(|e| format!("返回：{}", e.label))
+                            .unwrap_or("已是最初页面".into())
+                    };
+                    let back = ui
+                        .add_enabled_ui(
+                            overlay || self.history.peek_back(&current).is_some(),
+                            |ui| design::action(ui, "left", "返回"),
+                        )
+                        .inner
+                        .on_hover_text(format!("{back_hint}\nAlt+← / 鼠标后退键 · 右键查看历史"));
+                    if back.clicked() {
+                        history_request = Some(if overlay {
+                            self.dismiss_overlay();
+                            HistoryRequest::Dismissed
+                        } else {
+                            HistoryRequest::Back
+                        });
+                    }
+                    back.context_menu(|ui| {
+                        ui.strong("返回到");
+                        for (index, entry) in self
+                            .history
+                            .back_targets(&current, 12)
+                            .into_iter()
+                            .enumerate()
+                        {
+                            if ui.button(&entry.label).clicked() {
+                                history_request = Some(HistoryRequest::BackSteps(index + 1));
+                                ui.close();
+                            }
+                        }
+                    });
+                    let forward_hint = self
+                        .history
+                        .peek_forward(&current)
+                        .map(|e| format!("前进：{}", e.label))
+                        .unwrap_or("没有可前进的页面".into());
+                    let forward = ui
+                        .add_enabled_ui(self.history.peek_forward(&current).is_some(), |ui| {
+                            design::icon_button(ui, "right", "前进")
                         })
                         .inner
-                        .clicked()
-                    {
-                        self.back();
+                        .on_hover_text(format!(
+                            "{forward_hint}\nAlt+→ / 鼠标前进键 · 右键查看历史"
+                        ));
+                    if forward.clicked() {
+                        history_request = Some(if overlay {
+                            self.dismiss_overlay();
+                            HistoryRequest::Dismissed
+                        } else {
+                            HistoryRequest::Forward
+                        });
                     }
-                    if !self.forward.is_empty()
-                        && design::icon_button(ui, "right", "前进 · Alt+→").clicked()
+                    forward.context_menu(|ui| {
+                        ui.strong("前进到");
+                        for (index, entry) in self
+                            .history
+                            .forward_targets(&current, 12)
+                            .into_iter()
+                            .enumerate()
+                        {
+                            if ui.button(&entry.label).clicked() {
+                                history_request = Some(HistoryRequest::ForwardSteps(index + 1));
+                                ui.close();
+                            }
+                        }
+                    });
+                    if self
+                        .breeding
+                        .has_suspended_edit_for(text(self.store.world(), "id"))
+                        && design::small_action(ui, "edit", "继续编辑").clicked()
                     {
-                        self.next();
+                        if self
+                            .breeding
+                            .resume_edit_for(text(self.store.world(), "id"))
+                            && !["lookup", "warehouse", "planner", "offspring"]
+                                .contains(&page.as_str())
+                        {
+                            nav = Some("#warehouse".into());
+                        }
+                    }
+                    if (page == "map" || page == "spawns")
+                        && (if page == "map" {
+                            self.map.has_suspended_editor()
+                        } else {
+                            self.spawns.has_suspended_editor()
+                        })
+                        && design::small_action(ui, "edit", "继续编辑点位").clicked()
+                    {
+                        if page == "map" {
+                            self.map.resume_editor();
+                        } else {
+                            self.spawns.resume_editor();
+                        }
                     }
                     let unread = self.updates.unread_count(&self.store.state);
                     if design::announcement_button(ui, unread).clicked() {
@@ -1025,6 +1412,7 @@ impl eframe::App for App {
                         .data_mut(|m| m.insert_temp(egui::Id::new("last-tabs-page"), page.clone()));
                 });
             });
+        navigation::begin_scroll_frame(ctx);
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
@@ -1039,7 +1427,11 @@ impl eframe::App for App {
                     .map(|(name, _)| *name)
                     .unwrap_or("工具箱");
                 let origin = if page == "map" || page == "spawns" {
-                    map_origin(&self.history)
+                    map_origin(
+                        self.history
+                            .back_entries()
+                            .map(|entry| entry.route.as_str()),
+                    )
                 } else {
                     None
                 };
@@ -1074,6 +1466,16 @@ impl eframe::App for App {
                             .planner(ui, &self.data, &mut self.store, page == "offspring")
                     }
                     "map" | "spawns" => {
+                        // Freeze only an input frame that can leave this view. Panning,
+                        // hovering and idle frames do not copy even the small bookmark.
+                        if ui.input(|i| {
+                            i.pointer.any_click()
+                                || i.events
+                                    .iter()
+                                    .any(|e| matches!(e, egui::Event::Key { pressed: true, .. }))
+                        }) {
+                            departure_map = Some(self.navigation_snapshot());
+                        }
                         self.map.set_world_id(text(self.store.world(), "id"));
                         self.spawns.set_world_id(text(self.store.world(), "id"));
                         let notes = &self.store.world()["mapNotes"];
@@ -1145,8 +1547,21 @@ impl eframe::App for App {
                 self.about = false;
             }
         }
-        if let Some(route) = nav {
-            self.go(route);
+        if let Some(request) = history_request {
+            match request {
+                HistoryRequest::Dismissed => {}
+                HistoryRequest::Back => self.back(),
+                HistoryRequest::Forward => self.next(),
+                HistoryRequest::BackSteps(n) => self.travel_back(n),
+                HistoryRequest::ForwardSteps(n) => self.travel_forward(n),
+            }
+        } else if let Some(route) = nav {
+            if let Some(mut origin) = departure_map {
+                origin.state.scrolls = navigation::capture_scrolls(ctx);
+                self.go_from(decode_route(&route), origin);
+            } else {
+                self.go(route);
+            }
         }
         if self.last_save.elapsed() > Duration::from_secs(1) {
             self.store.flush();
@@ -1169,6 +1584,19 @@ impl eframe::App for App {
             }
         }
         let probe_route = self.route.clone();
+        if self.probe.enabled() {
+            let scrolls: Vec<_> = navigation::capture_scrolls(ctx)
+                .into_iter()
+                .map(|s| json!({"id":format!("{:?}",s.id),"x":s.offset.x,"y":s.offset.y}))
+                .collect();
+            let value = json!({"canonicalRoute":self.canonical_route(),"back":self.history.back_entries().map(|e|e.route.clone()).collect::<Vec<_>>(),
+                "forward":self.history.forward_targets(&self.canonical_route(),64).iter().map(|e|e.route.clone()).collect::<Vec<_>>(),
+                "scrolls":scrolls,"searchOpen":self.search_open,"worldsOpen":self.worlds.open,"aboutOpen":self.about,
+                "editorOpen":self.breeding.has_edit_draft(),"suspendedEditor":self.breeding.has_suspended_edit_for(text(self.store.world(),"id")),
+                "calculator":{"pal":text(&self.data.species[self.calculators.pal],"key"),"level":self.calculators.level,"traits":self.calculators.traits},
+                "mapState":format!("{:?}",self.map.navigation_state()),"spawnState":format!("{:?}",self.spawns.navigation_state())});
+            ctx.data_mut(|m| m.insert_temp(egui::Id::new("jade-navigation-probe"), value));
+        }
         if self
             .probe
             .tick(ctx, &mut self.route, &self.data, &self.store)
@@ -1266,6 +1694,154 @@ fn main() -> eframe::Result {
 }
 #[cfg(test)]
 mod navigation_tests {
+    fn app() -> (App, store::tests::Temp) {
+        let temp = store::tests::Temp::new();
+        let ctx = egui::Context::default();
+        let data = Data::new(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data"),
+            ctx.clone(),
+        )
+        .unwrap();
+        let updates = updates::UpdateState::new(temp.0.clone(), std::env::current_exe().unwrap());
+        let store = store::Store::open(temp.0.clone());
+        (App::from_components(ctx, data, store, updates, None), temp)
+    }
+    #[test]
+    fn back_tracks_the_species_edited_inside_a_calculator_and_restores_inputs() {
+        let (mut app, _temp) = app();
+        app.activate("#details/stats/SheepBall".into());
+        app.calculators.pal = app
+            .data
+            .species
+            .iter()
+            .position(|p| text(p, "key") == "Anubis")
+            .unwrap();
+        app.calculators.level = 48;
+        app.calculators.traits = vec!["Legend".into()];
+        app.go("#paldex/Anubis".into());
+        app.calculators.level = 2;
+        app.back();
+        assert_eq!(app.route, "#details/stats/Anubis");
+        assert_eq!(app.calculators.level, 48);
+        assert_eq!(app.data.species[app.calculators.pal]["key"], "Anubis");
+        assert_eq!(app.calculators.traits, vec!["Legend".to_owned()]);
+        app.next();
+        assert_eq!(app.route, "#paldex/Anubis");
+    }
+    #[test]
+    fn back_ignores_equivalent_tool_routes_and_retains_forward_history() {
+        let (mut app, _temp) = app();
+        app.activate("#lookup/SheepBall".into());
+        app.breeding.reverse = true;
+        app.go("#paldex/SheepBall".into());
+        app.back();
+        assert_eq!(app.route, "#lookup/parents/SheepBall");
+        let n = app.history.back_entries().len();
+        app.go("#lookup".into());
+        assert_eq!(app.history.back_entries().len(), n);
+        assert!(app.history.peek_forward(&app.canonical_route()).is_some());
+        app.next();
+        assert_eq!(app.route, "#paldex/SheepBall");
+    }
+    #[test]
+    fn back_closes_the_foreground_window_without_advancing_history() {
+        let (mut app, _temp) = app();
+        app.go("#paldex/SheepBall".into());
+        app.search_open = true;
+        app.worlds.open = true;
+        app.back();
+        assert!(!app.worlds.open && app.search_open);
+        assert_eq!(app.route, "#paldex/SheepBall");
+        app.back();
+        assert!(!app.search_open);
+        assert_eq!(app.route, "#paldex/SheepBall");
+        app.back();
+        assert!(app.route.starts_with("#lookup/"));
+    }
+    #[test]
+    fn back_and_forward_do_not_leave_a_second_unsaved_editor() {
+        let (mut app, _temp) = app();
+        let started = Instant::now();
+        while app.data.pending > 0 && started.elapsed() < Duration::from_secs(10) {
+            std::thread::sleep(Duration::from_millis(10));
+            app.data.poll();
+        }
+        assert_eq!(app.data.pending, 0);
+        assert!(app.data.errors.is_empty());
+        app.activate("#map/coords/worldtree/0/800".into());
+        app.map.set_world_id(text(app.store.world(), "id"));
+        app.map.route = app.route.clone();
+        let ctx = app.ui_ctx.clone();
+        let mut notes = json!({"completed":[],"custom":[]});
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    Vec2::new(1200., 900.),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    map::show(ui, &app.data, &mut app.map, &mut notes);
+                });
+            },
+        );
+        let camera = format!("{:?}", app.map.navigation_state());
+        app.go("#warehouse".into());
+        app.go("#paldex/Anubis".into());
+        app.back();
+        app.breeding.poll(&app.store);
+        let first = json!({"id":"draft-first","speciesKey":"SheepBall","name":"第一份未保存草稿"});
+        let second = json!({"id":"draft-second","speciesKey":"Anubis","name":"第二份未保存草稿"});
+        app.breeding.edit = Some(first.clone());
+        app.back(); // The first editor is safely suspended, with no navigation.
+        assert_eq!(app.route, "#warehouse");
+        app.breeding.edit = Some(second.clone());
+        let world = app.store.world().clone();
+        let back: Vec<_> = app
+            .history
+            .back_entries()
+            .map(|e| e.route.clone())
+            .collect();
+        let forward: Vec<_> = app
+            .history
+            .forward_targets(&app.canonical_route(), 64)
+            .iter()
+            .map(|e| e.route.clone())
+            .collect();
+        for action in 0..4 {
+            match action {
+                0 => app.back(),
+                1 => app.next(),
+                2 => app.travel_back(1),
+                _ => app.travel_forward(1),
+            }
+            assert_eq!(app.route, "#warehouse");
+            assert_eq!(app.breeding.edit, Some(second.clone()));
+            assert_eq!(
+                app.history
+                    .back_entries()
+                    .map(|e| e.route.clone())
+                    .collect::<Vec<_>>(),
+                back
+            );
+            assert_eq!(
+                app.history
+                    .forward_targets(&app.canonical_route(), 64)
+                    .iter()
+                    .map(|e| e.route.clone())
+                    .collect::<Vec<_>>(),
+                forward
+            );
+            assert_eq!(format!("{:?}", app.map.navigation_state()), camera);
+            assert_eq!(app.store.world(), &world);
+        }
+        app.breeding.edit = None; // Explicitly close the second editor.
+        assert!(app.breeding.resume_edit_for(text(app.store.world(), "id")));
+        assert_eq!(app.breeding.edit, Some(first));
+    }
+
     use super::*;
     #[test]
     fn map_source_survives_map_navigation_without_reusing_stale_item_history() {
@@ -1276,14 +1852,21 @@ mod navigation_tests {
             "#map/point/example",
             "#spawns/SheepBall",
         ]);
-        assert_eq!(map_origin(&from_item), Some(("#items/Wool", "物品查询")));
         assert_eq!(
-            map_origin(&routes(&["#items/Wool", "#lookup", "#map"])),
+            map_origin(from_item.iter().map(String::as_str)),
+            Some(("#items/Wool", "物品查询"))
+        );
+        assert_eq!(
+            map_origin(
+                routes(&["#items/Wool", "#lookup", "#map"])
+                    .iter()
+                    .map(String::as_str)
+            ),
             None
         );
         let from_journal = routes(&["#guide/journals/one", "#map"]);
         assert_eq!(
-            map_origin(&from_journal),
+            map_origin(from_journal.iter().map(String::as_str)),
             Some(("#guide/journals/one", "探索手记"))
         );
     }

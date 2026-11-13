@@ -1,0 +1,244 @@
+{
+  "version": "2.0.0-beta.10",
+  "binarySha256": "0ef92628f8ad39f77a46b0ea5b3cf7210af2ae0f24c4dd78821415e032662d86",
+  "checks": {
+    "app": 134,
+    "coreGoldenSuite": 1,
+    "goldenCases": 1942,
+    "total": 135,
+    "configuration": "release"
+  },
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "nativeUi": {
+    "result": "passed",
+    "executableSha256": "0ef92628f8ad39f77a46b0ea5b3cf7210af2ae0f24c4dd78821415e032662d86",
+    "assertions": {
+      "allRunsMatchFinalExecutable": true,
+      "allReportsStartedAfterFinalBuild": true,
+      "allReportsHaveNoErrors": true,
+      "allCasesPreserve467Records": true,
+      "allInventoryHashesUnchanged": true,
+      "allMapNotesHashesUnchanged": true
+    },
+    "cases": {
+      "calculator": {
+        "result": "passed",
+        "assertion": "level 48 survives Back, Forward and history-menu navigation",
+        "level": 48,
+        "routes": [
+          "#details/stats/SheepBall",
+          "#details/stats/SheepBall",
+          "#details/stats/SheepBall",
+          "#details/stats/SheepBall",
+          "#paldex/SheepBall",
+          "#details/stats/SheepBall",
+          "#paldex/SheepBall",
+          "#paldex/SheepBall",
+          "#details/stats/SheepBall"
+        ]
+      },
+      "scroll": {
+        "result": "passed",
+        "assertion": "independent historical offsets restore exactly",
+        "route": "#paldex/Anubis",
+        "offsets": [
+          {
+            "action": 1,
+            "y": 539.3125
+          },
+          {
+            "action": 6,
+            "y": 239.3125457763672
+          },
+          {
+            "action": 8,
+            "y": 539.3125
+          },
+          {
+            "action": 10,
+            "y": 539.3125
+          }
+        ]
+      },
+      "map": {
+        "result": "passed",
+        "assertion": "distinct map snapshots restore exactly",
+        "restoredPairs": [
+          [
+            1,
+            7
+          ],
+          [
+            5,
+            9
+          ]
+        ],
+        "routes": [
+          "#map/point/palpagos-merchant-1",
+          "#map/point/palpagos-merchant-2",
+          "#map/point/palpagos-merchant-1",
+          "#map/point/palpagos-merchant-2"
+        ]
+      },
+      "draft": {
+        "result": "passed",
+        "assertion": "Back suspends the uncommitted draft and Continue Editing resumes it",
+        "route": "#warehouse",
+        "suspendedAfterAction5": true,
+        "editorOpenAfterAction6": true
+      },
+      "twoDrafts": {
+        "result": "passed",
+        "assertion": "mouse Back, AltLeft, AltRight and history-menu selection preserve both drafts and history",
+        "route": "#warehouse",
+        "suspendedAfterAction7": true,
+        "bothDraftsRetainedFromAction8Through16": true,
+        "historyUnchanged": true
+      },
+      "popups": {
+        "result": "passed",
+        "assertion": "overlay close actions preserve route/history; only the subsequent Back navigates",
+        "routeBeforeFinalBack": "#lookup/Anubis",
+        "routeAfterFinalBack": "#paldex/Anubis",
+        "worldsBlocksSearch": true
+      },
+      "small": {
+        "result": "passed",
+        "assertion": "both expected scenes fit the recorded 960x620 logical window",
+        "logicalSize": {
+          "width": 960,
+          "height": 620
+        },
+        "routes": [
+          "#lookup/Anubis",
+          "#paldex/Anubis"
+        ]
+      },
+      "base": {
+        "result": "passed",
+        "assertion": "final executable, unchanged inventory/map notes and no native errors"
+      }
+    },
+    "manualScreenshotChecksCompleted": [
+      "resumed draft name remains the typed synthetic draft name",
+      "dropdown is closed after toolbar Back and Backspace removes only one character",
+      "small-window Back and Forward controls remain visible without tab overlap",
+      "second active draft and first suspended draft remain separate after blocked navigation"
+    ]
+  },
+  "manualScreenshotChecks": {
+    "result": "passed",
+    "executableSha256": "0ef92628f8ad39f77a46b0ea5b3cf7210af2ae0f24c4dd78821415e032662d86",
+    "method": "Independent direct inspection of final-run screenshots; metadata assertions verified separately.",
+    "checks": {
+      "draftResumedName": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "action": 6,
+        "text": "返回键草稿",
+        "assertion": "resumed editor name matches the typed draft name"
+      },
+      "dropdownClose": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "actions": [
+          2,
+          3
+        ],
+        "route": "#lookup/Anubis",
+        "assertion": "element dropdown is open before toolbar Back and closed afterward on the same page"
+      },
+      "backspaceEdit": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "action": 6,
+        "text": "测",
+        "route": "#lookup/Anubis",
+        "assertion": "Backspace removes one character while the lookup page stays visible"
+      },
+      "smallLookupToolbar": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "logicalSize": [
+          960,
+          620
+        ],
+        "route": "#lookup/Anubis",
+        "assertion": "Back and Forward buttons remain fully visible, aligned and separate from tabs"
+      },
+      "smallPaldexToolbar": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "logicalSize": [
+          960,
+          620
+        ],
+        "route": "#paldex/Anubis",
+        "assertion": "Back and Forward buttons remain fully visible, aligned and separate from tabs"
+      },
+      "secondDraftGuard": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "action": 16,
+        "text": "第二份草稿",
+        "route": "#warehouse",
+        "assertion": "second editor remains visible with its name, warehouse tab selected and Continue Editing for the suspended draft still shown"
+      }
+    },
+    "unresolvedFindings": []
+  },
+  "delta": {
+    "verified": true,
+    "changedFiles": [
+      "Jade-Palworld-Rust.exe",
+      "README.md",
+      "data/announcements.json"
+    ],
+    "reusedFiles": 2121,
+    "deltaBytes": 8066571,
+    "fullBytes": 17896312,
+    "gameDataUnchanged": true
+  },
+  "package": {
+    "passed": true,
+    "version": "2.0.0-beta.10",
+    "fileCount": 2125,
+    "installerExecuted": false,
+    "registryAndShortcutsModified": false,
+    "installerSha256": "3b1d15e00b2dc98bfc5f5e3e9017400a69575da91dc91da7ab56c3a698231647",
+    "archiveSha256": "9c5a71f28e210dd12578ba537be45483d15ddda279c50e188781e6705a36aab3"
+  },
+  "updater": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    }
+  ],
+  "scope": {
+    "historyLimit": 64,
+    "persistentWorldInventoryAndMapNotesNotRestored": true,
+    "unchangedGameTablesAndImages": true,
+    "noActualGameSaveRead": true
+  },
+  "debugTimingNote": "An existing 5-second map decode deadline was hit in an unoptimized debug suite. The competing test setup was isolated without changing production map code or time limits; isolated debug and final complete release suites passed."
+}

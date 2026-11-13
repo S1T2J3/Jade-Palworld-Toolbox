@@ -58,6 +58,8 @@ pub struct MapState {
     picking: bool,
     pick_draft: Option<Editor>,
     editor: Option<Editor>,
+    suspended_editor: Option<Editor>,
+    suspended_editor_region: String,
     delete_confirm: bool,
     x: f64,
     y: f64,
@@ -71,6 +73,27 @@ pub struct MapState {
     viewport: Rect,
     detail_height: f32,
     search_cache: RefCell<MapSearchCache>,
+}
+/// Navigation state contains camera and filters, never map records or notes.
+#[derive(Clone, Debug)]
+pub struct ViewState {
+    world_id: String,
+    region: String,
+    categories: HashSet<String>,
+    search: String,
+    completion: u8,
+    center: Vec2,
+    zoom: f32,
+    selected: String,
+    coordinate: Option<Vec2>,
+    x: f64,
+    y: f64,
+    spawn_key: String,
+    spawn_search: String,
+    spawn_time: u8,
+    spawn_kind: u8,
+    categories_expanded: bool,
+    detail_height: f32,
 }
 impl Default for MapState {
     fn default() -> Self {
@@ -94,6 +117,8 @@ impl Default for MapState {
             picking: false,
             pick_draft: None,
             editor: None,
+            suspended_editor: None,
+            suspended_editor_region: String::new(),
             delete_confirm: false,
             x: 0.,
             y: 0.,
@@ -111,11 +136,123 @@ impl Default for MapState {
     }
 }
 impl MapState {
+    pub fn current_species(&self) -> &str {
+        &self.spawn_key
+    }
+    pub fn selected_title(&self) -> Option<&str> {
+        self.merged_points
+            .iter()
+            .chain(self.spawn_points.iter())
+            .chain(self.points.iter())
+            .find(|point| point.id == self.selected)
+            .map(|point| point.name.as_str())
+    }
+    pub fn has_suspended_editor(&self) -> bool {
+        self.suspended_editor.is_some()
+    }
+    pub fn has_overlay(&self) -> bool {
+        !self.cluster.is_empty() || self.picking || self.delete_confirm || self.editor.is_some()
+    }
+    pub fn resume_editor(&mut self) -> bool {
+        if self.editor.is_some() || self.picking {
+            return false;
+        }
+        self.editor = self.suspended_editor.take();
+        if let Some(editor) = &self.editor {
+            if !self.suspended_editor_region.is_empty() {
+                self.region = std::mem::take(&mut self.suspended_editor_region);
+            }
+            if let Some(point) = position(&self.region, editor.x, editor.y) {
+                self.center = point;
+                self.zoom = self.zoom.max(4.);
+            }
+        }
+        self.editor.is_some()
+    }
+    /// Back closes the visible transient layer without throwing away user input.
+    pub fn dismiss_overlay(&mut self) -> bool {
+        if !self.cluster.is_empty() {
+            self.cluster.clear();
+            return true;
+        }
+        if self.picking {
+            cancel_picking(self);
+            return true;
+        }
+        if self.delete_confirm {
+            self.delete_confirm = false;
+            return true;
+        }
+        if self.editor.is_some() && self.suspended_editor.is_none() {
+            self.suspended_editor_region.clone_from(&self.region);
+            self.suspended_editor = self.editor.take();
+            return true;
+        }
+        false
+    }
+    pub fn navigation_state(&self) -> ViewState {
+        ViewState {
+            world_id: self.world_id.clone(),
+            region: self.region.clone(),
+            categories: self.categories.clone(),
+            search: self.search.clone(),
+            completion: self.completion,
+            center: self.center,
+            zoom: self.zoom,
+            selected: self.selected.clone(),
+            coordinate: self.coordinate,
+            x: self.x,
+            y: self.y,
+            spawn_key: self.spawn_key.clone(),
+            spawn_search: self.spawn_search.clone(),
+            spawn_time: self.spawn_time,
+            spawn_kind: self.spawn_kind,
+            categories_expanded: self.categories_expanded,
+            detail_height: self.detail_height,
+        }
+    }
+    pub fn restore_navigation(&mut self, state: &ViewState, route: &str) {
+        // A different world's current annotations and drafts always win.
+        if !self.world_id.is_empty()
+            && !state.world_id.is_empty()
+            && self.world_id != state.world_id
+        {
+            return;
+        }
+        self.region.clone_from(&state.region);
+        self.categories.clone_from(&state.categories);
+        self.search.clone_from(&state.search);
+        self.completion = state.completion;
+        self.center = state.center;
+        self.zoom = state.zoom;
+        self.selected.clone_from(&state.selected);
+        self.coordinate = state.coordinate;
+        self.x = state.x;
+        self.y = state.y;
+        self.spawn_key.clone_from(&state.spawn_key);
+        self.spawn_search.clone_from(&state.spawn_search);
+        self.spawn_time = state.spawn_time;
+        self.spawn_kind = state.spawn_kind;
+        self.categories_expanded = state.categories_expanded;
+        self.detail_height = state.detail_height;
+        self.route = route.into();
+        // Avoid applying the URL again and losing the restored camera/filter choices.
+        self.last_route = route.into();
+        self.cluster.clear();
+        // Existing caches check their input keys/signatures on the next frame.
+        // Keep those live caches instead of rebuilding thousands of search rows.
+        // editor, pick_draft and notes are live user work, not historical data.
+    }
     /// A draft belongs to its original world; never carry an editor into another save.
     pub fn set_world_id(&mut self, id: &str) {
         if self.world_id != id {
             self.world_id = id.into();
+            // An unchanged deep link must still be resolved against the new world's
+            // current annotations after the old selection has been discarded.
+            self.last_route.clear();
             self.editor = None;
+            self.suspended_editor = None;
+            self.suspended_editor_region.clear();
             self.picking = false;
             self.pick_draft = None;
             self.delete_confirm = false;
@@ -534,7 +671,7 @@ fn floating_detail(
                     state.cluster.clear();
                 }
             });
-            egui::ScrollArea::vertical()
+            crate::navigation::ScrollArea::vertical()
                 .max_height(170.)
                 .show(ui, |ui| {
                     for id in state.cluster.clone() {
@@ -574,7 +711,7 @@ fn floating_detail(
                 }
             });
         });
-        egui::ScrollArea::vertical()
+        crate::navigation::ScrollArea::vertical()
             .id_salt("map-detail-scroll")
             .max_height(clip.height() - 128.)
             .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
@@ -1602,7 +1739,7 @@ pub fn show(
                     };
                     let category_height = (height - 290.).clamp(130., 500.);
                     let cell = (ui.available_width() - 6.) / 2.;
-                    egui::ScrollArea::vertical()
+                    crate::navigation::ScrollArea::vertical()
                         .id_salt("map-category-scroll")
                         .max_height(category_height)
                         .show(ui, |ui| {
@@ -1657,7 +1794,7 @@ pub fn show(
                     }
                     let remaining =
                         (height - (ui.cursor().top() - ui.min_rect().top()) - 48.).max(60.);
-                    egui::ScrollArea::vertical()
+                    crate::navigation::ScrollArea::vertical()
                         .id_salt("map-points")
                         .max_height(remaining)
                         .auto_shrink([false, false])
@@ -1909,7 +2046,7 @@ pub fn show_spawns(
             |ui| {
                 crate::design::card(ui).show(ui, |ui| {
                     ui.set_width(sidebar - 26.);
-                    egui::ScrollArea::vertical()
+                    crate::navigation::ScrollArea::vertical()
                         .id_salt("spawn-profile")
                         .max_height((height * 0.39).clamp(155., 260.))
                         .show(ui, |ui| {
@@ -2054,7 +2191,7 @@ pub fn show_spawns(
                                 }
                             });
                     }
-                    egui::ScrollArea::vertical()
+                    crate::navigation::ScrollArea::vertical()
                         .id_salt("spawn-site-list")
                         .max_height((list_height - 105.).max(65.))
                         .auto_shrink([false, false])
@@ -2083,6 +2220,110 @@ pub fn show_spawns(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn navigation_restore_keeps_camera_filters_and_current_drafts() {
+        let data = fixture();
+        let mut state = MapState::default();
+        state.set_world_id("one");
+        state.region = "worldtree".into();
+        state.categories = HashSet::from(["merchant".into()]);
+        state.search = "商人".into();
+        state.completion = 2;
+        state.center = Vec2::new(0.3, 0.7);
+        state.zoom = 8.;
+        state.selected = "merchant-123".into();
+        state.spawn_key = "Anubis".into();
+        state.spawn_time = 3;
+        state.spawn_kind = 2;
+        state.x = 120.;
+        state.y = 450.;
+        let snapshot = state.navigation_state();
+        let records = state.points.clone();
+        state.region = "palpagos".into();
+        reset_camera(&mut state);
+        state.search.clear();
+        state.categories.clear();
+        state.editor = Some(Editor {
+            id: "draft".into(),
+            name: "尚未保存的名称".into(),
+            note: "未保存".into(),
+            x: 1.,
+            y: 2.,
+            error: String::new(),
+        });
+        state.restore_navigation(&snapshot, "#map/category/merchant/worldtree");
+        routes(&data, &mut state, &[]);
+        assert_eq!(state.region, "worldtree");
+        assert_eq!(state.center, Vec2::new(0.3, 0.7));
+        assert_eq!(state.zoom, 8.);
+        assert_eq!(state.search, "商人");
+        assert_eq!(state.completion, 2);
+        assert!(state.categories.contains("merchant"));
+        assert_eq!(state.selected, "merchant-123");
+        assert_eq!(state.spawn_time, 3);
+        assert_eq!(state.spawn_kind, 2);
+        assert_eq!(state.editor.as_ref().unwrap().name, "尚未保存的名称");
+        assert!(Arc::ptr_eq(&state.points, &records));
+        load_spawns(&data, &mut state);
+        assert_eq!(state.spawn_cache, ("Anubis".into(), 3, 2));
+    }
+    #[test]
+    fn navigation_restore_rejects_another_worlds_map_selection() {
+        let mut state = MapState::default();
+        state.set_world_id("old");
+        state.center = Vec2::new(0.1, 0.9);
+        state.selected = "custom-old".into();
+        let snapshot = state.navigation_state();
+        state.set_world_id("new");
+        state.center = Vec2::splat(0.5);
+        state.restore_navigation(&snapshot, "#map");
+        assert!(state.selected.is_empty());
+        assert_eq!(state.center, Vec2::splat(0.5));
+        assert_eq!(state.world_id, "new");
+    }
+    #[test]
+    fn navigation_restore_same_map_route_refocuses_after_world_switch() {
+        let data = fixture();
+        let point = marker("public-merchant", "merchant", 300., 400.);
+        let mut state = MapState::default();
+        state.set_world_id("first-world");
+        state.route = "#map/point/public-merchant".into();
+        routes(&data, &mut state, std::slice::from_ref(&point));
+        assert_eq!(state.selected, "public-merchant");
+        state.set_world_id("second-world");
+        assert!(state.selected.is_empty());
+        // Same URL, but the active world's point set must be consulted again.
+        routes(&data, &mut state, std::slice::from_ref(&point));
+        assert_eq!(state.selected, "public-merchant");
+        assert_eq!(state.center, point.uv);
+    }
+    #[test]
+    fn navigation_restore_back_suspends_editor_and_resumes_in_its_original_region() {
+        let mut state = MapState::default();
+        state.set_world_id("one");
+        state.region = "worldtree".into();
+        state.editor = Some(Editor {
+            id: "custom".into(),
+            name: "未保存草稿".into(),
+            note: "保留内容".into(),
+            x: 12.,
+            y: 800.,
+            error: String::new(),
+        });
+        assert!(state.has_overlay());
+        assert!(state.dismiss_overlay());
+        assert!(!state.has_overlay());
+        assert!(state.has_suspended_editor());
+        state.region = "palpagos".into();
+        assert!(state.resume_editor());
+        assert_eq!(state.region, "worldtree");
+        assert_eq!(state.editor.as_ref().unwrap().name, "未保存草稿");
+        assert_eq!(state.editor.as_ref().unwrap().note, "保留内容");
+        assert!(state.dismiss_overlay());
+        state.set_world_id("two");
+        assert!(!state.has_suspended_editor());
+        assert!(!state.resume_editor());
+    }
     #[test]
     fn approximate_map_search_keeps_all_locations_filters_and_cached_text() {
         let data = fixture();

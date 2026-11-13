@@ -4,6 +4,49 @@ use crate::{
 };
 use eframe::egui;
 use serde_json::{Value, json};
+/// Calculator inputs and per-page choices only; no simulation or game records.
+#[derive(Clone, Debug)]
+pub struct ViewState {
+    page: String,
+    pal: usize,
+    query: String,
+    traits: Vec<String>,
+    level: u32,
+    stars: u32,
+    trust: u32,
+    awaken: bool,
+    alpha: bool,
+    iv: [u32; 3],
+    souls: [u32; 4],
+    hp: f64,
+    world: f64,
+    effigy: u32,
+    partner: u32,
+    module: usize,
+    poison: bool,
+    trap: bool,
+    critical: bool,
+    throws: u32,
+    job: String,
+    work_level: usize,
+    relic: usize,
+    relic_target: String,
+    capture_level: u32,
+    encounter: String,
+    status: String,
+    sphere: usize,
+    work_origin: String,
+    work_source: String,
+    work_query: String,
+    work_signature: String,
+    relic_reverse: bool,
+    relic_output: String,
+    relic_category: String,
+    suitability_dark: bool,
+    work_relevant: bool,
+    work_trait_query: String,
+    stat_trait_query: String,
+}
 pub struct Calculators {
     pub pal: usize,
     pub query: String,
@@ -52,7 +95,7 @@ pub struct Calculators {
     work_trait_feedback: String,
     stat_trait_query: String,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct SharedInput {
     pal: usize,
     traits: Vec<String>,
@@ -112,6 +155,145 @@ impl Default for Calculators {
     }
 }
 impl Calculators {
+    pub fn navigation_state(&self, page: &str) -> ViewState {
+        let mut state = ViewState {
+            page: page.into(),
+            pal: self.pal.clone(),
+            query: self.query.clone(),
+            traits: self.traits.clone(),
+            level: self.level.clone(),
+            stars: self.stars.clone(),
+            trust: self.trust.clone(),
+            awaken: self.awaken.clone(),
+            alpha: self.alpha.clone(),
+            iv: self.iv.clone(),
+            souls: self.souls.clone(),
+            hp: self.hp.clone(),
+            world: self.world.clone(),
+            effigy: self.effigy.clone(),
+            partner: self.partner.clone(),
+            module: self.module.clone(),
+            poison: self.poison.clone(),
+            trap: self.trap.clone(),
+            critical: self.critical.clone(),
+            throws: self.throws.clone(),
+            job: self.job.clone(),
+            work_level: self.work_level.clone(),
+            relic: self.relic.clone(),
+            relic_target: self.relic_target.clone(),
+            capture_level: self.capture_level.clone(),
+            encounter: self.encounter.clone(),
+            status: self.status.clone(),
+            sphere: self.sphere.clone(),
+            work_origin: self.work_origin.clone(),
+            work_source: self.work_source.clone(),
+            work_query: self.work_query.clone(),
+            work_signature: self.work_signature.clone(),
+            relic_reverse: self.relic_reverse.clone(),
+            relic_output: self.relic_output.clone(),
+            relic_category: self.relic_category.clone(),
+            suitability_dark: self.suitability_dark.clone(),
+            work_relevant: self.work_relevant.clone(),
+            work_trait_query: self.work_trait_query.clone(),
+            stat_trait_query: self.stat_trait_query.clone(),
+        };
+        if self.active_page != page {
+            if let Some(saved) = self.page_inputs.get(page) {
+                state.pal = saved.pal;
+                state.traits = saved.traits.clone();
+                state.query = saved.query.clone();
+                state.job = saved.job.clone();
+            }
+        }
+        state
+    }
+    pub fn restore_navigation(&mut self, state: &ViewState, route: &str) {
+        // Keep the latest inputs on the page being left; history restores only
+        // its destination page, not stale copies of all other calculators.
+        if !self.active_page.is_empty() {
+            self.page_inputs.insert(
+                self.active_page.clone(),
+                SharedInput {
+                    pal: self.pal,
+                    traits: self.traits.clone(),
+                    query: self.query.clone(),
+                    job: self.job.clone(),
+                },
+            );
+        }
+        self.pal = state.pal;
+        self.traits.clone_from(&state.traits);
+        self.query.clone_from(&state.query);
+        self.job.clone_from(&state.job);
+        self.active_page.clone_from(&state.page);
+        self.page_inputs.insert(
+            state.page.clone(),
+            SharedInput {
+                pal: self.pal,
+                traits: self.traits.clone(),
+                query: self.query.clone(),
+                job: self.job.clone(),
+            },
+        );
+        self.picker = false;
+        match state.page.as_str() {
+            "details/stats" => {
+                self.level = state.level;
+                self.stars = state.stars;
+                self.trust = state.trust;
+                self.awaken = state.awaken;
+                self.alpha = state.alpha;
+                self.iv = state.iv;
+                self.souls = state.souls;
+                self.stat_trait_query.clone_from(&state.stat_trait_query);
+            }
+            "details/capture" => {
+                self.capture_level = state.capture_level;
+                self.hp = state.hp;
+                self.world = state.world;
+                self.effigy = state.effigy;
+                self.partner = state.partner;
+                self.module = state.module;
+                self.poison = state.poison;
+                self.trap = state.trap;
+                self.critical = state.critical;
+                self.throws = state.throws;
+                self.encounter.clone_from(&state.encounter);
+                self.status.clone_from(&state.status);
+                self.sphere = state.sphere;
+            }
+            "work/efficiency" => {
+                self.work_level = state.work_level;
+                self.work_origin.clone_from(&state.work_origin);
+                self.work_source.clone_from(&state.work_source);
+                self.work_query.clone_from(&state.work_query);
+                self.work_signature.clone_from(&state.work_signature);
+                self.work_relevant = state.work_relevant;
+                self.work_trait_query.clone_from(&state.work_trait_query);
+                self.work_trait_feedback.clear();
+                self.work_route = route.into();
+            }
+            "work/relic" => {
+                if self.relic != state.relic {
+                    self.simulated = Value::Null;
+                }
+                self.relic = state.relic;
+                self.relic_target.clone_from(&state.relic_target);
+                self.relic_reverse = state.relic_reverse;
+                self.relic_output.clone_from(&state.relic_output);
+                self.relic_category.clone_from(&state.relic_category);
+                self.relic_route = route.into();
+            }
+            "work/suitability" => {
+                self.suitability_dark = state.suitability_dark;
+                self.suitability_route = route.into();
+            }
+            _ => {}
+        }
+    }
+    pub fn dismiss_overlay(&mut self) -> bool {
+        std::mem::take(&mut self.picker)
+    }
     fn enter_page(&mut self, page: &str) {
         if self.active_page == page {
             return;
@@ -156,7 +338,7 @@ impl Calculators {
     ) -> Option<String> {
         self.enter_page(page);
         let mut nav = None;
-        egui::ScrollArea::vertical()
+        crate::navigation::ScrollArea::vertical()
             .id_salt(("calculator-page", page))
             .show(ui, |ui| {
                 if page == "details/stats" || page == "details/capture" {
@@ -947,7 +1129,7 @@ impl Calculators {
                 std::cmp::Reverse(t["rank"].as_i64().unwrap_or(0)),
             )
         });
-        egui::ScrollArea::vertical()
+        crate::navigation::ScrollArea::vertical()
             .id_salt("work-trait-options")
             .max_height(250.)
             .show(ui, |ui| {
@@ -1323,7 +1505,7 @@ impl Calculators {
                         ui.small(format!("{} 种产物", rows.len()));
                         let cols = ((ui.available_width() + 6.) / 190.).floor().max(1.) as usize;
                         let width = (ui.available_width() - 6. * (cols - 1) as f32) / cols as f32;
-                        egui::ScrollArea::vertical()
+                        crate::navigation::ScrollArea::vertical()
                             .id_salt(("relic-products", self.relic_reverse))
                             .auto_shrink([false, false])
                             .max_height((height - 145.).max(180.))
@@ -1752,6 +1934,87 @@ fn natural_level(d: &Data, key: &str, job: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn navigation_restore_keeps_target_inputs_and_latest_other_calculators() {
+        let mut calc = Calculators::default();
+        calc.enter_page("details/stats");
+        calc.pal = 1;
+        calc.traits = vec!["Artisan".into()];
+        calc.level = 72;
+        calc.iv = [77, 88, 99];
+        calc.enter_page("details/capture");
+        calc.pal = 0;
+        calc.traits = vec!["Swift".into()];
+        calc.capture_level = 61;
+        calc.hp = 12.;
+        calc.critical = true;
+        let snapshot = calc.navigation_state("details/capture");
+        calc.enter_page("details/stats");
+        calc.pal = 0;
+        calc.level = 1;
+        calc.iv = [1, 2, 3];
+        calc.hp = 100.;
+        calc.simulated = json!({"stale":"does not belong in navigation history"});
+        calc.restore_navigation(&snapshot, "#details/capture/SheepBall");
+        assert_eq!(calc.active_page, "details/capture");
+        assert_eq!(calc.capture_level, 61);
+        assert_eq!(
+            calc.level, 1,
+            "returning to capture must not roll back later stats edits"
+        );
+        assert_eq!(
+            calc.iv,
+            [1, 2, 3],
+            "capture history cannot overwrite newer stat inputs"
+        );
+        assert_eq!(calc.hp, 12.);
+        assert!(calc.critical);
+        assert!(
+            !calc.simulated.is_null(),
+            "unrelated result cache is not part of a capture history entry"
+        );
+        calc.enter_page("details/stats");
+        assert_eq!(calc.pal, 0);
+        assert_eq!(calc.traits, vec!["Artisan"]);
+    }
+    #[test]
+    fn navigation_restore_preserves_work_override_but_uses_current_warehouse() {
+        let d = fixture();
+        let mut calc = Calculators::default();
+        calc.enter_page("work/efficiency");
+        calc.work_origin = "dex".into();
+        calc.work_source = "Fox".into();
+        calc.job = "生火".into();
+        calc.work_level = 3;
+        let snapshot = calc.navigation_state("work/efficiency");
+        calc.work_level = 1;
+        calc.restore_navigation(&snapshot, "#work/efficiency/Fox/生火");
+        let mut world = json!({"id":"world","inventory":{"records":[{"id":"source","speciesKey":"Fox","traits":["Artisan"]}]}});
+        frame(
+            &mut calc,
+            &d,
+            "work/efficiency",
+            &world,
+            "#work/efficiency/Fox/生火",
+        );
+        assert_eq!(
+            calc.work_level, 3,
+            "deep-link initialization must not replace restored level"
+        );
+        calc.work_origin = "warehouse".into();
+        calc.work_source = "source".into();
+        calc.pick_work(&d, &world, None);
+        let warehouse_snapshot = calc.navigation_state("work/efficiency");
+        world["inventory"]["records"] = json!([]);
+        calc.restore_navigation(&warehouse_snapshot, "#work/efficiency");
+        frame(&mut calc, &d, "work/efficiency", &world, "#work/efficiency");
+        assert!(
+            calc.work_source.is_empty(),
+            "a removed warehouse Pal must not be resurrected by history"
+        );
+        assert!(calc.traits.is_empty());
+        remove_fixture(d);
+    }
     fn fixture() -> Data {
         let root =
             std::env::temp_dir().join(format!("jade-calculator-test-{}", uuid::Uuid::new_v4()));

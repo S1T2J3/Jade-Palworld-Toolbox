@@ -31,6 +31,7 @@ pub struct Catalog {
     pal_query: String,
     tags: BTreeSet<String>,
     last_route: String,
+    active_detail_route: String,
     match_key: String,
     matched: Vec<usize>,
     pub detail: crate::catalog_views::DetailState,
@@ -44,6 +45,14 @@ struct Filters {
     pal: String,
     tags: BTreeSet<String>,
     sort: String,
+}
+#[derive(Clone)]
+pub struct CatalogViewState {
+    page: String,
+    filters: Filters,
+    pal_query: Option<String>,
+    detail: Option<(String, crate::catalog_views::DetailViewState)>,
+    ranch: Option<crate::work_views::RanchViewState>,
 }
 fn entry(id: &str, name: &str, route: &str, value: Value) -> Entry {
     Entry {
@@ -66,7 +75,183 @@ fn entry(id: &str, name: &str, route: &str, value: Value) -> Entry {
         methods: BTreeSet::new(),
     }
 }
+#[cfg(test)]
+mod navigation_state_tests {
+    use super::*;
+    #[test]
+    fn returning_restores_historical_filters_without_rewinding_other_pages() {
+        let mut catalog = Catalog::default();
+        catalog.last = "paldex".into();
+        catalog.query = "龙".into();
+        catalog.group = "dragon".into();
+        catalog.sort = "防御从高到低".into();
+        catalog.pal_query = "旧物种搜索".into();
+        let before = catalog.navigation_state("paldex");
+        catalog.last = "items".into();
+        catalog.query = "金属".into();
+        catalog.filter = "商人出售".into();
+        catalog.pal_query = "另一页较新的物种搜索".into();
+        catalog.restore_navigation(&before, "#paldex/Anubis");
+        assert_eq!(
+            (
+                catalog.query.as_str(),
+                catalog.group.as_str(),
+                catalog.sort.as_str()
+            ),
+            ("龙", "dragon", "防御从高到低")
+        );
+        assert_eq!(catalog.pal_query, "另一页较新的物种搜索");
+        // The unrelated item page keeps its latest state; this isn't a memory rollback.
+        let items = catalog.navigation_state("items");
+        assert_eq!(items.filters.query, "金属");
+        assert_eq!(items.filters.filter, "商人出售");
+        assert_eq!(catalog.last_route, "#paldex/Anubis");
+    }
+    #[test]
+    fn returning_to_an_index_or_ranch_preserves_newer_recipe_choices() {
+        let ctx = egui::Context::default();
+        let mut data = Data::new(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data"),
+            ctx.clone(),
+        )
+        .unwrap();
+        let started = std::time::Instant::now();
+        while data.pending > 0 && started.elapsed().as_secs() < 15 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            data.poll();
+        }
+        assert!(data.errors.is_empty());
+        assert_eq!(data.pending, 0);
+        let mut catalog = Catalog::default();
+        catalog.rebuild(&data);
+        let render = |catalog: &mut Catalog, page: &str, route: &str| {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        Vec2::new(1200., 900.),
+                    )),
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        catalog.show(ui, &data, page, route, &mut json!([]));
+                    });
+                },
+            );
+        };
+        for (page, route) in [
+            ("paldex", "#paldex"),
+            ("items", "#items"),
+            ("work/ranch", "#work/ranch/SheepBall"),
+        ] {
+            render(&mut catalog, "items", "#items/CarbonFiber");
+            catalog.detail.quantity = 7;
+            catalog.detail.choices = json!({"CarbonFiber":0});
+            render(&mut catalog, page, route);
+            let old = catalog.navigation_state(page);
+            assert!(
+                old.detail.is_none(),
+                "{route} must not own an unrelated item's detail state"
+            );
+            render(&mut catalog, "items", "#items/CarbonFiber");
+            catalog.detail.quantity = 19;
+            catalog.detail.choices = json!({"CarbonFiber":1});
+            catalog.restore_navigation(&old, route);
+            render(&mut catalog, page, route);
+            render(&mut catalog, "items", "#items/PalSphere");
+            render(&mut catalog, "items", "#items/CarbonFiber");
+            assert_eq!(
+                catalog.detail.quantity, 19,
+                "{route} rewound the later quantity"
+            );
+            assert_eq!(
+                catalog.detail.choices,
+                json!({"CarbonFiber":1}),
+                "{route} rewound the later recipe choice"
+            );
+        }
+        let old = catalog.navigation_state("items");
+        assert!(
+            old.detail.is_some(),
+            "an actual explicit item detail still needs a history snapshot"
+        );
+        catalog.detail.quantity = 23;
+        catalog.restore_navigation(&old, "#items");
+        assert_eq!(
+            catalog.detail.quantity, 23,
+            "an index return cannot replay an item snapshot"
+        );
+        catalog.restore_navigation(&old, "#items/CarbonFiber");
+        render(&mut catalog, "items", "#items/CarbonFiber");
+        assert_eq!(
+            catalog.detail.quantity, 19,
+            "returning to the exact item detail must still restore its own historical choice"
+        );
+    }
+}
 impl Catalog {
+    fn current_filters(&self) -> Filters {
+        Filters {
+            query: self.query.clone(),
+            group: self.group.clone(),
+            filter: self.filter.clone(),
+            scope: self.scope.clone(),
+            pal: self.pal_filter.clone(),
+            tags: self.tags.clone(),
+            sort: self.sort.clone(),
+        }
+    }
+    pub fn navigation_state(&self, page: &str) -> CatalogViewState {
+        let detail = self.detail.navigation_state();
+        let detail = (page != "work/ranch"
+            && self.last == page
+            && detail.belongs_to_page(page)
+            && self.active_detail_route.starts_with(&format!("#{page}/")))
+        .then(|| (self.active_detail_route.clone(), detail));
+        CatalogViewState {
+            page: page.into(),
+            filters: if self.last == page {
+                self.current_filters()
+            } else {
+                self.views.get(page).cloned().unwrap_or_default()
+            },
+            pal_query: matches!(page, "details/active" | "details/passive")
+                .then(|| self.pal_query.clone()),
+            detail,
+            ranch: (page == "work/ranch").then(|| self.ranch.navigation_state()),
+        }
+    }
+    pub fn restore_navigation(&mut self, state: &CatalogViewState, route: &str) {
+        if !self.last.is_empty() {
+            self.views.insert(self.last.clone(), self.current_filters());
+        }
+        self.views.insert(state.page.clone(), state.filters.clone());
+        self.query = state.filters.query.clone();
+        self.group = state.filters.group.clone();
+        self.filter = state.filters.filter.clone();
+        self.scope = state.filters.scope.clone();
+        self.pal_filter = state.filters.pal.clone();
+        self.tags = state.filters.tags.clone();
+        self.sort = state.filters.sort.clone();
+        if let Some(query) = &state.pal_query {
+            self.pal_query = query.clone();
+        }
+        self.last = state.page.clone();
+        self.last_route = route.into();
+        self.match_key.clear();
+        self.matched.clear();
+        self.active_detail_route.clear();
+        if let Some((detail_route, detail)) = &state.detail {
+            if detail_route == route && detail.belongs_to_page(&state.page) {
+                self.detail.restore_navigation(detail);
+                self.active_detail_route = route.into();
+            }
+        }
+        if let Some(ranch) = &state.ranch {
+            self.ranch.restore_navigation(ranch, route);
+        }
+    }
     pub fn rebuild(&mut self, d: &Data) {
         self.pages.clear();
         self.match_key.clear();
@@ -233,6 +418,7 @@ impl Catalog {
         route: &str,
         surgery: &mut Value,
     ) -> Option<String> {
+        self.active_detail_route.clear();
         if self.last != page {
             self.views.insert(
                 self.last.clone(),
@@ -367,7 +553,7 @@ impl Catalog {
                     }
                 }
             });
-            egui::ScrollArea::vertical()
+            crate::navigation::ScrollArea::vertical()
                 .id_salt(("dex-detail", &e.id))
                 .show(ui, |ui| {
                     if let Some(n) =
@@ -737,7 +923,7 @@ impl Catalog {
                     series.push(&e.group);
                 }
             }
-            egui::ScrollArea::vertical()
+            crate::navigation::ScrollArea::vertical()
                 .id_salt((
                     "journal-index",
                     &filters.query,
@@ -775,7 +961,7 @@ impl Catalog {
             // These pages have at most 316 short cards. Variable-height rows preserve
             // the original full effects and ownership controls; the large item/unit
             // catalogues below retain their virtual rows.
-            egui::ScrollArea::vertical()
+            crate::navigation::ScrollArea::vertical()
                 .id_salt((
                     "skill-overview",
                     page,
@@ -804,7 +990,8 @@ impl Catalog {
         // The catalogue index keeps its dense grid and remembers its filters.
         if page == "paldex" {
             if let Some(e) = selected {
-                egui::ScrollArea::vertical()
+                self.active_detail_route = route.into();
+                crate::navigation::ScrollArea::vertical()
                     .id_salt(("pal-overview", &e.id))
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
@@ -846,7 +1033,7 @@ impl Catalog {
                     let cols = ((list_width + 8.) / (min_width + 8.)).floor().max(1.) as usize;
                     let rows = matches.len().div_ceil(cols);
                     let width = (list_width - 8. * (cols - 1) as f32) / cols as f32;
-                    egui::ScrollArea::vertical()
+                    crate::navigation::ScrollArea::vertical()
                         .id_salt((
                             "catalog-rows",
                             page,
@@ -881,12 +1068,13 @@ impl Catalog {
                 },
             );
             if let Some(e) = selected {
+                self.active_detail_route = route.into();
                 ui.allocate_ui_with_layout(
                     Vec2::new(ui.available_width(), height),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
                         ui.set_width(ui.available_width());
-                        egui::ScrollArea::vertical()
+                        crate::navigation::ScrollArea::vertical()
                             .id_salt(("catalog-detail", page, &e.id))
                             .auto_shrink([false, false])
                             .show(ui, |ui| {
@@ -922,7 +1110,7 @@ pub fn elements(ui: &mut egui::Ui, d: &Data) -> Option<String> {
     let mut selected = ui
         .ctx()
         .data_mut(|m| m.get_temp::<String>(id).unwrap_or("fire".into()));
-    egui::ScrollArea::vertical().show(ui, |ui| {
+    crate::navigation::ScrollArea::vertical().show(ui, |ui| {
         if let Some(chart) = d.get("combat-guide-data")["chart"].as_str() {
             let width = ui.available_width().min(900.);
             d.image(ui, chart, Vec2::new(width, width * 675. / 1200.));

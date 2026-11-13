@@ -14,6 +14,15 @@ pub struct RanchState {
     pal_level: usize,
     item_level: usize,
 }
+#[derive(Clone, Debug)]
+pub struct RanchViewState {
+    pal: String,
+    item: String,
+    pal_query: String,
+    item_query: String,
+    pal_level: usize,
+    item_level: usize,
+}
 
 fn tracked(response: egui::Response, key: &str) -> egui::Response {
     #[cfg(test)]
@@ -163,6 +172,25 @@ fn quantity(v: &Value) -> String {
 }
 
 impl RanchState {
+    pub fn navigation_state(&self) -> RanchViewState {
+        RanchViewState {
+            pal: self.pal.clone(),
+            item: self.item.clone(),
+            pal_query: self.pal_query.clone(),
+            item_query: self.item_query.clone(),
+            pal_level: self.pal_level,
+            item_level: self.item_level,
+        }
+    }
+    pub fn restore_navigation(&mut self, state: &RanchViewState, route: &str) {
+        self.pal.clone_from(&state.pal);
+        self.item.clone_from(&state.item);
+        self.pal_query.clone_from(&state.pal_query);
+        self.item_query.clone_from(&state.item_query);
+        self.pal_level = state.pal_level;
+        self.item_level = state.item_level;
+        self.route = route.into();
+    }
     pub fn show(&mut self, ui: &mut egui::Ui, d: &Data, route: &str) -> Option<String> {
         let Some(pals) = d.get("ranch-data")["pals"].as_object() else {
             ui.spinner();
@@ -240,7 +268,7 @@ impl RanchState {
                     ui.small(format!("共 {} {}", matches.len(), if reverse {"种产物"} else {"种帕鲁"}));
                     let columns = ((ui.available_width()+6.)/124.).floor().max(1.) as usize;
                     let width = (ui.available_width()-6.*(columns-1) as f32)/columns as f32;
-                    egui::ScrollArea::vertical().id_salt(("ranch-picture-list",reverse)).max_height((height-175.).max(140.)).auto_shrink([false,false]).show_rows(ui,44.,matches.len().div_ceil(columns),|ui,range| {
+                    crate::navigation::ScrollArea::vertical().id_salt(("ranch-picture-list",reverse)).max_height((height-175.).max(140.)).auto_shrink([false,false]).show_rows(ui,44.,matches.len().div_ceil(columns),|ui,range| {
                         for row in range { ui.horizontal_top(|ui| { ui.spacing_mut().item_spacing.x=6.;
                             for key in matches.iter().skip(row*columns).take(columns) {
                                 let meta = if reverse {format!("{} 种帕鲁",count_suppliers(d,key))} else {format!("#{} · {} 种产物",d.pal(key).map(|p|text(p,"dex")).unwrap_or(""),pal_products(&pals[*key]).len())};
@@ -252,7 +280,7 @@ impl RanchState {
                 });
             });
             ui.allocate_ui_with_layout(Vec2::new(ui.available_width(),height),egui::Layout::top_down(Align::Min),|ui| {
-                egui::ScrollArea::vertical().id_salt(("ranch-picture-detail",reverse,&selected)).auto_shrink([false,false]).show(ui,|ui| {
+                crate::navigation::ScrollArea::vertical().id_salt(("ranch-picture-detail",reverse,&selected)).auto_shrink([false,false]).show(ui,|ui| {
                     crate::design::card(ui).show(ui,|ui| {
                         ui.set_width((ui.available_width()-1.).max(200.));
                         let empty = Value::Null;
@@ -464,7 +492,7 @@ pub fn suitability(
             ));
         }
     });
-    egui::ScrollArea::vertical()
+    crate::navigation::ScrollArea::vertical()
         .id_salt(("work-rankings", job.as_str(), &q, *dark))
         .auto_shrink([false, false])
         .show(ui, |ui| {
@@ -521,6 +549,31 @@ pub fn suitability(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn navigation_restore_keeps_both_ranch_queries_and_production_levels() {
+        let mut ranch = RanchState {
+            route: "#work/ranch/item/Wool".into(),
+            pal: "SheepBall".into(),
+            item: "Wool".into(),
+            pal_query: "绵".into(),
+            item_query: "羊毛".into(),
+            pal_level: 6,
+            item_level: 8,
+        };
+        let snapshot = ranch.navigation_state();
+        ranch.pal = "ChickenPal".into();
+        ranch.item = "Egg".into();
+        ranch.pal_level = 1;
+        ranch.item_level = 1;
+        ranch.item_query.clear();
+        ranch.restore_navigation(&snapshot, "#work/ranch/item/Wool");
+        assert_eq!(ranch.route, "#work/ranch/item/Wool");
+        assert_eq!(ranch.pal, "SheepBall");
+        assert_eq!(ranch.item, "Wool");
+        assert_eq!(ranch.pal_query, "绵");
+        assert_eq!(ranch.item_query, "羊毛");
+        assert_eq!((ranch.pal_level, ranch.item_level), (6, 8));
+    }
     struct Harness {
         ctx: egui::Context,
         d: Data,

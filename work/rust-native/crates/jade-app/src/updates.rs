@@ -116,6 +116,17 @@ pub struct UpdateState {
     install_prompt: bool,
 }
 impl UpdateState {
+    pub fn has_overlay(&self) -> bool {
+        self.install_prompt || self.popup.is_some()
+    }
+    pub fn dismiss_overlay(&mut self) -> bool {
+        if self.install_prompt {
+            self.install_prompt = false;
+            self.status = "更新已保留，将在下次启动时安装。".into();
+            return true;
+        }
+        self.popup.take().is_some()
+    }
     pub fn unread_count(&self, state: &Value) -> usize {
         self.notices
             .iter()
@@ -135,7 +146,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"点击配种、仓库、地图、工作和计算器中的帕鲁名称或头像，统一先打开完整宽度的帕鲁资料页。页首先选择地图与刷新位置、查配种伙伴、反查双亲、目标配种、属性值计算或捕捉概率。明确标注的功能按钮仍直接跳转，帕鲁选择器继续用于选择。配种查询返回时保留原物种和查伙伴/反查双亲模式；子代结果保留独立配种路线入口。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"优化返回与前进：按历史恢复页面筛选、分页、滚动、计算器目标与输入，以及地图视角和选中点；避免等价地址反复入历史。返回优先关闭当前临时窗口，未保存的个体和地图编辑可暂存并继续。按钮显示目标提示，右键可选择最近历史，支持Alt+方向键与鼠标侧键；前进按钮固定位置。历史仅保存轻量视图状态，不回滚仓库、地图标记或世界档案。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.

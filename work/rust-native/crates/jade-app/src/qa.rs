@@ -88,6 +88,9 @@ fn stats(values: &[f64]) -> Value {
     json!({"samples":s.len(),"medianMs":p(0.5),"p95Ms":p(0.95),"maxMs":s.last()})
 }
 impl Probe {
+    pub fn enabled(&self) -> bool {
+        self.output.is_some()
+    }
     pub fn begin_frame(&mut self) {
         if self.output.is_some() {
             self.frame_started = Instant::now();
@@ -255,7 +258,9 @@ impl Probe {
                 } else if current.phase == 8 {
                     let shape =
                         ctx.data(|m| m.get_temp::<Value>(egui::Id::new("jade-window-shape")));
-                    current.result["actions"].as_array_mut().unwrap().push(json!({"action":current.actions[current.action_step],"screenshot":file,"imageHash":hash,"routeAfter":route.as_str(),"windowShape":shape}));
+                    let navigation =
+                        ctx.data(|m| m.get_temp::<Value>(egui::Id::new("jade-navigation-probe")));
+                    current.result["actions"].as_array_mut().unwrap().push(json!({"action":current.actions[current.action_step],"screenshot":file,"imageHash":hash,"routeAfter":route.as_str(),"windowShape":shape,"navigation":navigation}));
                     current.action_step += 1;
                     current.action_frame = 0;
                     current.phase = if current.action_step >= current.actions.len() {
@@ -281,16 +286,45 @@ impl Probe {
                 }
             } else if current.phase == 7 {
                 let action = &current.actions[current.action_step];
-                let point = action.as_array().or_else(|| action["click"].as_array());
+                let point = action
+                    .as_array()
+                    .or_else(|| action["click"].as_array())
+                    .or_else(|| action["rightClick"].as_array());
                 if let Some(point) = point {
                     if current.action_frame < 2 {
-                        self.mouse(
-                            if current.action_frame == 0 { 1 } else { 3 },
-                            point.first().and_then(Value::as_f64).unwrap_or(0.) as f32,
-                            point.get(1).and_then(Value::as_f64).unwrap_or(0.) as f32,
-                        );
+                        let x = point.first().and_then(Value::as_f64).unwrap_or(0.) as f32;
+                        let y = point.get(1).and_then(Value::as_f64).unwrap_or(0.) as f32;
+                        if action["rightClick"].is_array() {
+                            let pos = egui::pos2(x, y);
+                            self.pending_input.push(egui::Event::PointerMoved(pos));
+                            self.pending_input.push(egui::Event::PointerButton {
+                                pos,
+                                button: egui::PointerButton::Secondary,
+                                pressed: current.action_frame == 0,
+                                modifiers: Default::default(),
+                            });
+                        } else {
+                            self.mouse(if current.action_frame == 0 { 1 } else { 3 }, x, y);
+                        }
                     }
                 } else if current.action_frame == 0 {
+                    if let Some(name) = action["mouseButton"].as_str() {
+                        let button = match name {
+                            "back" => Some(egui::PointerButton::Extra1),
+                            "forward" => Some(egui::PointerButton::Extra2),
+                            _ => None,
+                        };
+                        if let Some(button) = button {
+                            for pressed in [true, false] {
+                                self.pending_input.push(egui::Event::PointerButton {
+                                    pos: egui::pos2(160., 64.),
+                                    button,
+                                    pressed,
+                                    modifiers: Default::default(),
+                                });
+                            }
+                        }
+                    }
                     if let Some(maximized) = action["maximize"].as_bool() {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(maximized));
                     }
@@ -315,11 +349,23 @@ impl Probe {
                         });
                     }
                     if let Some(name) = action["key"].as_str() {
+                        let mut modifiers = egui::Modifiers::NONE;
+                        if name.starts_with("Alt") {
+                            modifiers.alt = true;
+                        }
+                        if name.starts_with("Ctrl") {
+                            modifiers.ctrl = true;
+                        }
                         if let Some(key) = match name {
                             "Escape" => Some(egui::Key::Escape),
                             "Enter" => Some(egui::Key::Enter),
                             "Tab" => Some(egui::Key::Tab),
                             "Home" => Some(egui::Key::Home),
+                            "AltLeft" => Some(egui::Key::ArrowLeft),
+                            "AltRight" => Some(egui::Key::ArrowRight),
+                            "CtrlK" => Some(egui::Key::K),
+                            "CtrlA" => Some(egui::Key::A),
+                            "Backspace" => Some(egui::Key::Backspace),
                             _ => None,
                         } {
                             for pressed in [true, false] {
@@ -328,7 +374,7 @@ impl Probe {
                                     physical_key: None,
                                     pressed,
                                     repeat: false,
-                                    modifiers: egui::Modifiers::NONE,
+                                    modifiers,
                                 });
                             }
                         }

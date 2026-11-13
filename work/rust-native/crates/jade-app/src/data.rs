@@ -457,8 +457,12 @@ mod preload_tests {
             serde_json::from_slice(&std::fs::read(root.join("map-images.json")).unwrap()).unwrap();
         let ctx = egui::Context::default();
         egui_extras::install_image_loaders(&ctx);
-        let data = Data::new(root, ctx.clone()).unwrap();
-        let uri = data.image_uri(maps["worldtree"].as_str().unwrap());
+        // This test exercises the foreground raster loader only. Constructing
+        // Data would additionally start both background terrain decoders and
+        // leave unrelated decoding work competing with the next timed test.
+        ctx.add_image_loader(Arc::new(CappedRasterLoader::default()));
+        let uri = format!("file:///{}", root.join(maps["worldtree"].as_str().unwrap())
+            .to_string_lossy().replace('\\', "/"));
         let start = std::time::Instant::now();
         let mut size = None;
         while size.is_none() && start.elapsed().as_secs() < 10 {

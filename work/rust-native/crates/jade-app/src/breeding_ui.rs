@@ -51,6 +51,59 @@ pub struct Breeding {
     delete_plan: Option<String>,
     batch: String,
     qa_started: bool,
+    suspended_edit: Option<SuspendedEdit>,
+    restore_recalculate: bool,
+}
+struct SuspendedEdit {
+    draft: Value,
+    recording: Option<(String, Value)>,
+    world: String,
+    query: String,
+}
+/// A history entry contains view choices, never a copy of a world or solver task.
+#[derive(Clone)]
+pub struct BreedingViewState {
+    world: String,
+    view: BreedingPageState,
+}
+#[derive(Clone)]
+enum BreedingPageState {
+    Lookup {
+        pal: usize,
+        query: String,
+        filter: String,
+        element: String,
+        page: usize,
+        size: usize,
+        reverse: bool,
+    },
+    Warehouse {
+        filter: String,
+        page: usize,
+        size: usize,
+    },
+    Planner {
+        pal: usize,
+        query: String,
+        traits: Vec<String>,
+        random: bool,
+        surgery: bool,
+        max_steps: usize,
+        active_plan: String,
+        plan_name: String,
+        had_result: bool,
+    },
+    Offspring {
+        filter: String,
+        element: String,
+        new_only: bool,
+        all_steps: bool,
+        max_steps: usize,
+        page: usize,
+        size: usize,
+        selected: Option<usize>,
+        had_result: bool,
+    },
 }
 impl Default for Breeding {
     fn default() -> Self {
@@ -98,10 +151,231 @@ impl Default for Breeding {
             delete_plan: None,
             batch: String::new(),
             qa_started: false,
+            suspended_edit: None,
+            restore_recalculate: false,
         }
     }
 }
 impl Breeding {
+    pub fn navigation_state(&self, page: &str) -> BreedingViewState {
+        let view = match page {
+            "warehouse" => BreedingPageState::Warehouse {
+                filter: self.stock_filter.clone(),
+                page: self.stock_page,
+                size: self.stock_size,
+            },
+            "planner" => BreedingPageState::Planner {
+                pal: self.pal,
+                query: self.query.clone(),
+                traits: self.traits.clone(),
+                random: self.random,
+                surgery: self.surgery,
+                max_steps: self.max_steps,
+                active_plan: self.active_plan.clone(),
+                plan_name: self.plan_name.clone(),
+                had_result: !self.result.is_null() || self.busy || self.recalculate,
+            },
+            "offspring" => BreedingPageState::Offspring {
+                filter: self.filter.clone(),
+                element: self.element.clone(),
+                new_only: self.new_only,
+                all_steps: self.all_steps,
+                max_steps: self.max_steps,
+                page: self.offspring_page,
+                size: self.offspring_size,
+                selected: self.offspring_selected,
+                had_result: !self.result.is_null() || self.busy || self.recalculate,
+            },
+            _ => BreedingPageState::Lookup {
+                pal: self.lookup_pal,
+                query: self.lookup_query.clone(),
+                filter: self.lookup_filter.clone(),
+                element: self.lookup_element.clone(),
+                page: self.lookup_page,
+                size: self.lookup_size,
+                reverse: self.reverse,
+            },
+        };
+        BreedingViewState {
+            world: self.active_world.clone(),
+            view,
+        }
+    }
+    pub fn restore_navigation(&mut self, state: &BreedingViewState, _route: &str) {
+        let same_world = state.world == self.active_world || state.world.is_empty();
+        match &state.view {
+            BreedingPageState::Lookup {
+                pal,
+                query,
+                filter,
+                element,
+                page,
+                size,
+                reverse,
+            } => {
+                self.lookup_pal = *pal;
+                self.lookup_query = query.clone();
+                self.lookup_filter = filter.clone();
+                self.lookup_element = element.clone();
+                self.lookup_page = *page;
+                self.lookup_size = *size;
+                self.reverse = *reverse;
+            }
+            BreedingPageState::Warehouse { filter, page, size } => {
+                self.stock_filter = filter.clone();
+                self.stock_page = *page;
+                self.stock_size = *size;
+            }
+            BreedingPageState::Planner {
+                pal,
+                query,
+                traits,
+                random,
+                surgery,
+                max_steps,
+                active_plan,
+                plan_name,
+                had_result,
+            } => {
+                let changed = self.pal != *pal
+                    || self.traits != *traits
+                    || self.random != *random
+                    || self.surgery != *surgery
+                    || self.max_steps != *max_steps
+                    || self.mode != Some(false);
+                self.pal = *pal;
+                self.query = query.clone();
+                self.traits = traits.clone();
+                self.random = *random;
+                self.surgery = *surgery;
+                self.max_steps = *max_steps;
+                self.mode = Some(false);
+                if same_world {
+                    self.active_plan = active_plan.clone();
+                    self.plan_name = plan_name.clone();
+                } else {
+                    self.active_plan.clear();
+                    self.plan_name.clear();
+                }
+                if changed || !same_world {
+                    self.invalidate();
+                    self.recalculate = *had_result;
+                } else if self.result.is_null() && !self.busy {
+                    self.recalculate = *had_result;
+                }
+                self.restore_recalculate = *had_result;
+            }
+            BreedingPageState::Offspring {
+                filter,
+                element,
+                new_only,
+                all_steps,
+                max_steps,
+                page,
+                size,
+                selected,
+                had_result,
+            } => {
+                let changed = self.mode != Some(true) || self.max_steps != *max_steps;
+                self.filter = filter.clone();
+                self.element = element.clone();
+                self.new_only = *new_only;
+                self.all_steps = *all_steps;
+                self.max_steps = *max_steps;
+                self.offspring_page = *page;
+                self.offspring_size = *size;
+                self.offspring_selected = if same_world { *selected } else { None };
+                self.mode = Some(true);
+                if changed || !same_world {
+                    self.invalidate();
+                    self.recalculate = *had_result;
+                } else if self.result.is_null() && !self.busy {
+                    self.recalculate = *had_result;
+                }
+                self.restore_recalculate = *had_result;
+            }
+        }
+    }
+    pub fn has_edit_draft(&self) -> bool {
+        self.edit.is_some()
+    }
+    pub fn has_suspended_edit(&self) -> bool {
+        self.has_suspended_edit_for(&self.active_world)
+    }
+    pub fn has_suspended_edit_for(&self, world: &str) -> bool {
+        self.suspended_edit
+            .as_ref()
+            .is_some_and(|draft| draft.world == world)
+    }
+    pub fn resume_edit(&mut self) -> bool {
+        self.resume_edit_for(&self.active_world.clone())
+    }
+    pub fn resume_edit_for(&mut self, world: &str) -> bool {
+        if self.edit.is_some() || !self.has_suspended_edit_for(world) {
+            return false;
+        }
+        let draft = self.suspended_edit.take().unwrap();
+        self.edit = Some(draft.draft);
+        self.recording = draft.recording;
+        self.edit_world = draft.world;
+        self.edit_query = draft.query;
+        true
+    }
+    pub fn dismiss_overlay(&mut self) -> bool {
+        self.dismiss_overlay_for(if self.mode == Some(true) {
+            "offspring"
+        } else {
+            "planner"
+        })
+    }
+    pub fn has_overlay_for(&self, page: &str) -> bool {
+        matches!(page, "lookup" | "warehouse" | "planner" | "offspring")
+            && (self.edit.is_some()
+                || matches!(page, "planner" | "offspring") && self.picker
+                || page == "planner" && self.delete_plan.is_some()
+                || page == "offspring" && self.visible_offspring_selection())
+    }
+    fn visible_offspring_selection(&self) -> bool {
+        self.offspring_selected.is_some_and(|id| {
+            array(&self.result["items"])
+                .iter()
+                .any(|row| row["id"].as_u64() == Some(id as u64))
+        })
+    }
+    pub fn dismiss_overlay_for(&mut self, page: &str) -> bool {
+        if !matches!(page, "lookup" | "warehouse" | "planner" | "offspring") {
+            return false;
+        }
+        if self.edit.is_some() {
+            if self.suspended_edit.is_some() {
+                return false;
+            }
+            let world = if self.edit_world.is_empty() {
+                self.active_world.clone()
+            } else {
+                std::mem::take(&mut self.edit_world)
+            };
+            self.suspended_edit = Some(SuspendedEdit {
+                draft: self.edit.take().unwrap(),
+                recording: self.recording.take(),
+                world,
+                query: std::mem::take(&mut self.edit_query),
+            });
+            return true;
+        }
+        if matches!(page, "planner" | "offspring") && self.picker {
+            self.picker = false;
+            return true;
+        }
+        if page == "planner" && self.delete_plan.take().is_some() {
+            return true;
+        }
+        if page == "offspring" && self.visible_offspring_selection() {
+            self.offspring_selected = None;
+            return true;
+        }
+        false
+    }
     pub fn activate_lookup(&mut self, pal: usize, reverse: bool) {
         if self.lookup_pal != pal || self.reverse != reverse {
             self.lookup_page = 0;
@@ -121,9 +395,13 @@ impl Breeding {
         if self.active_world != world {
             self.active_world = world.into();
             self.active_plan.clear();
-            self.edit = None;
-            self.edit_world.clear();
-            self.recording = None;
+            // A suspended draft may have just been explicitly resumed for this
+            // world's ID while another page still held the old active_world.
+            if self.edit_world != world {
+                self.edit = None;
+                self.edit_world.clear();
+                self.recording = None;
+            }
             self.offspring_selected = None;
             self.all_steps = store.world()["inventory"]["limit"] == "all";
             self.max_steps = store.world()["inventory"]["limit"]
@@ -145,6 +423,12 @@ impl Breeding {
         if self.stamp != stamp {
             self.stamp = stamp;
             self.invalidate();
+        }
+        // History stores no solver output. A warehouse refresh may invalidate an
+        // apparently unchanged target only when this fresh store is polled.
+        if self.restore_recalculate {
+            self.restore_recalculate = false;
+            self.recalculate |= self.result.is_null() && !self.busy;
         }
         if let Some(rx) = &self.receiver {
             match rx.try_recv() {
@@ -185,7 +469,7 @@ impl Breeding {
                         .enumerate()
                         .filter(|(_, p)| search(p, &self.lookup_query))
                         .collect();
-                    egui::ScrollArea::vertical()
+                    crate::navigation::ScrollArea::vertical()
                         .id_salt("lookup-species")
                         .max_height((ui.available_height() - 35.).max(200.))
                         .show_rows(ui, 42., rows.len(), |ui, range| {
@@ -388,7 +672,7 @@ impl Breeding {
             let width = ui.available_width();
             let cols = ((width / if self.reverse { 285. } else { 340. }) as usize).clamp(1, 4);
             let cell = (width - (cols - 1) as f32 * 6.) / cols as f32;
-            egui::ScrollArea::vertical()
+            crate::navigation::ScrollArea::vertical()
                 .id_salt("pair-results")
                 .max_height((ui.available_height() - 40.).max(170.))
                 .show_rows(ui, 40., rows.len().div_ceil(cols), |ui, range| {
@@ -418,7 +702,7 @@ impl Breeding {
     pub fn warehouse(&mut self, ui: &mut egui::Ui, d: &Data, store: &mut Store) -> Option<String> {
         self.poll(store);
         self.recover(store);
-        egui::ScrollArea::vertical()
+        crate::navigation::ScrollArea::vertical()
             .id_salt("warehouse-page")
             .show(ui, |ui| self.warehouse_content(ui, d, store))
             .inner
@@ -517,7 +801,7 @@ impl Breeding {
                 }
             });
         }
-        egui::ScrollArea::vertical()
+        crate::navigation::ScrollArea::vertical()
             .id_salt("warehouse-cards")
             .max_height((ui.available_height() - 42.).clamp(80., 620.))
             .show_rows(ui, 232., records.len().div_ceil(cols), |ui, range| {
@@ -752,7 +1036,7 @@ impl Breeding {
         }
         self.poll(store);
         self.recover(store);
-        egui::ScrollArea::vertical()
+        crate::navigation::ScrollArea::vertical()
             .id_salt(if offspring {
                 "offspring-page"
             } else {
@@ -1345,7 +1629,7 @@ impl Breeding {
             }
             let cols = ((ui.available_width() / 315.) as usize).clamp(1, 5);
             let width = (ui.available_width() - (cols - 1) as f32 * 8.) / cols as f32;
-            egui::ScrollArea::vertical()
+            crate::navigation::ScrollArea::vertical()
                 .id_salt("offspring-results")
                 .max_height((ui.available_height() - 42.).clamp(90., 550.))
                 .show_rows(ui, 90., rows.len().div_ceil(cols), |ui, range| {
@@ -1886,7 +2170,7 @@ pub fn trait_picker(ctx: &egui::Context, d: &Data, open: &mut bool, keys: &mut V
             if crate::design::dialog_header(ui, "layers", "选择词条").clicked() {
                 done = true;
             }
-            egui::ScrollArea::vertical().show(ui, |ui| trait_grid(ui, d, keys));
+            crate::navigation::ScrollArea::vertical().show(ui, |ui| trait_grid(ui, d, keys));
             if icon_action(ui, "check", "完成").clicked() {
                 done = true;
             }
@@ -2660,6 +2944,148 @@ fn record_event(
 mod progress_tests {
     use super::*;
     use crate::store::tests::{Temp, record};
+    #[test]
+    fn returning_to_lookup_restores_its_page_without_touching_the_planner() {
+        let mut breeding = Breeding::default();
+        breeding.lookup_pal = 12;
+        breeding.lookup_page = 4;
+        breeding.lookup_size = 60;
+        breeding.reverse = true;
+        breeding.lookup_query = "目标".into();
+        breeding.lookup_filter = "暗".into();
+        breeding.lookup_element = "dark".into();
+        let old = breeding.navigation_state("lookup");
+        breeding.activate_lookup(5, false);
+        breeding.lookup_page = 0;
+        breeding.lookup_filter.clear();
+        breeding.pal = 27;
+        breeding.traits = vec!["Legend".into()];
+        breeding.result = json!({"status":"owned"});
+        breeding.restore_navigation(&old, "#lookup/parents/example");
+        assert_eq!(
+            (
+                breeding.lookup_pal,
+                breeding.lookup_page,
+                breeding.lookup_size,
+                breeding.reverse
+            ),
+            (12, 4, 60, true)
+        );
+        assert_eq!(breeding.lookup_filter, "暗");
+        assert_eq!(breeding.lookup_query, "目标");
+        assert_eq!(breeding.pal, 27);
+        assert_eq!(breeding.traits, vec!["Legend"]);
+        assert_eq!(breeding.result, json!({"status":"owned"}));
+    }
+    #[test]
+    fn returning_to_a_plan_uses_the_latest_warehouse_and_never_revives_a_stale_result() {
+        let temp = Temp::new();
+        let mut store = store(&temp);
+        store.world_mut()["inventory"]["records"] =
+            json!([{"id":"removed-parent","speciesKey":"SheepBall"}]);
+        let mut breeding = Breeding::default();
+        breeding.mode = Some(false);
+        breeding.poll(&store);
+        breeding.result = json!({"status":"ok","founders":["removed-parent"]});
+        let old = breeding.navigation_state("planner");
+        store.world_mut()["inventory"]["records"] = json!([]);
+        breeding.restore_navigation(&old, "#planner/SheepBall");
+        breeding.poll(&store);
+        assert!(breeding.result.is_null());
+        assert!(breeding.recalculate);
+        assert!(array(&store.world()["inventory"]["records"]).is_empty());
+        // The same historical target can also replace another target safely.
+        breeding.pal = 9;
+        breeding.traits = vec!["Artisan".into()];
+        breeding.result = json!({"status":"wrong-target"});
+        breeding.restore_navigation(&old, "#planner/SheepBall");
+        assert_eq!(breeding.pal, 0);
+        assert!(breeding.traits.is_empty());
+        assert!(breeding.result.is_null());
+    }
+    #[test]
+    fn back_suspends_one_edit_with_its_world_and_recording_metadata() {
+        let mut breeding = Breeding::default();
+        breeding.active_world = "world-a".into();
+        breeding.edit_world = "world-a".into();
+        let draft = json!({"id":"unsaved","name":"尚未保存的昵称","traits":["Legend"]});
+        breeding.edit = Some(draft.clone());
+        breeding.edit_query = "草稿搜索".into();
+        breeding.recording = Some(("plan-a".into(), json!({"kind":"hatch","id":"draft-event"})));
+        assert!(breeding.dismiss_overlay_for("warehouse"));
+        assert!(breeding.edit.is_none());
+        assert!(breeding.recording.is_none());
+        assert!(breeding.has_suspended_edit());
+        breeding.active_world = "world-b".into();
+        assert!(!breeding.resume_edit());
+        breeding.active_world = "world-a".into();
+        breeding.edit = Some(json!({"id":"second-unsaved"}));
+        assert!(
+            !breeding.dismiss_overlay_for("warehouse"),
+            "an occupied draft slot must not be overwritten"
+        );
+        assert!(
+            !breeding.resume_edit(),
+            "resuming cannot overwrite the current editor"
+        );
+        breeding.edit = None;
+        assert!(breeding.resume_edit());
+        assert_eq!(breeding.edit, Some(draft));
+        assert_eq!(breeding.edit_world, "world-a");
+        assert_eq!(breeding.edit_query, "草稿搜索");
+        assert_eq!(breeding.recording.as_ref().unwrap().0, "plan-a");
+        assert_eq!(breeding.recording.as_ref().unwrap().1["kind"], "hatch");
+    }
+    #[test]
+    fn back_ignores_overlays_that_are_not_visible_on_the_current_page() {
+        let mut breeding = Breeding::default();
+        breeding.offspring_selected = Some(7);
+        breeding.delete_plan = Some("plan".into());
+        assert!(!breeding.has_overlay_for("lookup"));
+        assert!(!breeding.dismiss_overlay_for("lookup"));
+        assert_eq!(breeding.offspring_selected, Some(7));
+        breeding.result = json!({"items":[{"id":7}]});
+        assert!(breeding.dismiss_overlay_for("offspring"));
+        assert!(breeding.delete_plan.is_some());
+        assert!(breeding.dismiss_overlay_for("planner"));
+    }
+    #[test]
+    fn back_does_not_consume_an_offspring_selection_whose_window_is_not_drawn() {
+        let mut breeding = Breeding::default();
+        breeding.offspring_selected = Some(7);
+        for result in [Value::Null, json!({"items":[{"id":9}]})] {
+            breeding.result = result;
+            assert!(!breeding.has_overlay_for("offspring"));
+            assert!(!breeding.dismiss_overlay_for("offspring"));
+            assert_eq!(
+                breeding.offspring_selected,
+                Some(7),
+                "keep a pending selection for recomputation, but do not eat Back"
+            );
+        }
+        breeding.result = json!({"items":[{"id":7}]});
+        assert!(breeding.has_overlay_for("offspring"));
+        assert!(breeding.dismiss_overlay_for("offspring"));
+        assert!(breeding.offspring_selected.is_none());
+    }
+    #[test]
+    fn back_resumes_a_world_bound_draft_before_the_next_warehouse_poll() {
+        let temp = Temp::new();
+        let store = store(&temp);
+        let world = text(store.world(), "id").to_owned();
+        let mut breeding = Breeding::default();
+        breeding.active_world = world.clone();
+        breeding.edit_world = world.clone();
+        let draft = json!({"id":"still-unsaved","name":"跨页返回草稿"});
+        breeding.edit = Some(draft.clone());
+        assert!(breeding.dismiss_overlay_for("warehouse"));
+        breeding.active_world = "a-different-world-last-viewed".into();
+        assert!(breeding.resume_edit_for(&world));
+        breeding.poll(&store);
+        assert_eq!(breeding.edit, Some(draft));
+        assert_eq!(breeding.edit_world, world);
+        assert!(array(&store.world()["inventory"]["records"]).is_empty());
+    }
     fn event() -> Value {
         json!({"id":"event-one","stockId":"hatch-event-one","kind":"hatch","at":1,"speciesKey":"SheepBall","generation":1,"name":"实际幼崽","sex":"F","traits":["Legend"],"expectedTraits":["Legend"],"expectedSexes":["F"],"parents":[{"speciesKey":"SheepBall","stockId":"a","name":"A","sex":"M"},{"speciesKey":"SheepBall","stockId":"b","name":"B","sex":"F"}]})
     }
@@ -2732,7 +3158,10 @@ mod progress_tests {
                 })
                 .unwrap();
             // Both avatar and name belong to this same identity target.
-            for pos in [egui::pos2(rect.left()+14.,rect.center().y), egui::pos2(rect.left()+50.,rect.top()+8.)] {
+            for pos in [
+                egui::pos2(rect.left() + 14., rect.center().y),
+                egui::pos2(rect.left() + 50., rect.top() + 8.),
+            ] {
                 let event = |pressed| {
                     vec![
                         egui::Event::PointerMoved(pos),

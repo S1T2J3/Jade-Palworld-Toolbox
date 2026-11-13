@@ -179,6 +179,30 @@ fn chosen_owner(result: &Value, remembered: Option<&str>, force: bool) -> Option
     }
 }
 impl Worlds {
+    /// Back cancels the top confirmation before closing the archive panel.
+    /// Background reads and the current world are deliberately left intact.
+    pub fn dismiss_overlay(&mut self) -> bool {
+        if !self.open {
+            return false;
+        }
+        if self.rename.take().is_some() {
+            return true;
+        }
+        if self.delete.take().is_some() {
+            return true;
+        }
+        if self.unlink.take().is_some() {
+            return true;
+        }
+        if self.import_preview.take().is_some() {
+            return true;
+        }
+        if self.open {
+            self.open = false;
+            return true;
+        }
+        false
+    }
     fn task<F: FnOnce() -> TaskResult + Send + 'static>(&mut self, ctx: &egui::Context, f: F) {
         if self.busy {
             return;

@@ -30,6 +30,55 @@ pub struct DetailState {
     methods: BTreeMap<String, Vec<(String, String)>>,
     craft_settings: BTreeMap<String, (u64, Value)>,
 }
+/// User choices only. Derived recipes and acquisition indexes are rebuilt.
+#[derive(Clone)]
+pub struct DetailViewState {
+    quantity: u64,
+    choices: Value,
+    partner_level: usize,
+    drop_tier: usize,
+    product_query: String,
+    last: String,
+}
+impl DetailViewState {
+    pub fn belongs_to_page(&self, page: &str) -> bool {
+        self.last
+            .strip_prefix(page)
+            .is_some_and(|tail| tail.starts_with('/') && tail.len() > 1)
+    }
+}
+impl DetailState {
+    pub fn navigation_state(&self) -> DetailViewState {
+        DetailViewState {
+            quantity: self.quantity,
+            choices: self.choices.clone(),
+            partner_level: self.partner_level,
+            drop_tier: self.drop_tier,
+            product_query: self.product_query.clone(),
+            last: self.last.clone(),
+        }
+    }
+    pub fn restore_navigation(&mut self, state: &DetailViewState) {
+        if let Some(id) = self.last.strip_prefix("items/") {
+            self.craft_settings
+                .insert(id.into(), (self.quantity, self.choices.clone()));
+        }
+        self.quantity = state.quantity;
+        self.choices = state.choices.clone();
+        self.partner_level = state.partner_level;
+        self.drop_tier = state.drop_tier;
+        self.product_query = state.product_query.clone();
+        self.last = state.last.clone();
+        if let Some(id) = self.last.strip_prefix("items/") {
+            self.craft_settings
+                .insert(id.into(), (self.quantity, self.choices.clone()));
+        }
+        self.craft_key.clear();
+        self.craft_plan = Value::Null;
+        self.methods_key.clear();
+        self.methods.clear();
+    }
+}
 impl Default for DetailState {
     fn default() -> Self {
         Self {
@@ -45,6 +94,74 @@ impl Default for DetailState {
             methods: BTreeMap::new(),
             craft_settings: BTreeMap::new(),
         }
+    }
+}
+#[cfg(test)]
+mod navigation_state_tests {
+    use super::*;
+    #[test]
+    fn history_reenters_the_same_detail_without_resetting_recipe_or_drop_choices() {
+        let ctx = egui::Context::default();
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
+        let mut data = Data::new(root, ctx.clone()).unwrap();
+        let started = std::time::Instant::now();
+        while data.pending > 0 && started.elapsed().as_secs() < 15 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            data.poll();
+        }
+        assert!(data.errors.is_empty());
+        assert_eq!(data.pending, 0);
+        let mut catalog = crate::catalog::Catalog::default();
+        catalog.rebuild(&data);
+        let item = catalog.pages["items"]
+            .iter()
+            .find(|e| e.id == "CarbonFiber")
+            .unwrap();
+        let other = catalog.pages["items"]
+            .iter()
+            .find(|e| e.id == "PalSphere")
+            .unwrap();
+        let render = |page: &str, e: &Entry, state: &mut DetailState| {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        Vec2::new(1200., 20000.),
+                    )),
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        show(ui, &data, page, e, &e.route, &mut json!([]), state);
+                    });
+                },
+            );
+        };
+        let mut detail = DetailState::default();
+        render("items", item, &mut detail);
+        detail.quantity = 7;
+        detail.choices = json!({"CarbonFiber":1});
+        let old_item = detail.navigation_state();
+        detail.quantity = 19;
+        render("items", other, &mut detail);
+        detail.restore_navigation(&old_item);
+        render("items", item, &mut detail);
+        assert_eq!(detail.quantity, 7);
+        assert_eq!(detail.choices, json!({"CarbonFiber":1}));
+        let pal = catalog.pages["paldex"]
+            .iter()
+            .find(|e| array(&e.value["详细资料"]["drops"]).len() > 1)
+            .unwrap();
+        render("paldex", pal, &mut detail);
+        detail.drop_tier = 1;
+        let old_pal = detail.navigation_state();
+        render("items", other, &mut detail);
+        detail.restore_navigation(&old_pal);
+        render("paldex", pal, &mut detail);
+        assert_eq!(
+            detail.drop_tier, 1,
+            "rendering a returned detail must not treat it as a new identity"
+        );
     }
 }
 
