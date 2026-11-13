@@ -146,7 +146,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"优化返回与前进：按历史恢复页面筛选、分页、滚动、计算器目标与输入，以及地图视角和选中点；避免等价地址反复入历史。返回优先关闭当前临时窗口，未保存的个体和地图编辑可暂存并继续。按钮显示目标提示，右键可选择最近历史，支持Alt+方向键与鼠标侧键；前进按钮固定位置。历史仅保存轻量视图状态，不回滚仓库、地图标记或世界档案。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"修复无边框窗口无法拖动调整大小的问题：恢复四条边和四个角的原生缩放，按显示缩放比例设置命中范围；最大化时关闭边缘缩放，还原后恢复。保留圆角、标题栏拖动、最小化、最大化及关闭按钮，最小尺寸仍为960×620。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.

@@ -1672,6 +1672,7 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size(qa_size.unwrap_or([1440., 900.]))
             .with_min_inner_size([960., 620.])
+            .with_resizable(true)
             .with_decorations(false)
             .with_icon(std::sync::Arc::new(icon))
             .with_app_id("JadePalworldRustBeta"),

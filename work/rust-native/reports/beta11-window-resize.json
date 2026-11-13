@@ -1,0 +1,789 @@
+{
+  "version": "2.0.0-beta.11",
+  "binarySha256": "5073019f690b2cbb6116c644adf2fcea609bd2ce5091973076912704adb0abed",
+  "checks": {
+    "app": 136,
+    "coreGoldenSuite": 1,
+    "goldenCases": 1942,
+    "total": 137,
+    "configuration": "release"
+  },
+  "geometryDpiTests": [
+    96,
+    120,
+    144,
+    192,
+    288
+  ],
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "baseline": {
+    "label": "baseline",
+    "binarySha256": "0ef92628f8ad39f77a46b0ea5b3cf7210af2ae0f24c4dd78821415e032662d86",
+    "privateDesktop": true,
+    "publicFixtureRecords": 467,
+    "passed": true,
+    "dpi": 144,
+    "normalHitTests": {
+      "left": {
+        "actual": 1,
+        "expected": 10
+      },
+      "right": {
+        "actual": 1,
+        "expected": 11
+      },
+      "top": {
+        "actual": 1,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 1,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 1,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 1,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 1,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 1,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "initialRegion": {
+      "kind": 3,
+      "width": 2160,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "minimumTrackSize": [
+      1440,
+      930
+    ],
+    "nativeEdgeResize": {
+      "method": "nonClientRightEdgeThenKeyboard",
+      "started": false,
+      "reason": "edge is not HTRIGHT",
+      "before": [
+        160,
+        160,
+        2160,
+        1350
+      ],
+      "after": [
+        160,
+        160,
+        2160,
+        1350
+      ],
+      "changed": false
+    },
+    "systemResize": {
+      "method": "systemSizeRightThenKeyboard",
+      "started": true,
+      "before": [
+        160,
+        160,
+        2160,
+        1350
+      ],
+      "after": [
+        160,
+        160,
+        2288,
+        1350
+      ],
+      "changed": true
+    },
+    "afterResizeRegion": {
+      "kind": 3,
+      "width": 2288,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "negativePosition": [
+      -280,
+      -150
+    ],
+    "negativeCoordinateHitTests": {
+      "left": {
+        "actual": 1,
+        "expected": 10
+      },
+      "right": {
+        "actual": 1,
+        "expected": 11
+      },
+      "top": {
+        "actual": 1,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 1,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 1,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 1,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 1,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 1,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedOuterHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 2,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 2,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 2,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedHitTests": {
+      "left": {
+        "actual": 1,
+        "expected": 10
+      },
+      "right": {
+        "actual": 1,
+        "expected": 11
+      },
+      "top": {
+        "actual": 1,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 1,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 1,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 1,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 1,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 1,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedRegion": {
+      "kind": 0,
+      "width": 3862,
+      "height": 2110,
+      "cornerIncluded": false,
+      "centerIncluded": false,
+      "nearRightIncluded": false,
+      "outsideRightIncluded": false
+    },
+    "restoredHitTests": {
+      "left": {
+        "actual": 1,
+        "expected": 10
+      },
+      "right": {
+        "actual": 1,
+        "expected": 11
+      },
+      "top": {
+        "actual": 1,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 1,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 1,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 1,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 1,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 1,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "restoredRegion": {
+      "kind": 3,
+      "width": 2288,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "nativeBehaviorVerified": false,
+    "baselineBugReproduced": true,
+    "processExitedNormally": true,
+    "inventoryUnchanged": true,
+    "mapNotesUnchanged": true
+  },
+  "fixed": {
+    "label": "fixed",
+    "binarySha256": "5073019f690b2cbb6116c644adf2fcea609bd2ce5091973076912704adb0abed",
+    "privateDesktop": true,
+    "publicFixtureRecords": 467,
+    "passed": true,
+    "dpi": 144,
+    "normalHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 12,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 13,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 14,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "initialRegion": {
+      "kind": 3,
+      "width": 2160,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "minimumTrackSize": [
+      1440,
+      930
+    ],
+    "nativeEdgeResize": {
+      "method": "nonClientRightEdgeThenKeyboard",
+      "started": true,
+      "before": [
+        160,
+        160,
+        2160,
+        1350
+      ],
+      "after": [
+        160,
+        160,
+        2288,
+        1350
+      ],
+      "changed": true
+    },
+    "systemResize": {
+      "method": "systemSizeRightThenKeyboard",
+      "started": true,
+      "before": [
+        160,
+        160,
+        2288,
+        1350
+      ],
+      "after": [
+        160,
+        160,
+        2422,
+        1350
+      ],
+      "changed": true
+    },
+    "afterResizeRegion": {
+      "kind": 3,
+      "width": 2422,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "negativePosition": [
+      -280,
+      -150
+    ],
+    "negativeCoordinateHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 12,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 13,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 14,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedOuterHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 2,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 2,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 2,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedHitTests": {
+      "left": {
+        "actual": 1,
+        "expected": 10
+      },
+      "right": {
+        "actual": 1,
+        "expected": 11
+      },
+      "top": {
+        "actual": 1,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 1,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 1,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 1,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 1,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 1,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedRegion": {
+      "kind": 0,
+      "width": 3862,
+      "height": 2110,
+      "cornerIncluded": false,
+      "centerIncluded": false,
+      "nearRightIncluded": false,
+      "outsideRightIncluded": false
+    },
+    "restoredHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 12,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 13,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 14,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "restoredRegion": {
+      "kind": 3,
+      "width": 2422,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "nativeBehaviorVerified": true,
+    "baselineBugReproduced": false,
+    "processExitedNormally": true,
+    "inventoryUnchanged": true,
+    "mapNotesUnchanged": true
+  },
+  "delta": {
+    "verified": true,
+    "changedFiles": [
+      "Jade-Palworld-Rust.exe",
+      "README.md",
+      "data/announcements.json"
+    ],
+    "reusedFiles": 2121,
+    "deltaBytes": 8067524,
+    "fullBytes": 17897265,
+    "gameDataUnchanged": true
+  },
+  "package": {
+    "passed": true,
+    "version": "2.0.0-beta.11",
+    "fileCount": 2125,
+    "installerExecuted": false,
+    "registryAndShortcutsModified": false,
+    "installerSha256": "f02ae6c90943b61e85a876e58a1fdfdb7ea9ad9d5271da50fe3aded9e2a32e37",
+    "archiveSha256": "35d5d8abdca3502801f8f1c54f9c6788f4e72420a80f0ec51e1d51273f095bd4"
+  },
+  "updater": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    }
+  ]
+}
