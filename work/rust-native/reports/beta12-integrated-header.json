@@ -1,0 +1,751 @@
+{
+  "version": "2.0.0-beta.12",
+  "binarySha256": "0f51440d5a9675b280e719f00e4e0ff8a95cfede82c798a8d5fdf6329461c21b",
+  "checks": {
+    "app": 141,
+    "coreGoldenSuite": 1,
+    "goldenCases": 1942,
+    "total": 142,
+    "configuration": "release"
+  },
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "nativeGeometry": {
+    "label": "integrated-header",
+    "binarySha256": "0f51440d5a9675b280e719f00e4e0ff8a95cfede82c798a8d5fdf6329461c21b",
+    "privateDesktop": true,
+    "publicFixtureRecords": 467,
+    "passed": true,
+    "dpi": 144,
+    "normalHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 12,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 13,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 14,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-close": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-maximize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-minimize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-drag": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "initialRegion": {
+      "kind": 3,
+      "width": 2160,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "minimumTrackSize": [
+      1440,
+      930
+    ],
+    "nativeEdgeResize": {
+      "method": "nonClientRightEdgeThenKeyboard",
+      "started": true,
+      "before": [
+        160,
+        160,
+        2160,
+        1350
+      ],
+      "after": [
+        160,
+        160,
+        2288,
+        1350
+      ],
+      "changed": true
+    },
+    "systemResize": {
+      "method": "systemSizeRightThenKeyboard",
+      "started": true,
+      "before": [
+        160,
+        160,
+        2288,
+        1350
+      ],
+      "after": [
+        160,
+        160,
+        2416,
+        1350
+      ],
+      "changed": true
+    },
+    "afterResizeRegion": {
+      "kind": 3,
+      "width": 2416,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "negativePosition": [
+      -280,
+      -150
+    ],
+    "negativeCoordinateHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 12,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 13,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 14,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-close": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-maximize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-minimize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-drag": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedOuterHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 2,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 2,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 2,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-close": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-maximize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-minimize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-drag": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedHitTests": {
+      "left": {
+        "actual": 1,
+        "expected": 10
+      },
+      "right": {
+        "actual": 1,
+        "expected": 11
+      },
+      "top": {
+        "actual": 1,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 1,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 1,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 1,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 1,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 1,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-close": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-maximize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-minimize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-drag": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "maximizedRegion": {
+      "kind": 0,
+      "width": 3862,
+      "height": 2110,
+      "cornerIncluded": false,
+      "centerIncluded": false,
+      "nearRightIncluded": false,
+      "outsideRightIncluded": false
+    },
+    "restoredHitTests": {
+      "left": {
+        "actual": 10,
+        "expected": 10
+      },
+      "right": {
+        "actual": 11,
+        "expected": 11
+      },
+      "top": {
+        "actual": 12,
+        "expected": 12
+      },
+      "bottom": {
+        "actual": 15,
+        "expected": 15
+      },
+      "topLeft": {
+        "actual": 13,
+        "expected": 13
+      },
+      "topRight": {
+        "actual": 14,
+        "expected": 14
+      },
+      "bottomLeft": {
+        "actual": 16,
+        "expected": 16
+      },
+      "bottomRight": {
+        "actual": 17,
+        "expected": 17
+      },
+      "center": {
+        "actual": 1,
+        "expected": 1
+      },
+      "title": {
+        "actual": 1,
+        "expected": 1
+      },
+      "closeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "maximizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "minimizeControl": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-close": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-maximize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-minimize": {
+        "actual": 1,
+        "expected": 1
+      },
+      "integrated-drag": {
+        "actual": 1,
+        "expected": 1
+      }
+    },
+    "restoredRegion": {
+      "kind": 3,
+      "width": 2416,
+      "height": 1350,
+      "cornerIncluded": false,
+      "centerIncluded": true,
+      "nearRightIncluded": true,
+      "outsideRightIncluded": false
+    },
+    "nativeBehaviorVerified": true,
+    "baselineBugReproduced": false,
+    "processExitedNormally": true,
+    "inventoryUnchanged": true,
+    "mapNotesUnchanged": true,
+    "inputMethod": "Win32 hit tests and native non-client sizing; custom toolbar buttons are verified separately using direct egui events."
+  },
+  "visualChecks": {
+    "passed": true,
+    "binarySha256": "0f51440d5a9675b280e719f00e4e0ff8a95cfede82c798a8d5fdf6329461c21b",
+    "cases": {
+      "base": {
+        "scenes": 6,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "lookup",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "details/passive",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "details/capture",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "work/ranch",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "map",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "settings/updates",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      },
+      "small": {
+        "scenes": 3,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "details/passive",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "details/capture",
+            "offset": 180.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "work/expeditions",
+            "offset": 132.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      },
+      "jade": {
+        "scenes": 2,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "lookup",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "work/efficiency",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      },
+      "navigation": {
+        "scenes": 1,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "lookup",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "paldex",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "lookup",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "paldex",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "settings/updates",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      },
+      "draft": {
+        "scenes": 1,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "warehouse",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "warehouse",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          },
+          {
+            "page": "warehouse",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      },
+      "worlds": {
+        "scenes": 1,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "warehouse",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      },
+      "maximize": {
+        "scenes": 1,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "selectedTabs": [
+          {
+            "page": "lookup",
+            "offset": 0.0,
+            "selectedFullyVisible": true
+          }
+        ]
+      }
+    },
+    "navigationRoutes": [
+      "#lookup/Anubis",
+      "#paldex/Anubis",
+      "#lookup/Anubis",
+      "#paldex/Anubis",
+      "#settings/updates"
+    ],
+    "draftResumed": true,
+    "nativeMaximizedFromIntegratedButton": true,
+    "maximizedSize": [
+      3862,
+      2110
+    ]
+  },
+  "manualScreenshotChecks": {
+    "result": "passed",
+    "binarySha256": "0f51440d5a9675b280e719f00e4e0ff8a95cfede82c798a8d5fdf6329461c21b",
+    "method": "Independent final-run screenshot inspection, plus navigation and unchanged-data metadata checks.",
+    "checks": {
+      "integratedHeader": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Window controls occupy the same toolbar as history and page tabs; no separate title strip remains"
+      },
+      "smallControlsVisible": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "All three window controls and grip are clear and separate from tabs at960x620"
+      },
+      "captureTabVisible": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Capture Probability tab is now selected, underlined, and fully visible in the960x620 Capture Probability page"
+      },
+      "modalControlsClear": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "World archive backdrop darkens the page while the three window controls remain clear above it"
+      },
+      "jadeControlContrast": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Window controls are readable dark icons on the light jade toolbar"
+      },
+      "draftContinueEditing": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "metadataVerified": true,
+        "assertion": "Suspending an editor shows Continue Editing and reopening restores the editor without page navigation"
+      },
+      "navigationRoutes": {
+        "result": "passed",
+        "metadataVerified": true,
+        "routes": [
+          "#lookup/Anubis",
+          "#paldex/Anubis",
+          "#lookup/Anubis",
+          "#paldex/Anubis",
+          "#settings/updates"
+        ]
+      },
+      "warehouseAndMapNotes": {
+        "result": "passed",
+        "metadataVerified": true,
+        "cases": 7,
+        "records": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true
+      },
+      "selectedTabs": {
+        "result": "passed",
+        "metadataVerified": true,
+        "assertion": "All selected tab rectangles in the final verification are fully inside their viewports"
+      }
+    },
+    "previousCaptureTabObservationResolved": true,
+    "observations": [],
+    "unresolvedFindings": []
+  },
+  "delta": {
+    "verified": true,
+    "changedFiles": [
+      "Jade-Palworld-Rust.exe",
+      "README.md",
+      "data/announcements.json"
+    ],
+    "reusedFiles": 2121,
+    "deltaBytes": 8070123,
+    "fullBytes": 17899864,
+    "gameDataUnchanged": true
+  },
+  "package": {
+    "passed": true,
+    "version": "2.0.0-beta.12",
+    "fileCount": 2125,
+    "installerExecuted": false,
+    "registryAndShortcutsModified": false,
+    "installerSha256": "8eba99a83eaff925fa66a980de6d4f391ec0d20ad80927d804929ee641f235ba",
+    "archiveSha256": "3a626cf5e6e56ed755201d082b950de6de707de55811904891ecb56e448c23bf"
+  },
+  "updater": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    }
+  ],
+  "validationMethods": {
+    "toolbarCommands": "real egui pointer-event component tests; direct native-app click confirms maximize",
+    "nativeResize": "Win32 hit tests and native non-client sizing",
+    "postedMouseMessages": "private-desktop method was not reliable and is not used as successful validation evidence"
+  }
+}

@@ -146,7 +146,7 @@ impl UpdateState {
             .and_then(|v| v["message"].as_str().map(str::to_owned))
             .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
         Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"修复无边框窗口无法拖动调整大小的问题：恢复四条边和四个角的原生缩放，按显示缩放比例设置命中范围；最大化时关闭边缘缩放，还原后恢复。保留圆角、标题栏拖动、最小化、最大化及关闭按钮，最小尺寸仍为960×620。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"移除独立顶部标题栏，将最小化、最大化/还原和关闭按钮合并到页面工具栏右侧，使用当前皮肤颜色。左上Jade标志区和顶部小点拖动区可移动窗口，双击可最大化/还原；保留四边和四角调整大小。窄窗口为窗口按钮预留空间，页签在剩余区域横向滚动。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.

@@ -500,9 +500,9 @@ pub fn window_button(ui: &mut egui::Ui, name: &str, tooltip: &str, ink: Color32)
         let fill = if name == "close" {
             Color32::from_rgb(196, 43, 57)
         } else {
-            Color32::from_white_alpha(50)
+            palette(ui.ctx()).selected
         };
-        ui.painter().rect_filled(rect, 0, fill);
+        ui.painter().rect_filled(rect, 6, fill);
     }
     let color = if name == "close" && hovered {
         Color32::WHITE

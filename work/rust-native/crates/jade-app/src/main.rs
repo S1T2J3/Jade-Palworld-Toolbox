@@ -20,6 +20,7 @@ mod skins;
 mod store;
 mod terrain;
 mod updates;
+mod window_header;
 mod work_views;
 mod worlds_ui;
 use data::{Data, array, text};
@@ -1056,80 +1057,6 @@ impl eframe::App for App {
         let mut history_request = None;
         let mut departure_map = None;
         let palette = design::palette(ctx);
-        egui::TopBottomPanel::top("titlebar")
-            .exact_height(35.)
-            .frame(
-                egui::Frame::new()
-                    .fill(palette.rail)
-                    .inner_margin(egui::Margin::ZERO),
-            )
-            .show(ctx, |ui| {
-                if self.theme == "moon" {
-                    design::gradient(
-                        ui.painter(),
-                        ui.max_rect(),
-                        &[
-                            Color32::from_rgb(155, 191, 217),
-                            Color32::from_rgb(155, 173, 216),
-                            Color32::from_rgb(183, 166, 212),
-                        ],
-                        true,
-                    );
-                }
-                let caption_ink = if self.theme == "moon" {
-                    palette.ink
-                } else {
-                    Color32::WHITE
-                };
-                ui.visuals_mut().override_text_color = Some(caption_ink);
-                let mut drag_rect = ui.max_rect();
-                drag_rect.max.x -= 138.;
-                let drag = ui.interact(drag_rect, ui.id().with("window-drag"), egui::Sense::drag());
-                if drag.drag_started() {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
-                }
-                if drag.double_clicked() {
-                    let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
-                }
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::ZERO;
-                    ui.add_space(12.);
-                    ui.add(
-                        egui::Image::new(egui::include_image!("../assets/jade-symbol.webp"))
-                            .fit_to_exact_size(Vec2::splat(24.)),
-                    );
-                    ui.add_space(8.);
-                    ui.label(RichText::new("Jade · 幻兽帕鲁工具箱").size(12.).strong());
-                    ui.add_space(10.);
-                    ui.label(
-                        RichText::new("Rust 测试版")
-                            .size(11.)
-                            .color(caption_ink.gamma_multiply(0.8)),
-                    );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if design::window_button(ui, "close", "关闭", caption_ink).clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                        let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
-                        if design::window_button(
-                            ui,
-                            if max { "restore" } else { "maximize" },
-                            "最大化 / 还原",
-                            caption_ink,
-                        )
-                        .clicked()
-                        {
-                            let max = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
-                        }
-                        if design::window_button(ui, "minimize", "最小化", caption_ink).clicked()
-                        {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
-                        }
-                    });
-                });
-            });
         egui::SidePanel::left("navigation")
             .resizable(false)
             .exact_width(108.)
@@ -1159,7 +1086,7 @@ impl eframe::App for App {
                 } else {
                     Color32::from_rgb(241, 245, 231)
                 });
-                ui.vertical_centered(|ui| {
+                let brand = ui.vertical_centered(|ui| {
                     ui.add(
                         egui::Image::new(egui::include_image!("../assets/jade-symbol.webp"))
                             .fit_to_exact_size(Vec2::splat(if compact { 38. } else { 50. })),
@@ -1167,6 +1094,7 @@ impl eframe::App for App {
                     ui.label(RichText::new("Jade").size(21.).strong());
                     ui.label(RichText::new("幻兽帕鲁工具箱").size(10.));
                 });
+                window_header::drag_handle(ui, brand.response.rect, "brand-window-drag", false);
                 ui.add_space(5.);
                 ui.separator();
                 if ui
@@ -1269,7 +1197,17 @@ impl eframe::App for App {
                         true,
                     );
                 }
-                ui.horizontal_centered(|ui| {
+                let layout = window_header::geometry(ui.max_rect());
+                window_header::show_controls(ui, layout.controls);
+                window_header::drag_handle(ui, layout.drag, "header-window-drag", true);
+                let mut content = ui.new_child(
+                    egui::UiBuilder::new()
+                        .id_salt("header-content")
+                        .max_rect(layout.content)
+                        .layout(egui::Layout::top_down(egui::Align::Min)),
+                );
+                content.set_clip_rect(layout.content.intersect(ui.clip_rect()));
+                content.horizontal_centered(|ui| {
                     let current = self.canonical_route();
                     let overlay = self.has_overlay();
                     let back_hint = if overlay {
@@ -1376,40 +1314,17 @@ impl eframe::App for App {
                     if design::announcement_button(ui, unread).clicked() {
                         nav = Some("#settings/updates".into());
                     }
-                    egui::ScrollArea::horizontal()
-                        .id_salt("tab-scroll")
-                        .max_height(44.)
-                        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                for (name, id) in SECTIONS[section].2 {
-                                    let response = design::tab_with_icon(
-                                        ui,
-                                        name,
-                                        design::tab_icon(id),
-                                        page == *id,
-                                    );
-                                    if page == *id
-                                        && ui
-                                            .ctx()
-                                            .data(|m| {
-                                                m.get_temp::<String>(egui::Id::new(
-                                                    "last-tabs-page",
-                                                ))
-                                            })
-                                            .as_deref()
-                                            != Some(page.as_str())
-                                    {
-                                        response.scroll_to_me(Some(egui::Align::Center));
-                                    }
-                                    if response.clicked() {
-                                        nav = Some(format!("#{id}"));
-                                    }
-                                }
-                            });
-                        });
-                    ui.ctx()
-                        .data_mut(|m| m.insert_temp(egui::Id::new("last-tabs-page"), page.clone()));
+                    let tabs = window_header::show_tabs(ui, SECTIONS[section].2, &page);
+                    if let Some(href) = tabs.clicked {
+                        nav = Some(href);
+                    }
+                    if self.probe.enabled() {
+                        let rect = |r: egui::Rect| [r.left(), r.top(), r.right(), r.bottom()];
+                        let proof = json!({"page":page,"viewport":rect(tabs.viewport),
+                            "selected":tabs.selected_rect.map(rect),"offset":tabs.offset,
+                            "controls":rect(layout.controls),"drag":rect(layout.drag)});
+                        ctx.data_mut(|m| m.insert_temp(egui::Id::new("jade-header-probe"), proof));
+                    }
                 });
             });
         navigation::begin_scroll_frame(ctx);
@@ -1591,7 +1506,7 @@ impl eframe::App for App {
                 .collect();
             let value = json!({"canonicalRoute":self.canonical_route(),"back":self.history.back_entries().map(|e|e.route.clone()).collect::<Vec<_>>(),
                 "forward":self.history.forward_targets(&self.canonical_route(),64).iter().map(|e|e.route.clone()).collect::<Vec<_>>(),
-                "scrolls":scrolls,"searchOpen":self.search_open,"worldsOpen":self.worlds.open,"aboutOpen":self.about,
+                "scrolls":scrolls,"tabs":ctx.data(|m|m.get_temp::<Value>(egui::Id::new("jade-header-probe"))),"searchOpen":self.search_open,"worldsOpen":self.worlds.open,"aboutOpen":self.about,
                 "editorOpen":self.breeding.has_edit_draft(),"suspendedEditor":self.breeding.has_suspended_edit_for(text(self.store.world(),"id")),
                 "calculator":{"pal":text(&self.data.species[self.calculators.pal],"key"),"level":self.calculators.level,"traits":self.calculators.traits},
                 "mapState":format!("{:?}",self.map.navigation_state()),"spawnState":format!("{:?}",self.spawns.navigation_state())});
