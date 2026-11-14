@@ -463,6 +463,9 @@ impl Store {
         }
         result
     }
+    pub fn has_pending_changes(&self) -> bool {
+        self.dirty
+    }
     pub fn flush(&mut self) {
         if self.write_locked {
             return;

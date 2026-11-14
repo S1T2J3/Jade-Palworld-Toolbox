@@ -442,6 +442,7 @@ pub fn tab_icon(page: &str) -> &str {
         "guide/quests" => "list",
         "guide/journals" => "book",
         "settings/skins" => "settings",
+        "settings/overlay" => "maximize",
         "settings/updates" => "bell",
         _ => "info",
     }

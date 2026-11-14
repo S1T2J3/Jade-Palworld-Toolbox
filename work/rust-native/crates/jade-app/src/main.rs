@@ -13,6 +13,8 @@ mod instance;
 mod links;
 mod map;
 mod navigation;
+mod overlay;
+mod overlay_ui;
 mod qa;
 mod search;
 mod search_rows;
@@ -101,6 +103,7 @@ const SECTIONS: &[(&str, &str, &[(&str, &str)])] = &[
         "settings/skins",
         &[
             ("皮肤", "settings/skins"),
+            ("游戏悬浮窗", "settings/overlay"),
             ("公告与更新", "settings/updates"),
         ],
     ),
@@ -263,6 +266,7 @@ fn page_header(
         "merchants" => "查询商人出售的物品或帕鲁，定位其所在位置。",
         "neutrals" => "查看其他中立单位的相关资料。",
         "settings/skins" => "选择辉月伊配色，或使用普通颜色主题。",
+        "settings/overlay" => "在幻兽帕鲁画面上呼出完整工具箱，按快捷键收起后继续游戏。",
         _ => "",
     };
     let mut nav = None;
@@ -322,6 +326,7 @@ struct App {
     updates: updates::UpdateState,
     probe: qa::Probe,
     chrome: chrome::WindowChrome,
+    overlay: overlay::Overlay,
     external: external::Directory,
 }
 #[derive(Clone)]
@@ -433,6 +438,7 @@ impl App {
             updates,
             probe: qa::Probe::default(),
             chrome: chrome::WindowChrome::default(),
+            overlay: overlay::Overlay::default(),
             external: external::Directory::default(),
         }
     }
@@ -533,7 +539,7 @@ impl App {
                 self.ui_ctx
                     .data(|m| m.get_temp::<String>(egui::Id::new("element-guide-selection"))),
             ),
-            "settings/skins" | "settings/updates" => ViewState::Other,
+            "settings/skins" | "settings/overlay" | "settings/updates" => ViewState::Other,
             _ => ViewState::Catalog(self.catalog.navigation_state(&page)),
         };
         navigation::Entry {
@@ -960,6 +966,18 @@ impl App {
         self.search_open = open && !close_search;
         nav
     }
+    fn hide_game_overlay(&mut self) {
+        if self.store.has_pending_changes() {
+            self.store.flush();
+        }
+        self.overlay.hide();
+    }
+    fn restore_toolbox_window(&mut self) {
+        if self.store.has_pending_changes() {
+            self.store.flush();
+        }
+        self.overlay.return_to_desktop();
+    }
     fn settings(&mut self, ui: &mut egui::Ui, page: &str) {
         if page == "settings/skins" {
             egui::ScrollArea::vertical()
@@ -973,6 +991,25 @@ impl App {
                     ui.separator();
                     self.external.show(ui, &self.data);
                 });
+        } else if page == "settings/overlay" {
+            let mut config = overlay_ui::read_preferences(&self.store.state);
+            let before = config;
+            let status = self.overlay.snapshot();
+            let action = navigation::ScrollArea::vertical()
+                .id_salt("game-overlay-settings")
+                .show(ui, |ui| overlay_ui::show(ui, &mut config, &status))
+                .inner;
+            if config != before {
+                overlay_ui::write_preferences(&mut self.store.state, config);
+                self.store.changed();
+                self.store.flush();
+                ui.ctx().request_repaint();
+            }
+            match action {
+                overlay_ui::Action::None => {}
+                overlay_ui::Action::Hide => self.hide_game_overlay(),
+                overlay_ui::Action::ReturnToDesktop => self.restore_toolbox_window(),
+            }
         } else {
             let before = self.store.state.clone();
             if self.updates.show(ui, &mut self.store.state) == Some(updates::UpdateAction::Restart)
@@ -992,13 +1029,16 @@ impl eframe::App for App {
         self.probe.raw_input_hook(input);
     }
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.chrome.apply(ctx, frame);
         self.probe.begin_frame();
         self.frames += 1;
         if self.last_save.elapsed() > Duration::from_secs(1) {
             self.store.flush();
             self.last_save = Instant::now();
         }
+        self.overlay
+            .sync(ctx, frame, overlay_ui::read_preferences(&self.store.state));
+        let overlay_state = self.overlay.snapshot();
+        self.chrome.apply(ctx, frame);
         ctx.request_repaint_after(Duration::from_secs(1));
         self.data.poll();
         self.updates
@@ -1079,7 +1119,7 @@ impl eframe::App for App {
                         false,
                     );
                 }
-                let compact = ui.available_height() < 700.;
+                let compact = overlay_state.session || ui.available_height() < 700.;
                 let nav_height = if compact { 30. } else { 54. };
                 ui.style_mut().visuals.override_text_color = Some(if self.theme == "moon" {
                     palette.ink
@@ -1095,6 +1135,22 @@ impl eframe::App for App {
                     ui.label(RichText::new("幻兽帕鲁工具箱").size(10.));
                 });
                 window_header::drag_handle(ui, brand.response.rect, "brand-window-drag", false);
+                if overlay_state.session {
+                    ui.add_space(4.);
+                    ui.small("游戏悬浮窗");
+                    if ui
+                        .add_sized([88., 28.], egui::Button::new("返回游戏"))
+                        .clicked()
+                    {
+                        self.hide_game_overlay();
+                    }
+                    if ui
+                        .add_sized([88., 28.], egui::Button::new("回到桌面"))
+                        .clicked()
+                    {
+                        self.restore_toolbox_window();
+                    }
+                }
                 ui.add_space(5.);
                 ui.separator();
                 if ui
@@ -1198,7 +1254,13 @@ impl eframe::App for App {
                     );
                 }
                 let layout = window_header::geometry(ui.max_rect());
-                window_header::show_controls(ui, layout.controls);
+                if window_header::show_controls_with_close(
+                    ui,
+                    layout.controls,
+                    overlay_state.session,
+                ) {
+                    self.hide_game_overlay();
+                }
                 window_header::drag_handle(ui, layout.drag, "header-window-drag", true);
                 let mut content = ui.new_child(
                     egui::UiBuilder::new()
@@ -1412,7 +1474,7 @@ impl eframe::App for App {
                         .show(ui, &self.data, &page, self.store.world(), &self.route),
                     "work/suitability" => self.calculators.suitability(ui, &self.data, &self.route),
                     "guide/elements" => catalog::elements(ui, &self.data),
-                    "settings/skins" | "settings/updates" => {
+                    "settings/skins" | "settings/overlay" | "settings/updates" => {
                         self.settings(ui, &page);
                         None
                     }
@@ -1478,6 +1540,9 @@ impl eframe::App for App {
                 self.go(route);
             }
         }
+        if overlay_state.session && self.store.has_pending_changes() {
+            self.store.flush();
+        }
         if self.last_save.elapsed() > Duration::from_secs(1) {
             self.store.flush();
             self.last_save = Instant::now();
@@ -1500,6 +1565,7 @@ impl eframe::App for App {
         }
         let probe_route = self.route.clone();
         if self.probe.enabled() {
+            let game_overlay = self.overlay.snapshot();
             let scrolls: Vec<_> = navigation::capture_scrolls(ctx)
                 .into_iter()
                 .map(|s| json!({"id":format!("{:?}",s.id),"x":s.offset.x,"y":s.offset.y}))
@@ -1507,6 +1573,7 @@ impl eframe::App for App {
             let value = json!({"canonicalRoute":self.canonical_route(),"back":self.history.back_entries().map(|e|e.route.clone()).collect::<Vec<_>>(),
                 "forward":self.history.forward_targets(&self.canonical_route(),64).iter().map(|e|e.route.clone()).collect::<Vec<_>>(),
                 "scrolls":scrolls,"tabs":ctx.data(|m|m.get_temp::<Value>(egui::Id::new("jade-header-probe"))),"searchOpen":self.search_open,"worldsOpen":self.worlds.open,"aboutOpen":self.about,
+                "gameOverlay":{"registered":game_overlay.registered,"session":game_overlay.session,"visible":game_overlay.visible,"status":game_overlay.status},
                 "editorOpen":self.breeding.has_edit_draft(),"suspendedEditor":self.breeding.has_suspended_edit_for(text(self.store.world(),"id")),
                 "calculator":{"pal":text(&self.data.species[self.calculators.pal],"key"),"level":self.calculators.level,"traits":self.calculators.traits},
                 "mapState":format!("{:?}",self.map.navigation_state()),"spawnState":format!("{:?}",self.spawns.navigation_state())});

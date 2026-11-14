@@ -83,9 +83,16 @@ pub fn geometry(rect: Rect) -> Layout {
 }
 
 pub fn show_controls(ui: &mut egui::Ui, rect: Rect) {
+    show_controls_with_close(ui, rect, false);
+}
+
+/// The game overlay closes back into the game; the ordinary app still exits.
+/// Native Alt+F4 and updater shutdown continue through their original paths.
+pub fn show_controls_with_close(ui: &mut egui::Ui, rect: Rect, hide_on_close: bool) -> bool {
     let ctx = ui.ctx().clone();
     let modal_open = ctx.memory(|mem| mem.top_modal_layer().is_some());
     let palette = design::palette(&ctx);
+    let mut hide_requested = false;
     // A separate registered Area remains above modal backdrops and is not
     // disabled together with the page. Only these three controls are exposed;
     // tabs, drag handles and the rest of the toolbar stay behind the modal.
@@ -107,8 +114,23 @@ pub fn show_controls(ui: &mut egui::Ui, rect: Rect) {
             if modal_open {
                 controls.painter().rect_filled(rect, 8, palette.surface);
             }
-            if design::window_button(controls, "close", "关闭", palette.ink).clicked() {
-                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            if design::window_button(
+                controls,
+                "close",
+                if hide_on_close {
+                    "收起并返回游戏"
+                } else {
+                    "关闭"
+                },
+                palette.ink,
+            )
+            .clicked()
+            {
+                if hide_on_close {
+                    hide_requested = true;
+                } else {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
             }
             let maximized = controls.input(|input| input.viewport().maximized.unwrap_or(false));
             if design::window_button(
@@ -125,6 +147,7 @@ pub fn show_controls(ui: &mut egui::Ui, rect: Rect) {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
             }
         });
+    hide_requested
 }
 
 /// Register only a dedicated drag area, never the tab/button rectangles.
@@ -206,6 +229,52 @@ mod tests {
                 modifiers: egui::Modifiers::NONE,
             },
         ]
+    }
+
+    #[test]
+    fn game_overlay_close_requests_hide_without_exiting_the_toolbox() {
+        let ctx = egui::Context::default();
+        design::apply(&ctx, "moon");
+        let mut hidden = false;
+        let mut frame = |time, events| {
+            ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(960., 620.))),
+                    time: Some(time),
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default()
+                        .frame(egui::Frame::NONE)
+                        .show(ctx, |ui| {
+                            hidden = show_controls_with_close(
+                                ui,
+                                geometry(Rect::from_min_size(
+                                    Pos2::new(108., 0.),
+                                    Vec2::new(852., 48.),
+                                ))
+                                .controls,
+                                true,
+                            );
+                        });
+                },
+            )
+        };
+        frame(0., vec![]);
+        frame(0.02, vec![]);
+        let pos = Pos2::new(937., 24.);
+        frame(0.1, pointer(pos, true));
+        let output = frame(0.15, pointer(pos, false));
+        assert!(
+            !commands(&output)
+                .iter()
+                .any(|c| matches!(c, egui::ViewportCommand::Close))
+        );
+        assert!(
+            hidden,
+            "the close button must return to the game without ending the app"
+        );
     }
 
     fn commands(output: &egui::FullOutput) -> &[egui::ViewportCommand] {

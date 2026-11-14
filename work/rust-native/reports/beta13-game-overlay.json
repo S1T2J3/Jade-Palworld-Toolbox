@@ -1,0 +1,318 @@
+{
+  "version": "2.0.0-beta.13",
+  "binarySha256": "e348ecc89314c2bf9cb558b548359a6030c2a8634e22a5b05cbc1add8da417eb",
+  "checks": {
+    "app": 149,
+    "coreGoldenSuite": 1,
+    "goldenCases": 1942,
+    "explicitNativeSession": 1,
+    "total": 151,
+    "configuration": "release"
+  },
+  "fixtureSha256": "5f7af3f4534da06920bac3eb28524b5db5adbcfd5980c953c0f377054f6c2e6c",
+  "nativeSession": {
+    "result": "passed",
+    "test": "overlay::tests::private_desktop_native_session_restores_window_and_recovers_after_game_exit",
+    "privateDesktop": true,
+    "nativeWindowFixtures": 2,
+    "runtimeGameHandleOverrideInRelease": false,
+    "checks": [
+      "show and topmost",
+      "hide and reopen",
+      "normal/maximized/minimized desktop restoration",
+      "external activation recovers desktop",
+      "hidden game exit does not show or steal focus",
+      "replacement game recreates timer",
+      "original placement restored"
+    ]
+  },
+  "releaseUi": {
+    "result": "passed",
+    "binarySha256": "e348ecc89314c2bf9cb558b548359a6030c2a8634e22a5b05cbc1add8da417eb",
+    "caseCount": 9,
+    "cases": {
+      "default": {
+        "result": "passed",
+        "scenes": 4,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          false,
+          false,
+          false,
+          false
+        ],
+        "savedPreferences": null
+      },
+      "small": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          false
+        ],
+        "savedPreferences": null
+      },
+      "enabled": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          true
+        ],
+        "savedPreferences": {
+          "enabled": true,
+          "hotkey": "alt-j",
+          "autoHide": true,
+          "unrelated": "keep"
+        },
+        "hotkeyCanBeRegisteredAfterAppExit": true
+      },
+      "conflict": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          false
+        ],
+        "savedPreferences": {
+          "enabled": true,
+          "hotkey": "alt-j",
+          "autoHide": true,
+          "unrelated": "keep"
+        }
+      },
+      "popup": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          true,
+          true
+        ],
+        "savedPreferences": {
+          "enabled": true,
+          "hotkey": "alt-j",
+          "autoHide": true
+        },
+        "hotkeyCanBeRegisteredAfterAppExit": true
+      },
+      "preferences": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "savedPreferences": {
+          "enabled": true,
+          "hotkey": "f9",
+          "autoHide": false,
+          "unrelated": "keep"
+        },
+        "hotkeyCanBeRegisteredAfterAppExit": true
+      },
+      "conflictRecovery": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          false,
+          true
+        ],
+        "savedPreferences": {
+          "enabled": true,
+          "hotkey": "f9",
+          "autoHide": true,
+          "unrelated": "keep"
+        },
+        "hotkeyCanBeRegisteredAfterAppExit": true
+      },
+      "smallScroll": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          false
+        ],
+        "savedPreferences": null
+      },
+      "restart": {
+        "result": "passed",
+        "scenes": 1,
+        "publicFixtureRecords": 467,
+        "inventoryUnchanged": true,
+        "mapNotesUnchanged": true,
+        "appExitedNormally": true,
+        "registeredAfterActions": [
+          true
+        ],
+        "savedPreferences": {
+          "enabled": true,
+          "hotkey": "f9",
+          "autoHide": false,
+          "unrelated": "keep"
+        },
+        "hotkeyCanBeRegisteredAfterAppExit": true
+      }
+    },
+    "assertions": {
+      "allReportsUseFinalExecutable": true,
+      "allReportsStartedAfterFinalBuild": true,
+      "legacyDefaultsDoNotRegisterHotkeysOrRewritePreferences": true,
+      "enabledHotkeyRegisters": true,
+      "testOwnedConflictIsReported": true,
+      "changingHotkeyResolvesConflict": true,
+      "uiChangesPersistAndSurviveRestart": true,
+      "unrelatedSettingsPreserved": true,
+      "exitReleasesRegisteredHotkey": true,
+      "allCasesKeep467InventoryRecordsAndMapNotes": true
+    },
+    "scope": {
+      "releaseNativeApplication": true,
+      "privateWin32Desktops": true,
+      "uiInputMethod": "direct egui pointer events; actual OS RegisterHotKey registration and conflict probes",
+      "actualPalworldProcessUsed": false,
+      "actualGamePerformanceMeasured": false,
+      "gameSessionLifecycleTest": "covered by a separate explicitly invoked native-window fixture test, not this UI report"
+    }
+  },
+  "manualScreenshots": {
+    "result": "passed",
+    "binarySha256": "e348ecc89314c2bf9cb558b548359a6030c2a8634e22a5b05cbc1add8da417eb",
+    "method": "Direct visual inspection of screenshots from these exact final-build runs; runtime assertions recorded separately.",
+    "checks": {
+      "defaultOffClearlyShown": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Enable unchecked, default Alt+J, and Closed status are clear"
+      },
+      "smallWindowSettingsAndControls": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "At960x620, enable/key/auto-hide/status and window controls remain visible"
+      },
+      "smallWindowInstructionsReachableByScroll": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Scrolling reveals all usage instructions without covering toolbar"
+      },
+      "allFourHotkeyChoicesVisible": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Open selector displays Alt+J, Ctrl+Shift+J, F8 and F9"
+      },
+      "conflictStatusExplainsRemedy": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Alt+J conflict is displayed with an instruction to choose another hotkey"
+      },
+      "selectedF9AndTogglesMatchPreferences": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "After real clicks, enabled/F9/auto-hide-off and F9 status match saved settings"
+      },
+      "conflictRecoveryVisible": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Changing occupied Alt+J to F9 shows enabled F9 status"
+      },
+      "restartRetainsSelectedSettings": {
+        "result": "passed",
+        "visuallyConfirmed": true,
+        "assertion": "Restarted same disposable profile shows enabled/F9/auto-hide-off unchanged"
+      }
+    },
+    "unresolvedFindings": [],
+    "scope": {
+      "actualGameSessionOrFpsWasNotObserved": true
+    }
+  },
+  "delta": {
+    "verified": true,
+    "changedFiles": [
+      "Jade-Palworld-Rust.exe",
+      "README.md",
+      "data/announcements.json"
+    ],
+    "reusedFiles": 2121,
+    "deltaBytes": 8087615,
+    "fullBytes": 17917356,
+    "gameDataUnchanged": true
+  },
+  "package": {
+    "passed": true,
+    "version": "2.0.0-beta.13",
+    "fileCount": 2125,
+    "installerExecuted": false,
+    "registryAndShortcutsModified": false,
+    "installerSha256": "d3fa68fe68e2aedaa8b5026d2e629327a2eef1857df3a07613020f12bea110fa",
+    "archiveSha256": "a51c68ecbeaa614f06d047a2e96a77d53f1381d22398c2301a7df55b941986ec"
+  },
+  "updater": [
+    {
+      "name": "immediate",
+      "mode": "direct-helper",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "deferred",
+      "mode": "next-start",
+      "helperExitCode": 0,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "rollback",
+      "mode": "direct-helper",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    },
+    {
+      "name": "other-window",
+      "mode": "concurrent-native-window",
+      "helperExitCode": 1,
+      "allPackageHashesVerified": true
+    }
+  ],
+  "compatibilityScope": {
+    "preferredDisplayModes": [
+      "borderless",
+      "windowed"
+    ],
+    "actualPalworldProcessUsed": false,
+    "actualGameFpsMeasured": false,
+    "nativeSessionUsesWindowFixtures": true,
+    "gameFilesModified": false,
+    "gameProcessMemoryRead": false,
+    "defaultEnabled": false
+  }
+}
