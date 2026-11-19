@@ -1,4 +1,8 @@
 fn main(){
+    println!("cargo:rerun-if-env-changed=JADE_ASSISTANT_KERNEL_SHA256");
+    let package_version = std::env::var("CARGO_PKG_VERSION").expect("Cargo package version");
+    let channel_version = package_version.split_once('+').map_or(package_version.as_str(), |(base, _)| base);
+    println!("cargo:rustc-env=JADE_UPDATE_VERSION={channel_version}");
  println!("cargo:rerun-if-changed=assets/atlas.ico");
  if std::env::var("CARGO_CFG_TARGET_OS").as_deref()!=Ok("windows"){return;}
  let out=std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap());

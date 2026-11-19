@@ -89,11 +89,9 @@ impl Directory {
                     self.signature = Some(signature);
                     self.matched_query = None;
                 }
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.query)
-                        .hint_text("查找外部条目：名称、物品 ID 或网站")
-                        .desired_width(ui.available_width().min(460.)),
-                );
+                crate::design::clearable_text_edit(ui, &mut self.query, 460., |edit| {
+                    edit.hint_text("查找外部条目：名称、物品 ID 或网站")
+                });
                 let query = normalize(&self.query);
                 if self.matched_query.as_ref() != Some(&query) {
                     self.matches = filter_groups(&self.groups, &query);

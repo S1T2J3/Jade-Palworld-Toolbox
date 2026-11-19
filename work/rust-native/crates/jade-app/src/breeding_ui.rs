@@ -1,6 +1,7 @@
-use crate::design::{action as icon_action, icon_button};
+use crate::design::{action as icon_action, clearable_text_edit, icon_button};
 use crate::{
     data::{Data, array, search, text},
+    pal_picker::Picker,
     store::Store,
 };
 use eframe::egui::{self, Vec2};
@@ -10,6 +11,9 @@ use std::sync::mpsc;
 pub struct Breeding {
     pub pal: usize,
     pub lookup_pal: usize,
+    lookup_picker: Picker,
+    target_picker: Picker,
+    edit_picker: Picker,
     lookup_query: String,
     lookup_filter: String,
     lookup_element: String,
@@ -110,6 +114,9 @@ impl Default for Breeding {
         Self {
             pal: 0,
             lookup_pal: 0,
+            lookup_picker: Picker::default(),
+            target_picker: Picker::default(),
+            edit_picker: Picker::default(),
             lookup_query: String::new(),
             lookup_filter: String::new(),
             lookup_element: String::new(),
@@ -331,6 +338,8 @@ impl Breeding {
     pub fn has_overlay_for(&self, page: &str) -> bool {
         matches!(page, "lookup" | "warehouse" | "planner" | "offspring")
             && (self.edit.is_some()
+                || page == "lookup" && self.lookup_picker.is_open()
+                || page == "planner" && self.target_picker.is_open()
                 || matches!(page, "planner" | "offspring") && self.picker
                 || page == "planner" && self.delete_plan.is_some()
                 || page == "offspring" && self.visible_offspring_selection())
@@ -345,6 +354,12 @@ impl Breeding {
     pub fn dismiss_overlay_for(&mut self, page: &str) -> bool {
         if !matches!(page, "lookup" | "warehouse" | "planner" | "offspring") {
             return false;
+        }
+        if self.edit_picker.dismiss()
+            || page == "lookup" && self.lookup_picker.dismiss()
+            || page == "planner" && self.target_picker.dismiss()
+        {
+            return true;
         }
         if self.edit.is_some() {
             if self.suspended_edit.is_some() {
@@ -380,6 +395,7 @@ impl Breeding {
         if self.lookup_pal != pal || self.reverse != reverse {
             self.lookup_page = 0;
             self.lookup_query.clear();
+            self.lookup_picker.dismiss();
         }
         self.lookup_pal = pal;
         self.reverse = reverse;
@@ -399,6 +415,7 @@ impl Breeding {
             // world's ID while another page still held the old active_world.
             if self.edit_world != world {
                 self.edit = None;
+                self.edit_picker.dismiss();
                 self.edit_world.clear();
                 self.recording = None;
             }
@@ -452,17 +469,15 @@ impl Breeding {
     pub fn lookup(&mut self, ui: &mut egui::Ui, d: &Data, store: &mut Store) -> Option<String> {
         self.poll(store);
         let mut nav = None;
-        let wide = ui.available_width() > 760.;
+        let wide = ui.available_width() > 760. && !self.lookup_picker.is_open();
         if wide {
             ui.horizontal_top(|ui| {
                 panel(ui).show(ui, |ui| {
                     ui.set_width(208.);
                     ui.strong("选择帕鲁");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.lookup_query)
-                            .desired_width(200.)
-                            .hint_text("中文名、英文名或编号"),
-                    );
+                    clearable_text_edit(ui, &mut self.lookup_query, 200., |edit| {
+                        edit.hint_text("中文名、英文名或编号")
+                    });
                     let rows: Vec<_> = d
                         .species
                         .iter()
@@ -497,7 +512,15 @@ impl Breeding {
                 });
             });
         } else {
-            pal_picker(ui, d, &mut self.lookup_pal, &mut self.lookup_query);
+            if self.lookup_picker.choose(
+                ui,
+                d,
+                &mut self.lookup_pal,
+                &mut self.lookup_query,
+                "选择亲代帕鲁",
+            ) {
+                self.lookup_page = 0;
+            }
             self.lookup_results(ui, d, store, &mut nav);
         }
         self.edit_dialog(ui.ctx(), d, store);
@@ -591,13 +614,10 @@ impl Breeding {
             ui.horizontal_wrapped(|ui| {
                 ui.strong("配种组合");
                 let old = self.lookup_element.clone();
-                if ui
-                    .add(
-                        egui::TextEdit::singleline(&mut self.lookup_filter)
-                            .desired_width(180.)
-                            .hint_text("筛选伙伴或子代"),
-                    )
-                    .changed()
+                if clearable_text_edit(ui, &mut self.lookup_filter, 188., |edit| {
+                    edit.hint_text("筛选伙伴或子代")
+                })
+                .changed()
                 {
                     self.lookup_page = 0;
                 }
@@ -733,18 +753,11 @@ impl Breeding {
                 }
             });
             ui.horizontal_wrapped(|ui| {
-                if ui
-                    .add(
-                        egui::TextEdit::singleline(&mut self.stock_filter)
-                            .desired_width(290.)
-                            .hint_text("搜索物种、个体名或词条"),
-                    )
-                    .changed()
+                if clearable_text_edit(ui, &mut self.stock_filter, 298., |edit| {
+                    edit.hint_text("搜索物种、个体名或词条")
+                })
+                .changed()
                 {
-                    self.stock_page = 0;
-                }
-                if !self.stock_filter.is_empty() && icon_action(ui, "reset", "清除").clicked() {
-                    self.stock_filter.clear();
                     self.stock_page = 0;
                 }
                 page_size(
@@ -1124,7 +1137,10 @@ impl Breeding {
         if !offspring {
             crate::design::section(ui, "设定目标");
             ui.horizontal_wrapped(|ui| {
-                if pal_picker(ui, d, &mut self.pal, &mut self.query) {
+                if self
+                    .target_picker
+                    .choose(ui, d, &mut self.pal, &mut self.query, "选择目标帕鲁")
+                {
                     self.active_plan.clear();
                     self.invalidate();
                 }
@@ -1365,11 +1381,9 @@ impl Breeding {
                             self.invalidate();
                         }
                     }
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.plan_name)
-                            .desired_width(180.)
-                            .hint_text("计划名称（可选）"),
-                    );
+                    clearable_text_edit(ui, &mut self.plan_name, 188., |edit| {
+                        edit.hint_text("计划名称（可选）")
+                    });
                     if icon_action(
                         ui,
                         "save",
@@ -1557,13 +1571,10 @@ impl Breeding {
         panel(ui).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 let previous = self.element.clone();
-                if ui
-                    .add(
-                        egui::TextEdit::singleline(&mut self.filter)
-                            .desired_width(210.)
-                            .hint_text("筛选目标子代"),
-                    )
-                    .changed()
+                if clearable_text_edit(ui, &mut self.filter, 218., |edit| {
+                    edit.hint_text("筛选目标子代")
+                })
+                .changed()
                 {
                     self.offspring_page = 0;
                 }
@@ -1770,6 +1781,7 @@ impl Breeding {
     }
     fn edit_dialog(&mut self, ctx: &egui::Context, d: &Data, store: &mut Store) {
         let Some(mut draft) = self.edit.clone() else {
+            self.edit_picker.dismiss();
             self.edit_world.clear();
             return;
         };
@@ -1779,6 +1791,7 @@ impl Breeding {
         }
         if self.edit_world != text(store.world(), "id") {
             self.edit = None;
+            self.edit_picker.dismiss();
             self.recording = None;
             self.notice = "世界已切换，请重新打开个体。".into();
             return;
@@ -1819,7 +1832,13 @@ impl Breeding {
                         .any(|r| r["id"] == draft["id"]);
                 if fixed {
                     ui.strong(d.pal_name(text(&draft, "speciesKey")));
-                } else if pal_picker(ui, d, &mut index, &mut self.edit_query) {
+                } else if self.edit_picker.choose(
+                    ui,
+                    d,
+                    &mut index,
+                    &mut self.edit_query,
+                    "选择个体物种",
+                ) {
                     draft["speciesKey"] = d.species[index]["key"].clone();
                 }
                 if let Some((_, entry)) = &self.recording {
@@ -1835,15 +1854,14 @@ impl Breeding {
                 let mut name = text(&draft, "name").to_owned();
                 ui.horizontal(|ui| {
                     ui.label("名字");
-                    if ui
-                        .add(egui::TextEdit::singleline(&mut name).char_limit(
-                            if text(&draft, "id").starts_with("terminal-") {
-                                256
-                            } else {
-                                48
-                            },
-                        ))
-                        .changed()
+                    if clearable_text_edit(ui, &mut name, 298., |edit| {
+                        edit.char_limit(if text(&draft, "id").starts_with("terminal-") {
+                            256
+                        } else {
+                            48
+                        })
+                    })
+                    .changed()
                     {
                         draft["name"] = json!(name);
                     }
@@ -1905,6 +1923,7 @@ impl Breeding {
                 Ok(()) => {
                     let recorded_plan = self.recording.as_ref().map(|(id, _)| id.clone());
                     self.edit = None;
+                    self.edit_picker.dismiss();
                     self.recording = None;
                     self.edit_world.clear();
                     self.active_plan = recorded_plan.clone().unwrap_or_default();
@@ -1921,6 +1940,7 @@ impl Breeding {
             self.edit = Some(draft);
         } else {
             self.edit = None;
+            self.edit_picker.dismiss();
             self.recording = None;
             self.edit_world.clear();
         }
@@ -1941,27 +1961,6 @@ impl Breeding {
         }
     }
 }
-pub fn pal_picker(ui: &mut egui::Ui, d: &Data, index: &mut usize, query: &mut String) -> bool {
-    let before = *index;
-    egui::ComboBox::from_id_salt("pal-picker")
-        .width(220.)
-        .height(480.)
-        .selected_text(
-            d.species
-                .get(*index)
-                .map(|p| format!("#{} {}", text(p, "dex"), text(p, "zh")))
-                .unwrap_or_default(),
-        )
-        .show_ui(ui, |ui| {
-            ui.add(egui::TextEdit::singleline(query).hint_text("搜索全部 300 个帕鲁"));
-            for (i, p) in d.species.iter().enumerate() {
-                if search(p, query) {
-                    ui.selectable_value(index, i, format!("#{} {}", text(p, "dex"), text(p, "zh")));
-                }
-            }
-        });
-    *index != before
-}
 pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
     ui.spacing_mut().interact_size.y = 23.;
     ui.spacing_mut().button_padding.y = 3.;
@@ -1970,14 +1969,9 @@ pub fn trait_grid(ui: &mut egui::Ui, d: &Data, keys: &mut Vec<String>) {
     let mut query = ui
         .data_mut(|m| m.get_temp::<String>(query_id))
         .unwrap_or_default();
-    ui.horizontal(|ui| {
-        ui.add(
-            egui::TextEdit::singleline(&mut query)
-                .hint_text("模糊搜索词条名称或效果（留空显示全部）"),
-        );
-        if icon_action(ui, "reset", "清空搜索").clicked() {
-            query.clear();
-        }
+    clearable_text_edit(ui, &mut query, 360., |edit| {
+        edit.id(query_id.with("edit"))
+            .hint_text("模糊搜索词条名称或效果（留空显示全部）")
     });
     ui.data_mut(|m| m.insert_temp(query_id, query.clone()));
     let mut traits: Vec<_> = array(&d.get("trait-data")["traits"])
@@ -3035,6 +3029,18 @@ mod progress_tests {
         assert_eq!(breeding.edit_query, "草稿搜索");
         assert_eq!(breeding.recording.as_ref().unwrap().0, "plan-a");
         assert_eq!(breeding.recording.as_ref().unwrap().1["kind"], "hatch");
+    }
+    #[test]
+    fn back_closes_the_pal_picker_before_the_warehouse_draft() {
+        let mut breeding = Breeding::default();
+        let draft = json!({"id":"new-pal","name":"保留这个昵称","speciesKey":"SheepBall"});
+        breeding.edit = Some(draft.clone());
+        breeding.edit_picker.open();
+        assert!(breeding.has_overlay_for("warehouse"));
+        assert!(breeding.dismiss_overlay_for("warehouse"));
+        assert!(!breeding.edit_picker.is_open());
+        assert_eq!(breeding.edit, Some(draft));
+        assert!(!breeding.has_suspended_edit());
     }
     #[test]
     fn back_ignores_overlays_that_are_not_visible_on_the_current_page() {

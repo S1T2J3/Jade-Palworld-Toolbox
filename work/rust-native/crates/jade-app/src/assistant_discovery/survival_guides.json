@@ -1,0 +1,418 @@
+[
+  {
+    "title": "据点 SAN",
+    "aliases": ["sanity","san","slacking off","slack off","hot spring","低理智","理智值","掉san","心情值","偷懒","温泉"],
+    "zh": "据点工作会消耗 SAN，饥饿会让它下降得更快。SAN 太低时帕鲁会偷懒，也可能生病。改善食物或安排它泡温泉可以恢复 SAN。",
+    "en": "Base work drains SAN, especially when a Pal goes hungry. Low SAN can lead to slacking or illness. Better food and time in a hot spring help restore it.",
+    "source": "https://palworld.gamevault.in/guide/help-19/",
+    "label": "温泉",
+    "route": "#work/facilities/Hot_Spring"
+  },
+  {
+    "title": "治疗生病的帕鲁",
+    "aliases": ["sick pal","illness","pal is sick","medicine workbench","medicine bench","生病","患病","治疗疾病","制药台"],
+    "zh": "帕鲁已经患病时，可以在制药台制作相应药品再给它用。照顾饮食和休息有助于维持 SAN。",
+    "en": "For an illness, make suitable medicine at a medicine workbench and administer it to the affected Pal. Feeding and rest support its SAN.",
+    "source": "https://palworld.gamevault.in/guide/",
+    "label": "制药台",
+    "route": "#work/facilities/Medieval_Medicine_Workbench"
+  },
+  {
+    "title": "孵蛋温度",
+    "aliases": ["incubator temperature","incubation","incubator","hatching temperature","egg is cold","egg is hot","egg feels","孵蛋","孵化温度","蛋太冷","蛋太热","孵化器"],
+    "zh": "找到的帕鲁蛋可以放进孵化器。温度是否合适会影响孵化速度；这条指南没有给出每种蛋的目标温度或固定耗时。",
+    "en": "Put a found Pal egg in an incubator. A suitable temperature speeds up hatching. The guide gives no universal temperature or fixed hatch time.",
+    "source": "https://palworld.gamevault.in/guide/help-34/",
+    "label": "帕鲁蛋孵化器",
+    "route": "#work/facilities/Egg_Incubator"
+  },
+  {
+    "title": "装备修理",
+    "aliases": ["repair bench","repair table","repair gear","repair equipment","durability","broken equipment","broken tools","修理台","维修台","耐久度","装备坏了","修理装备","修理工具"],
+    "zh": "装备在使用中消耗耐久，降到零会损坏。把装备带到修理台，并备好修理材料即可修复。",
+    "en": "Using equipment wears it down. At zero durability it breaks. A repair bench and the required materials restore damaged gear.",
+    "source": "https://palworld.gamevault.in/guide/help-30/",
+    "label": "修理台",
+    "route": "#work/facilities/Repair_Bench"
+  },
+  {
+    "title": "玩家负重",
+    "aliases": ["overencumbered","encumbered","overweight","carrying capacity","carry weight","weight limit","背不动","超重","负重","载重上限"],
+    "zh": "携带重量过高会限制玩家移动。升级后可在背包界面用属性点提升负重；眼前走不动时也可以先放下一些物品。",
+    "en": "Excess carried weight limits movement. Shed some weight to move again, or spend level-up stat points on carrying capacity in the inventory.",
+    "source": "https://palworld.gamevault.in/guide/",
+    "label": "强化属性任务",
+    "route": "#guide/quests/enhance-stats--main_statusup"
+  },
+  {
+    "title": "易腐食物的保存",
+    "aliases": ["food spoilage","spoiling","spoiled food","food rot","spoil timer","perishable","腐坏","腐烂","食物变质","食物过期","食物保鲜","保冷箱"],
+    "zh": "部分食物有腐坏倒计时，到期会消失。把易腐物品放进具备冷藏功能的保冷箱或冰箱，可以延长保存时间。",
+    "en": "Some food has a spoil timer. An expired item disappears. A cooler or refrigerator helps preserve perishable supplies.",
+    "source": "https://palworld.gamevault.in/guide/help-31/",
+    "label": "保冷箱",
+    "route": "#work/facilities/Cooler_Box"
+  },
+  {
+    "title": "饥饿与喂食",
+    "aliases": ["hunger","hungry","starving","feed pals","饥饿","挨饿","肚子饿","吃不饱","喂食"],
+    "zh": "活动会消耗玩家与帕鲁的饱食度，饥饿会削弱能力。可以使用背包里的食物给自己或帕鲁补充饱食度。",
+    "en": "Activity consumes food for both Tamers and Pals. Hunger can lower their stats. Use food from the inventory to feed yourself or a Pal.",
+    "source": "https://palworld.gamevault.in/guide/help-18/",
+    "label": "填饱肚子任务",
+    "route": "#guide/quests/filling-your-belly"
+  },
+  {
+    "title": "安排据点工作",
+    "aliases": ["work suitability","assign workers","base workers","assign base pals","working pals","工作适性","安排工作","分配工作","据点岗位","基地打工"],
+    "zh": "通过帕鲁终端把帕鲁放入据点工作栏。它会按自身适性寻找能做的工作；建立相应设施后，才有对应的工作可做。",
+    "en": "Use the Palbox to place a Pal in a base slot. Workers look for jobs compatible with their suitability and the facilities available at that base.",
+    "source": "https://palworld.gamevault.in/guide/help-14/",
+    "label": "安排帕鲁工作任务",
+    "route": "#guide/quests/putting-pals-to-work"
+  },
+  {
+    "title": "公会多人共建",
+    "aliases": ["guild","co-op base","shared base","share a base","multiplayer base","公会","公會","多人共建","共享据点","联机共用基地"],
+    "zh": "靠近同世界的玩家可申请加入对方公会。加入同一公会后，共享据点及其工作帕鲁；成员名单可以在公会页查看。",
+    "en": "Approach another player to request guild membership. Guildmates share their base and its workers. The guild tab lists current members.",
+    "source": "https://palworld.gamevault.in/guide/help-23/",
+    "label": "帕鲁终端",
+    "route": "#work/facilities/Palbox"
+  },
+  {
+    "title": "竞技场",
+    "aliases": ["arena","rank points","竞技场","竞技积分"],
+    "zh": "竞技场在沙漠地区的一座离岛，可与同世界玩家或 NPC 对战。从随身队伍选一只主力、两只副手。击倒对方训练家，或击倒其全部帕鲁，即可获胜。",
+    "en": "The arena on a desert island hosts battles against other players in the world or NPCs. Select one main Pal and two others. Defeat the opposing Tamer or all their Pals to win.",
+    "source": "https://palworld.gamevault.in/guide/help-42/",
+    "label": "竞技场商人",
+    "route": "#merchants/ArenaShop"
+  },
+  {
+    "title": "玩家死亡与取回物品",
+    "aliases": ["death penalty","respawn","death drop","lost inventory","recover my items","dropped my items","死亡掉落","死亡惩罚","复活点","跑尸","捡尸","找回掉落物"],
+    "zh": "世界设置决定死亡惩罚。如果物品或随身帕鲁掉在死亡地点，复活后循光柱返回即可取回，也能从光柱上方交互。",
+    "en": "World settings determine the death penalty. When gear or party Pals drop, return after respawn and interact with the light column at the death spot; it can also be reached from above.",
+    "source": "https://palworld.gamevault.in/guide/help-41/",
+    "label": "生存入门任务",
+    "route": "#guide/quests/how-to-stay-alive"
+  },
+  {
+    "title": "帕鲁失去战斗能力",
+    "aliases": ["incapacitated","knocked out pal","revive a pal","fainted pal","帕鲁濒死","帕鲁倒下","无法战斗","失去战斗能力","复活帕鲁"],
+    "zh": "将失去战斗能力的帕鲁放回帕鲁终端，可以让它恢复。玩家死亡掉落与帕鲁自身的倒下状态有不同处理方式。",
+    "en": "Move an incapacitated Pal into the Palbox to recover. This handles the Pal’s condition; a player's dropped inventory is retrieved separately.",
+    "source": "https://palworld.gamevault.in/guide/",
+    "label": "帕鲁终端",
+    "route": "#work/facilities/Palbox"
+  },
+  {
+    "title": "捕捉时机",
+    "aliases": ["capture chance","capture rate","catch chance","pal sphere","catching pals","捕获率","捕捉率","背后偷袭","捕获帕鲁","抓帕鲁"],
+    "zh": "帕鲁球要命中活着的目标。先压低生命、施加异常或利用陷阱，可提高捕捉机会；从背后偷袭也有帮助。对付更难捕捉的帕鲁可换用更强的球。",
+    "en": "Weaken a living target before throwing a sphere. Status effects, traps and a throw from behind can help. Stronger spheres improve your prospects against harder targets.",
+    "source": "https://palworld.gamevault.in/guide/help-16/",
+    "label": "捕获帕鲁任务",
+    "route": "#guide/quests/catching-a-pal"
+  },
+  {
+    "title": "钓鱼操作",
+    "aliases": ["fishing","fishing rod","fish shadow","fishing minigame","fish bait","钓鱼","鱼影","鱼饵","钓竿","浮漂"],
+    "zh": "装备钓竿，在背包选择鱼饵，向可见鱼影的水面抛竿。浮漂下沉时扬竿，在小游戏里按住操作键让指示条向右、松开向左，保持与鱼图标重合直到进度满。",
+    "en": "Equip a rod, select bait and cast at fish shadows. Hook when the float dips. Hold the action button to move the bar right and release to move left. Track the fish until the gauge fills.",
+    "source": "https://palworld.gamevault.in/guide/help-45/",
+    "label": "钓鱼任务",
+    "route": "#guide/quests/a-fine-day-for-fishing"
+  },
+  {
+    "title": "古代科技点",
+    "aliases": ["ancient technology points","ancient tech points","ancient technology","古代科技点","古代技术点","古代科技"],
+    "zh": "击败强敌是获得古代科技点的途径。用这些点数解锁古代科技项目。该条目没有列出各首领的具体点数及重复挑战奖励。",
+    "en": "Powerful enemies can award Ancient Technology Points. Spend the points on ancient technology unlocks. This entry does not specify a reward count or a repeat-clear reward for individual bosses.",
+    "source": "https://palworld.gamevault.in/guide/help-11/",
+    "label": "解锁科技任务",
+    "route": "#guide/quests/unlock-technology"
+  },
+  {
+    "title": "随身队伍",
+    "aliases": ["party size","party limit","party slots","pals in party","party is full","party full","team size","随身队伍","队伍上限","队伍满了","最多带几只","队伍栏位"],
+    "zh": "随身队伍最多容纳五只帕鲁。队伍满后新抓的帕鲁送入帕鲁终端。打开队伍页可查看成员状态，并更换已经学会的主动技能。",
+    "en": "Up to five Pals travel with a player. A new catch goes to the Palbox when the party is full. Use the party tab to inspect members and switch their learned active skills.",
+    "source": "https://palworld.gamevault.in/guide/help-17/",
+    "label": "帕鲁终端",
+    "route": "#work/facilities/Palbox"
+  },
+  {
+    "title": "房主下线与专用服务器",
+    "aliases": ["房主下线", "房主离线", "房主不在线", "我不开游戏", "没人在线", "when i host", "host is offline", "host goes offline", "while i am offline", "when i log off", "server is empty", "when nobody is online", "when no one is online"],
+    "zh": "普通邀请联机的世界由房主的游戏客户端承载。要让朋友在房主退出后仍能加入，可以运行 Palworld Dedicated Server，让服务器进程和主机在朋友游玩期间持续在线。若专服和客户端开在同一台电脑上，可以退出游戏客户端；关闭电脑或停掉服务器进程会中断连接。专服可连接和无玩家时某个据点是否继续生产，是两个需要分别核实的条件。",
+    "en": "An invite-code session runs in the host's game client. To let friends join after the host leaves, run Palworld Dedicated Server and keep the server process and its machine online. The client can close even if it uses the same computer. Turning the machine off stops the server. Its availability alone does not establish how each base job progresses with zero players.",
+    "source": "https://docs.palworldgame.com/getting-started/about-server/"
+  },
+  {
+    "title": "开局采集与第一处据点",
+    "aliases": ["first night preparations", "starting a new game", "starting from scratch", "first workbench", "开局先做", "开局要做", "新手开局", "第一晚怎么过", "从零开荒"],
+    "zh": "先拾地上的树枝和石子，做原始工作台，再做斧和镐来提高采集效率。选好落脚点后造帕鲁终端。入夜前备好火源和床。",
+    "en": "Pick up loose wood and stone, build a primitive workbench, then craft an axe and a pickaxe for faster gathering. Choose a site for your Palbox and prepare a fire and a bed for the first night.",
+    "source": "https://palworld.gamevault.in/guide/help-4/",
+    "label": "原始工作台",
+    "route": "#work/facilities/Primitive_Workbench"
+  },
+  {
+    "title": "采集与战斗掉落",
+    "aliases": ["gathering materials", "material drops", "loot from pals", "picking up items", "采集材料", "战利品掉落", "击败后掉落", "拾取掉落物", "收集木石"],
+    "zh": "靠近地面物品后按互动键拾取。用斧伐树、用镐开采岩石可以获得材料；击败野生帕鲁也可能取得它的掉落物，具体种类看该帕鲁的掉落表。",
+    "en": "Use the interact action next to a loose item. An axe gathers wood and a pickaxe breaks rocks. Defeated wild Pals can also drop materials. Check that species’ loot list for the particular item.",
+    "source": "https://palworld.gamevault.in/guide/help-7/",
+    "label": "斧与镐",
+    "route": "#guide/quests/crafting-an-axe-and-a-pickaxe"
+  },
+  {
+    "title": "放置建筑与协助施工",
+    "aliases": ["building menu", "build menu", "help with construction", "finish construction", "建筑菜单", "建造菜单", "帮忙施工", "协助建造", "放好蓝图"],
+    "zh": "打开建造菜单、选好位置后，按住互动键施工。具备相应工作能力的随行或据点帕鲁可以帮忙完成建筑。",
+    "en": "Place the structure through the build menu, then hold the interact action to construct it. Pals in your party or base can contribute to construction when suited to the work.",
+    "source": "https://palworld.gamevault.in/guide/help-8/"
+  },
+  {
+    "title": "工作台与制作配方",
+    "aliases": ["crafting facilities", "recipe not at workbench", "crafting workbench", "工作台不显示", "工作台没有配方", "在哪里制作物品", "制作设施"],
+    "zh": "先在科技菜单解锁配方，再去对应的制作设施互动。一个工作台只提供它支持的配方；换了工位，可制作的物品也会变化。",
+    "en": "Unlock the recipe in Technology and interact with a station that supports it. Different crafting stations offer different recipes, so unlocking one does not put it on every workbench.",
+    "source": "https://palworld.gamevault.in/guide/help-9/",
+    "label": "原始工作台",
+    "route": "#work/facilities/Primitive_Workbench"
+  },
+  {
+    "title": "普通科技点",
+    "aliases": ["regular technology points", "earn technology points", "unlock building recipes", "普通科技点", "获得科技点", "赚科技点", "解锁建筑配方"],
+    "zh": "升级和首次激活巨鹫之像都能获得普通科技点。在科技菜单花点数解锁建筑或物品配方，再到相应设施制作。",
+    "en": "Level up or activate a new Great Eagle Statue to earn ordinary Technology Points. Spend them in the Technology tab to unlock building or item recipes.",
+    "source": "https://palworld.gamevault.in/guide/help-10/",
+    "label": "解锁科技",
+    "route": "#guide/quests/unlock-technology"
+  },
+  {
+    "title": "经验获取与等级同步",
+    "aliases": ["level sync", "higher level than me", "higher level than you", "higher level than mine", "gain experience", "等级同步", "高于玩家等级", "等级比我高", "获得经验值"],
+    "zh": "捕捉、战斗及建造或制作都能积累经验。队伍里的帕鲁高于玩家等级时，当前发挥会按玩家等级下调；玩家升级后这个限制会放宽。",
+    "en": "Catching and defeating Pals, building, and crafting award experience. A party Pal above its Tamer’s level performs at the Tamer’s level under level sync. Raising the Tamer’s level raises that limit.",
+    "source": "https://palworld.gamevault.in/guide/help-12/",
+    "label": "角色成长",
+    "route": "#guide/quests/enhance-stats--main_statusup"
+  },
+  {
+    "title": "据点等级与工作栏",
+    "aliases": ["base missions", "upgrade my base", "base worker slots", "more workers at my base", "据点任务", "升级据点", "提升据点等级", "增加工作栏", "增加据点人数"],
+    "zh": "在帕鲁终端查看并完成据点任务，再提升据点等级来扩展能派驻的帕鲁数量。据点范围内的建筑归所属公会；当前世界设置也可能限制实际能部署的数量。",
+    "en": "Check the base missions at your Palbox and complete them to level the base and unlock more worker slots. Structures inside the base belong to its guild. The world’s configured worker cap can still limit deployment.",
+    "source": "https://palworld.gamevault.in/guide/help-15/",
+    "label": "帕鲁终端",
+    "route": "#work/facilities/Palbox"
+  },
+  {
+    "title": "伙伴技能与专用装备",
+    "aliases": ["partner skill unlock", "unlock a partner skill", "cannot ride my pal", "can't ride my pal", "pal gear workbench", "伙伴技能怎么用", "伙伴技能怎么解锁", "不能骑乘", "没法骑", "帕鲁装置制作台"],
+    "zh": "在队伍页查看这种帕鲁的伙伴技能和使用条件。有些带在队伍里就生效；需要鞍具或专用装置的技能，要先在帕鲁装置制作台做好相应装备。",
+    "en": "Open the Party tab to check the species’ Partner Skill. Some effects apply while it is in your party. For a skill requiring a saddle or other Pal Gear, craft that gear at the Pal Gear Workbench first.",
+    "source": "https://palworld.gamevault.in/guide/help-20/",
+    "label": "帕鲁装置制作台",
+    "route": "#work/facilities/Pal_Gear_Workbench"
+  },
+  {
+    "title": "解锁快速旅行点",
+    "aliases": ["great eagle statue", "unlock fast travel", "activate fast travel", "巨鹫之像有什么用", "巨鹫雕像有什么用", "激活巨鹫", "解锁传送点", "激活传送点", "开启快速旅行"],
+    "zh": "先与尚未激活的巨鹫之像互动。新激活的雕像会发放科技点，并加入可传送的地点；自己的帕鲁终端也是目的地。世界设置关闭快速旅行时无法使用。",
+    "en": "Interact with an unactivated Great Eagle Statue. It grants Technology Points and adds a fast-travel destination. Your Palbox is another destination. Fast travel must be enabled in the world settings.",
+    "source": "https://palworld.gamevault.in/guide/help-25/",
+    "label": "激活巨鹫之像",
+    "route": "#guide/quests/activate-great-eagle-statue"
+  },
+  {
+    "title": "队伍指令与喂食轮盘",
+    "aliases": ["command wheel", "command pal", "radial menu", "feed my party", "指令轮盘", "指令菜单", "命令轮盘", "给队伍喂食"],
+    "zh": "使用键位设置中的帕鲁指令操作打开轮盘，可以调整随行帕鲁的战斗行动，也可以给队伍成员喂食。在据点工作的帕鲁则可从备有食物的饲料箱进食。",
+    "en": "Use the Command Pal action to open the radial menu for party combat orders and feeding. For workers stationed at a base, put food in a Feed Box they can reach.",
+    "source": "https://palworld.gamevault.in/guide/",
+    "label": "饲料箱",
+    "route": "#work/facilities/Feed_Box"
+  },
+  {
+    "title": "夜间生存与保暖",
+    "aliases": ["survive the night", "cold at night", "keep warm at night", "sleep until morning", "夜里冷", "夜晚降温", "夜间保暖", "睡到天亮"],
+    "zh": "入夜后气温下降，野外也会出现危险的帕鲁。在安全地点搭床可以睡到早晨；需要继续活动时可在营火旁取暖。",
+    "en": "Nights are colder and dangerous Pals can appear. Put a bed in a safe spot to sleep until morning, or warm up by a campfire if you stay awake.",
+    "source": "https://palworld.gamevault.in/guide/help-27/",
+    "label": "营火",
+    "route": "#work/facilities/Campfire"
+  },
+  {
+    "title": "高塔首领挑战",
+    "aliases": ["tower boss timer", "tower battle time limit", "retry tower boss", "高塔限时", "高塔首领限时", "高塔重打", "重打塔主", "高塔超时"],
+    "zh": "进入地区高塔会开始限时首领战。时间耗尽仍没击败首领就会失败；塔内没有其他挑战者时，可以再次进入挑战。",
+    "en": "Tower bosses must be defeated before their battle timer expires. If time runs out, you lose the attempt. You can retry when the tower is available.",
+    "source": "https://palworld.gamevault.in/guide/help-28/",
+    "label": "第一座高塔",
+    "route": "#guide/quests/the-rayne-syndicate"
+  },
+  {
+    "title": "友方居民与通缉",
+    "aliases": ["wanted status", "wanted level", "lose the cops", "clear my wanted", "pidf officers", "消除通缉", "解除通缉", "被通缉", "友好居民"],
+    "zh": "袭击友好居民可能会被举报并引来岛屿防卫队。如果已被通缉，避开警员的视线并藏起来，等通缉状态结束。",
+    "en": "An attack on a friendly NPC can be reported to the PIDF. Once wanted, get out of the officers’ sight and stay hidden until the wanted status expires.",
+    "source": "https://palworld.gamevault.in/guide/help-29/"
+  },
+  {
+    "title": "战斗异常与元素伤害",
+    "aliases": ["soaked status", "burn status", "ivy covered", "status ailments", "浸湿状态", "烧伤状态", "缠绕状态", "潮湿状态"],
+    "zh": "技能或环境能给角色与帕鲁施加异常。浸湿会减速，使电攻击更痛、火攻击更轻；缠绕会限制移动和闪避并增加受到的火伤。受到异常影响的野生帕鲁通常更容易捕捉。",
+    "en": "Skills and environments can inflict status effects. Soaked slows the target, increases incoming Electric damage and reduces incoming Fire damage. Ivy hinders movement and dodging and increases Fire damage. A status effect can also help when attempting a capture.",
+    "source": "https://palworld.gamevault.in/guide/help-33/"
+  },
+  {
+    "title": "配种牧场产蛋",
+    "aliases": ["breeding farm", "breeding pen", "breed two pals", "how to breed", "breed my pals", "配种牧场", "配种场", "繁殖牧场", "配种出蛋", "怎样繁殖", "配种需要什么"],
+    "zh": "把一雄一雌两只帕鲁分配给配种牧场，把蛋糕放进该牧场的箱子。等待后收取帕鲁蛋，再用孵蛋器孵化。部分特定亲本组合会产生特定的后代。",
+    "en": "Assign one male and one female to the Breeding Farm, supply cake in its box and wait for an egg. Hatch the egg in an incubator. Certain parent combinations produce a particular offspring.",
+    "source": "https://palworld.gamevault.in/guide/help-35/",
+    "label": "配种牧场",
+    "route": "#work/facilities/Breeding_Farm"
+  },
+  {
+    "title": "浓缩升星",
+    "aliases": ["essence condenser", "increase pal rank", "condense duplicates", "condensing pals", "帕鲁浓缩机", "浓缩升星", "浓缩有什么用", "同种浓缩"],
+    "zh": "在帕鲁浓缩机中选定要保留的帕鲁，再用同种个体作材料提升它的星级。升星能增强能力和伙伴技能。确认要消耗的个体后再操作，它们会被用掉。",
+    "en": "At the Pal Essence Condenser, choose the Pal you want to keep, then select other Pals of that species as material. Increasing its rank improves its abilities and can strengthen its Partner Skill. The selected material Pals are consumed.",
+    "source": "https://palworld.gamevault.in/guide/help-36/",
+    "label": "帕鲁浓缩机",
+    "route": "#work/facilities/Pal_Essence_Condenser"
+  },
+  {
+    "title": "翠叶鼠雕像与捕获力",
+    "aliases": ["lifmunk effigy", "lifmunk effigies", "catching power", "翠叶鼠雕像", "翠叶鼠塑像", "提高捕获力", "提升捕获力"],
+    "zh": "收集翠叶鼠雕像后，在力量石像向自己献祭以提升玩家捕获力。强化帕鲁本身的属性用的是帕鲁之魂，两者消耗的材料不同。",
+    "en": "Collect Lifmunk Effigies and offer them at a Statue of Power to improve the Tamer’s capture power. Upgrading an individual Pal’s stats at the statue uses Pal Souls instead.",
+    "source": "https://palworld.gamevault.in/guide/",
+    "label": "力量石像",
+    "route": "#work/facilities/Statue_of_Power"
+  },
+  {
+    "title": "帕鲁之魂与属性强化",
+    "aliases": ["pal souls", "enhance a pal's stats", "soul enhancement", "帕鲁之魂", "帕鲁魂", "强化帕鲁属性"],
+    "zh": "把帕鲁之魂带到力量石像，选择需要培养的帕鲁并强化其属性。探索宝箱有机会取得帕鲁之魂。",
+    "en": "Bring Pal Souls to a Statue of Power, select the Pal you want to train, and choose its stat upgrade. Treasure chests are one possible source of souls.",
+    "source": "https://palworld.gamevault.in/guide/help-38/",
+    "label": "力量石像",
+    "route": "#work/facilities/Statue_of_Power"
+  },
+  {
+    "title": "幸运帕鲁的识别",
+    "aliases": ["lucky pal", "lucky pals", "sparkling pal", "shiny pal", "幸运帕鲁", "闪光帕鲁", "发光的帕鲁"],
+    "zh": "野外偶尔会遇到体型偏大、身上闪光的幸运帕鲁。它可能带有特别的技能。仅凭体型无法与其他大型个体区分，先看发光特征。",
+    "en": "Lucky Pals are rare wild encounters with a conspicuous sparkle and larger size. They can carry unusual skills. Size alone is insufficient to identify one; look for the sparkle.",
+    "source": "https://palworld.gamevault.in/guide/help-40/"
+  },
+  {
+    "title": "狂暴帕鲁的识别",
+    "aliases": ["predator pal", "predator pals", "red aura", "red dark aura", "狂暴帕鲁", "红黑气场", "捕食者帕鲁"],
+    "zh": "带红黑色气场、体型大且主动攻击的野外个体可能是狂暴帕鲁。它的气场阻止帕鲁球捕获；准备交战或绕开，不必继续投球。",
+    "en": "Predator Pals are large, aggressive wild encounters surrounded by a dark red aura. That aura prevents sphere capture. Prepare for a fight or give the Pal a wide berth.",
+    "source": "https://palworld.gamevault.in/guide/help-40-2/"
+  },
+  {
+    "title": "跨世界终端与基因数据",
+    "aliases": ["global palbox", "genetic data", "transfer pals between worlds", "跨世界帕鲁终端", "全球帕鲁终端", "跨世界终端", "基因数据", "跨世界转移帕鲁"],
+    "zh": "在跨世界帕鲁终端保存帕鲁的基因数据，到目标世界后可按这份数据重建它。同一世界不能同时拥有两只相同基因数据的个体。源世界须允许保存，目标世界须允许重建。",
+    "en": "Use the Global Palbox to save a Pal’s genetic data. In another world you can reconstruct that Pal if the world settings permit it. Saving and reconstruction have separate settings. Two copies with identical data cannot coexist in one world.",
+    "source": "https://palworld.gamevault.in/guide/help-43/",
+    "label": "跨世界帕鲁终端",
+    "route": "#work/facilities/Global_Palbox"
+  },
+  {
+    "title": "卡住时返回据点",
+    "aliases": ["stuck in terrain", "stuck in the terrain", "stuck under the map", "emergency escape", "紧急脱离", "紧急逃脱", "卡进地形", "卡在地形里", "卡进地下"],
+    "zh": "如有可回到据点的道具或伙伴技能，先用它脱困。选项菜单的紧急脱离会让角色死亡后重生，因此携带物和队伍的处理取决于当前世界的死亡惩罚。",
+    "en": "Try a return-to-base item or applicable Partner Skill if available. Emergency Escape in Options deliberately kills the character to enable respawn. Your world’s death penalty determines what happens to carried belongings and party Pals.",
+    "source": "https://palworld.gamevault.in/guide/help-44/",
+    "label": "角色生存",
+    "route": "#guide/quests/how-to-stay-alive"
+  },
+  {
+    "title": "家畜牧场产物",
+    "aliases": ["ranch drops", "ranch products", "ranch production", "ranching pals", "grazing pals", "家畜牧场", "放牧产物", "放牧掉什么", "牧场产出"],
+    "zh": "把具有放牧产出伙伴技能的帕鲁派到家畜牧场，再收取它产生的物品。产物由物种决定，例如棉悠悠能产羊毛、皮皮鸡能产供料理用的蛋；配出可孵化的帕鲁蛋要使用配种牧场。",
+    "en": "Assign a Pal with a ranch-producing Partner Skill to the Ranch and collect its products. Lamball produces wool and Chikipi produces cooking eggs. For a hatchable offspring egg, use a Breeding Farm.",
+    "source": "https://palworld.gamevault.in/building/",
+    "label": "家畜牧场",
+    "route": "#work/facilities/Ranch"
+  },
+  {
+    "title": "管理据点工种",
+    "aliases": ["monitoring stand", "disable work types", "restrict work types", "set work priorities", "监控台", "禁用工种", "禁止某种工作", "只让它干一种活", "限制工种"],
+    "zh": "用监控台为据点帕鲁允许或禁用某类工作，也能调整整体工作强度。如果一只帕鲁缺少某种工作适性，允许该工种仍不会让它获得这种能力。",
+    "en": "Use the Monitoring Stand to allow or prohibit job types for base workers and adjust work intensity. An allowed job still needs a Pal with the appropriate work suitability.",
+    "source": "https://palworld.gamevault.in/building/",
+    "label": "监控台",
+    "route": "#work/facilities/Monitoring_Stand"
+  },
+  {
+    "title": "据点帕鲁自行进食",
+    "aliases": ["feed box", "feeding box", "base pals eat", "feed my workers", "饲料箱", "饲料盒", "自动喂食", "工人自己吃", "据点帕鲁吃什么"],
+    "zh": "在据点放置饲料箱，装入食物，并留出帕鲁可到达的路线。饥饿的工人会自行前往进食，因此要定期补货。队伍中的帕鲁则可以直接用背包中的食物喂。",
+    "en": "Place a Feed Box where base workers can reach it and stock it with food. Hungry workers eat there on their own. Refill it regularly. A travelling party member can be fed from the inventory.",
+    "source": "https://palworld.gamevault.in/building/",
+    "label": "饲料箱",
+    "route": "#work/facilities/Feed_Box"
+  },
+  {
+    "title": "把角色进度带到另一张世界",
+    "aliases": ["transfer character", "transfer my character", "migrate my character", "carry my character", "move my character", "character transfer", "carry over my level", "character progression between worlds", "角色跨服", "角色转服", "转移角色", "迁移角色", "跨世界角色", "跨档继承等级", "跨服继承等级"],
+    "zh": "角色等级和进度属于游玩的世界。房主把同一张世界从单人改为邀请联机时，仍使用原来的存档。加入朋友已有的另一张世界时，跨世界帕鲁终端可以传帕鲁的基因数据，但不迁移玩家的等级、背包或建筑。若想搬整个旧世界，请先确认原平台能导出世界存档、目标服务器能导入该格式；整世界恢复会加载原世界，不能用来合并两边的人物。",
+    "en": "Your character’s level and progression belong to that world. A host can open the same single-player save for co-op and continue with the existing character. Joining a friend’s different world is a separate case. The Global Palbox transfers Pal genetic data; it does not move the player’s level, inventory or buildings. Restoring a whole world brings back that world rather than merging two sets of characters.",
+    "source": "https://steamcommunity.com/games/1623730/announcements/detail/3943530908925344454",
+    "also": ["https://steamcommunity.com/games/1623730/announcements/detail/571499455390418196", "https://palworld.gamevault.in/guide/help-43/"],
+    "label": "跨世界帕鲁终端",
+    "route": "#work/facilities/Global_Palbox"
+  },
+  {
+    "title": "更换世界主机与保留存档",
+    "aliases": ["change the host", "switch hosts", "change hosts", "new host", "hand over my world", "transfer world ownership", "move a world save", "move the world save", "world save transfer", "迁移联机世界", "世界换主机", "更换房主", "换世界房主", "换房主", "转让世界", "转移世界存档", "搬迁服务器存档", "迁移世界存档"],
+    "zh": "先确认原世界是邀请联机还是专用服务器、双方平台，以及新主机要继续同一张世界还是已有另一张。要续玩同一世界，让原房主保存并关停世界，保留完整存档的独立副本；专服可用 bIsUseBackupSaveData 生成世界备份。仅在双方支持相应存档导入时才用副本试迁，分别检查原房主和新房主的等级、队伍、公会及据点。把公会会长转给朋友不会交出存档或改变邀请联机的主机。",
+    "en": "First identify co-op versus dedicated hosting, both platforms, and whether the destination should continue this same world. To keep it, save and close the world and preserve a separate complete copy. Dedicated servers can enable world backups with bIsUseBackupSaveData. If both systems support the save format, test the copy and have both hosts verify their characters, Pals, guild and bases. Handing over guild leadership does not move the save or change the co-op host.",
+    "source": "https://docs.palworldgame.com/settings-and-operation/configuration/",
+    "also": ["https://docs.palworldgame.com/getting-started/about-server/", "https://news.palworldgame.com/"]
+  },
+  {
+    "title": "交接公会会长",
+    "aliases": ["guild master transfer", "transfer guild leadership", "transfer guild ownership", "change guild leader", "make guild master", "new guild master", "公会会长转让", "转让会长", "转移会长", "换公会会长", "转让公会", "公会转让", "交接公会", "让出会长"],
+    "zh": "要交接公会，请由现任会长在公会页面核对接任者，再通过会长转让对话框确认。公会成员共享该世界的据点和工作帕鲁。会长是公会内的身份；服务器管理员权限、承载世界的主机及存档位置需要另行处理。",
+    "en": "For a guild handover, the current master should check the intended member in the Guild tab and confirm the guild master transfer dialog. Members share their guild’s bases and workers in this world. The guild title does not convey server-administrator rights, move the world save, or switch the machine hosting co-op.",
+    "source": "https://steamcommunity.com/games/1623730/announcements/detail/695397189431592457",
+    "also": ["https://palworld.gamevault.in/guide/help-23/", "https://docs.palworldgame.com/getting-started/about-server/"]
+  },
+  {
+    "title": "向游戏开发者报告问题或提建议",
+    "aliases": ["request a feature", "request features", "feature request", "submit feedback", "report a bug", "bug report", "反馈入口", "提功能建议", "给开发者提建议", "提交游戏建议", "报告游戏问题"],
+    "zh": "在 Pocketpair 官网打开游戏咨询表（Inquiries About Our Games），注明游戏是 Palworld，写下希望改进的操作或复现故障的步骤。表单接受游戏反馈和问题报告。",
+    "en": "Use the game inquiry form on Pocketpair’s website for Palworld feedback or bug reports. Describe the feature you want or the steps that produced the problem.",
+    "source": "https://pocketpair.jp/en/game-contact-en/"
+  },
+  {
+    "title": "从普通孵蛋器领取帕鲁",
+    "aliases": ["egg is ready", "incubation finished", "incubation complete", "take the pal out", "孵化完成", "孵蛋进度满了", "孵蛋器显示完成", "取出孵好的帕鲁"],
+    "zh": "普通孵蛋器的计时走完后，走到机器旁，对准孵好的蛋，按屏幕提示持续按住互动键直到领取完成。PC 默认通常是 F，改过键位或使用手柄时依当前提示操作。",
+    "en": "When the timer on a regular Egg Incubator finishes, face the incubator and hold the on-screen interaction control until the hatch completes. The usual PC binding is F. Use the prompt for a controller or a remapped key.",
+    "source": "https://steamcommunity.com/app/1623730/discussions/0/592886359937520760/",
+    "also": ["https://palworld.gamevault.in/guide/help-34/"]
+  },
+  {
+    "title": "给队伍中的帕鲁练级",
+    "aliases": ["level up my pal", "level pals quickly", "pal exp", "pal xp", "level up pals", "training manual", "练帕鲁等级", "拉高帕鲁等级", "帕鲁快速升级", "给帕鲁加经验", "修炼之书"],
+    "zh": "把想练级的帕鲁放进随身队伍，带它参加能稳定打赢的战斗。急着给某一只补等级时，对目标帕鲁使用修炼之书；小、中、大、特大四档都直接提供帕鲁经验。",
+    "en": "Put the Pal you want to level in your travelling party and complete battles your team can win consistently. To award experience directly to one Pal, use a Training Manual on it. The item catalog lists S, M, L and XL manuals.",
+    "source": "https://palworld.gamevault.in/guide/help-12/",
+    "also": ["https://palworld.run/items/training-manual-xl"],
+    "label": "修炼之书（特大）", "route": "#items/ExpBoost_04"
+  }
+]

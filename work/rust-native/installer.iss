@@ -1,10 +1,10 @@
 [Setup]
 AppId=JadePalworldRustBeta
-AppName=Jade 幻兽帕鲁工具箱 · Rust 测试版
+AppName=Jade 幻兽帕鲁工具箱
 AppVersion={#Version}
 AppPublisher=Jade
 DefaultDirName={userpf}\Jade Palworld Rust Beta
-DefaultGroupName=Jade 幻兽帕鲁工具箱 Rust 测试版
+DefaultGroupName=Jade 幻兽帕鲁工具箱
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
@@ -24,14 +24,14 @@ RestartApplications=no
 Name: "zhCN"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "创建测试版桌面快捷方式"; Flags: unchecked
+Name: "desktopicon"; Description: "创建桌面快捷方式"; Flags: unchecked
 
 [Files]
 Source: "{#PackageDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{group}\Jade 幻兽帕鲁工具箱 Rust 测试版"; Filename: "{app}\Jade-Palworld-Rust.exe"; AppUserModelID: "JadePalworldRustBeta"
-Name: "{userdesktop}\Jade 幻兽帕鲁工具箱 Rust 测试版"; Filename: "{app}\Jade-Palworld-Rust.exe"; AppUserModelID: "JadePalworldRustBeta"; Tasks: desktopicon
+Name: "{group}\Jade 幻兽帕鲁工具箱"; Filename: "{app}\Jade-Palworld-Rust.exe"; AppUserModelID: "JadePalworldRustBeta"
+Name: "{userdesktop}\Jade 幻兽帕鲁工具箱"; Filename: "{app}\Jade-Palworld-Rust.exe"; AppUserModelID: "JadePalworldRustBeta"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Jade-Palworld-Rust.exe"; Description: "打开 Rust 测试版"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Jade-Palworld-Rust.exe"; Description: "打开 Jade 幻兽帕鲁工具箱"; Flags: nowait postinstall skipifsilent

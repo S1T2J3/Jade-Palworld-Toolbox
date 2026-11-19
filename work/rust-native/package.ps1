@@ -1,11 +1,42 @@
-param([string]$Version='2.0.0-beta.13',[string]$InnoCompiler,[string]$PreviousPackage)
+param(
+    [string]$Version,
+    [string]$InnoCompiler,
+    [string]$PreviousPackage,
+    [string]$BaseExecutable,
+    [string]$KernelExecutable
+)
 $ErrorActionPreference='Stop'
 $project=[IO.Path]::GetFullPath($PSScriptRoot)
+$manifestPath = Join-Path $project 'crates/jade-app/Cargo.toml'
+$declaration = Select-String -LiteralPath $manifestPath -Pattern '^version\s*=\s*"([^"]+)"\s*$' -Encoding UTF8 | Select-Object -First 1
+if (!$declaration) { throw "Missing version in $manifestPath" }
+$cargoVersion = $declaration.Matches[0].Groups[1].Value
+if (!$Version) { $Version = $cargoVersion }
+if (!$BaseExecutable) {
+    $BaseExecutable = Join-Path $project 'target/release/Jade-Palworld-Rust.exe'
+}
+$baseFile = Get-Item -LiteralPath $BaseExecutable
+if ($baseFile -isnot [IO.FileInfo]) { throw "Expected a base executable: $BaseExecutable" }
+if ($KernelExecutable) {
+    if ($Version -cne $cargoVersion) { throw "Kernel package version must match Cargo version $cargoVersion." }
+    $kernelFile = Get-Item -LiteralPath $KernelExecutable
+    if ($kernelFile -isnot [IO.FileInfo]) { throw "Expected a kernel executable: $KernelExecutable" }
+    $kernelHash = (Get-FileHash -LiteralPath $kernelFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ((Get-FileHash -LiteralPath $baseFile.FullName -Algorithm SHA256).Hash -eq $kernelHash) {
+        throw 'The base and kernel binaries must be built separately.'
+    }
+    # The host's runtime check uses this exact ASCII digest embedded by the paired build.
+    $hostImage = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($baseFile.FullName))
+    if ($hostImage.IndexOf($kernelHash, [StringComparison]::Ordinal) -lt 0) {
+        throw 'The base executable does not contain the selected kernel SHA-256. Rebuild the pair with build-assistant.ps1.'
+    }
+    $hostImage = $null
+}
 $dist=Join-Path $project 'dist'
 $package=Join-Path $dist ('package-'+$Version)
 if(Test-Path -LiteralPath $package){throw 'Use a new empty packaging directory; existing packages are not overwritten.'}
 $null=New-Item -ItemType Directory -Path $package -Force
-Copy-Item -LiteralPath (Join-Path $project 'target/release/Jade-Palworld-Rust.exe') -Destination $package
+Copy-Item -LiteralPath $baseFile.FullName -Destination (Join-Path $package 'Jade-Palworld-Rust.exe')
 Copy-Item -LiteralPath (Join-Path $project 'data') -Destination $package -Recurse
 Copy-Item -LiteralPath (Join-Path $project 'LICENSE') -Destination $package
 Copy-Item -LiteralPath (Join-Path $project 'THIRD_PARTY.md') -Destination $package
@@ -46,6 +77,46 @@ if($PreviousPackage){
 }
 [IO.File]::WriteAllText((Join-Path $dist 'rust-update.json'),($update|ConvertTo-Json -Depth 20),$encoding)
 if($InnoCompiler){& $InnoCompiler ('/DPackageDir='+$package) ('/DDistDir='+$dist) ('/DVersion='+$Version) (Join-Path $project 'installer.iss');if($LASTEXITCODE-ne 0){throw 'Installer build failed'}}
-$hashes=Get-ChildItem -LiteralPath $dist -File | Where-Object {($_.Name -like "*$Version*" -and $_.Extension -in '.zip','.exe') -or $_.Name -eq 'rust-update.json'} | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+$_.Name }
-[IO.File]::WriteAllLines((Join-Path $dist 'SHA256SUMS.txt'),$hashes,$encoding)
+$assets=@($archive, (Join-Path $dist 'rust-update.json'))
+if($PreviousPackage){$assets+=$deltaPath}
+if($InnoCompiler){$assets+=Join-Path $dist ('Jade-Palworld-Rust-'+$Version+'-Setup.exe')}
+if ($KernelExecutable) {
+    $kernelName = 'Jade-Pal-Assistant-Kernel.exe'
+    $kernelManifest = [ordered]@{
+        schema = 1
+        id = 'pal-assistant'
+        hostVersion = $Version
+        executable = $kernelName
+        sha256 = $kernelHash
+    }
+    $kernelArchive = Join-Path $dist ('Jade-Pal-Assistant-Kernel-'+$Version+'-windows-x64.zip')
+    $stream = [IO.File]::Open($kernelArchive, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        $zip = [IO.Compression.ZipArchive]::new($stream, [IO.Compression.ZipArchiveMode]::Create, $true)
+        try {
+            $entry = $zip.CreateEntry('kernel.json')
+            $writer = [IO.StreamWriter]::new($entry.Open(), $encoding)
+            try { $writer.Write(($kernelManifest | ConvertTo-Json -Compress)) } finally { $writer.Dispose() }
+            $noticeName = 'Palworld-Knowledge-MIT.txt'
+            $notice = Get-Item -LiteralPath (Join-Path $project "licenses/$noticeName")
+            $entry = $zip.CreateEntry($noticeName, [IO.Compression.CompressionLevel]::Optimal)
+            $output = $entry.Open()
+            try {
+                $input = $notice.OpenRead()
+                try { $input.CopyTo($output) } finally { $input.Dispose() }
+            } finally { $output.Dispose() }
+            $entry = $zip.CreateEntry($kernelName, [IO.Compression.CompressionLevel]::Optimal)
+            $output = $entry.Open()
+            try {
+                $input = $kernelFile.OpenRead()
+                try { $input.CopyTo($output) } finally { $input.Dispose() }
+            } finally { $output.Dispose() }
+        } finally { $zip.Dispose() }
+    } finally { $stream.Dispose() }
+    $assets += $kernelArchive
+}
+$hashes=$assets | Sort-Object | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+[IO.Path]::GetFileName($_) }
+$checksumFile=Join-Path $dist 'SHA256SUMS.txt'
+[IO.File]::WriteAllLines($checksumFile,$hashes,$encoding)
+& (Join-Path $project '../../scripts/archive-release.ps1') -Version $Version -Files ($assets+$checksumFile)
 Write-Output $archive

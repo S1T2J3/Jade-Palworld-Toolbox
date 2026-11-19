@@ -2,6 +2,25 @@
 
 仓库地址为 `S1T2J3/Jade-Palworld-Toolbox`，发布页、公告与安装包均可公开访问。Windows 首次正式发行标签为 `v1.0.0`。
 
+## 本地版本归档
+
+每次更新的交付文件都保存在原项目工作区的 `outputs/<完整版本号>/`。正式版和 Rust 版打包完成后会自动归档。单独制作的助手预览包也使用同一目录规则，例如 `outputs/2.0.0-beta.13+assistant.2/` 表示基于 beta.13 的第 2 个助手预览。用新的版本号保存有变化的构建，方便随时取回上一版。
+
+手动打包的更新使用 `./scripts/archive-release.ps1 -Version $version -Files $assets` 归档，其中 `$assets` 是本版交付文件的路径列表。
+
+### 帕鲁助手基础版和可选内核
+
+准备好 Rust 版的 `data`、Rust 工具链和 LLVM-MinGW 后，在仓库根目录运行以下命令。依赖已缓存的机器可在第一条命令末尾加 `-Offline`。
+
+```powershell
+$built = & ./work/rust-native/build-assistant.ps1
+& ./work/rust-native/package.ps1 -BaseExecutable $built.BaseExecutable -KernelExecutable $built.KernelExecutable -InnoCompiler 'C:\Path\To\ISCC.exe'
+```
+
+构建脚本先生成独立的助手内核，再用该文件的 SHA-256 编译基础版。打包时会核对基础版中嵌入的内核摘要，发现两个文件不配套会在生成发布文件前停止。每次更新内核都要重新构建配套的基础版并使用新的完整版本号。脚本运行结束时会恢复原先的构建环境。
+
+基础安装包和便携包均可单独使用。同版本的 `Jade-Pal-Assistant-Kernel-<完整版本号>-windows-x64.zip` 供玩家从帕鲁助手中导入。内核包内有 `kernel.json` 和 `Jade-Pal-Assistant-Kernel.exe`，两者位于 ZIP 根目录。版本目录中的 `SHA256SUMS.txt` 同时覆盖安装包、便携包和内核包。
+
 ## 修改公告
 
 在默认分支的 [announcements.json](../announcements.json) 的 `announcements` 数组中添加记录。使用唯一的 `id`、简短的 `title`、纯文本 `body`，以及带 UTC 时区的 ISO 8601 时间 `publishedAt`。正文用 `\n` 换行。保留已发布公告的 ID，以便匹配随程序附带的公告。
@@ -24,7 +43,13 @@
 
 ## 发布新版
 
+本地打包和核验完成后先向用户说明本次内容，取得对该版本的明确发布确认，再推送标签、上传 GitHub 附件及发布公告。
+
 每次更新的版本公告都设置 `"popup": true`。安装包构建时会为当前版本的公告自动补上此设置；客户端在弹窗成功显示后立即记为已阅，之后可在公告列表重读。
+
+Rust 正式版使用 `rust-v主版本.次版本.修订号` 标签，上传同一构建的安装包、便携包、配套助手内核、源码、`rust-update.json` 和校验清单。发布时保留旧版的 GitHub Latest 标记，旧版更新程序仍用此入口。Rust 版公告维护在 `rust-announcements.json` 和 `work/rust-native/data/announcements.json`。2.0.0 是旧 Rust 测试版手动安装的升级起点。
+
+### 旧版发行流程
 
 1. 同步更新源码中的产品版本、桌面版本和内置公告。运行 README 中的测试，并使用打包产物验证首次安装、从旧资料升级和更新检查。
 2. 下载上一正式版本的 `Jade-Palworld-Toolbox.exe`，对照该版发布页的 SHA-256，将它放在当前构建的 `dist/` 以外。从干净签出运行 `scripts/build-release.ps1 -DeltaBase 'C:\JadeBuild\previous\Jade-Palworld-Toolbox.exe'`。打包会生成新版主程序、快速启动器、HTML、增量文件与 `SHA256SUMS.txt`。可向 `-DeltaBase` 传入多个历史版本主程序，分别覆盖这些版本的用户。无基准的首次构建可省略参数。

@@ -251,9 +251,11 @@ pub(super) fn facility(
             ui,
             &format!("可制作物品 · {} 种", products.len()),
             |ui| {
-                let _response = ui.add(
-                    egui::TextEdit::singleline(&mut state.product_query)
-                        .hint_text("查找可制作物品"),
+                let _response = crate::design::clearable_text_edit(
+                    ui,
+                    &mut state.product_query,
+                    300.,
+                    |edit| edit.hint_text("查找可制作物品"),
                 );
                 #[cfg(test)]
                 track(ui, &_response, "facility-product-search");

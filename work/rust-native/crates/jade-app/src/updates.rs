@@ -1,5 +1,5 @@
-//! Separate Rust beta release channel. Downloads are data until archive and
-//! per-file hashes have both passed verification. The stable channel is untouched.
+//! Native Rust release updates. Downloads stay staged until archive and per-file
+//! hashes have both passed verification.
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -14,7 +14,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+// Private preview builds share the notice IDs and update channel of their base beta.
+pub const VERSION: &str = env!("JADE_UPDATE_VERSION");
 const REPO: &str = "S1T2J3/Jade-Palworld-Toolbox";
 const EXE: &str = "Jade-Palworld-Rust.exe";
 const PACKAGE: &str = "rust-package.json";
@@ -144,9 +145,45 @@ impl UpdateState {
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok());
         let status = result
             .and_then(|v| v["message"].as_str().map(str::to_owned))
-            .unwrap_or_else(|| "当前为独立 Rust 测试通道。".into());
-        Self{root:data_dir,exe:exe_path,started:Instant::now(),checked:false,busy:false,channel:None,latest:None,status,progress:None,
-            notices:vec![Notice{id:format!("rust-release-{VERSION}"),title:format!("Rust 原生测试版 {VERSION}"),body:"新增游戏悬浮窗：在设置中开启后，保持工具箱运行，切回幻兽帕鲁按Alt+J呼出完整界面，再按一次收起。可选择Ctrl+Shift+J、F8或F9，支持切换应用后自动收起；浮窗右上关闭用于收起，左侧可回到普通窗口。复用当前页面、仓库和地图，优先支持无边框/窗口模式，无需游戏MOD。默认关闭。QQ 交流群：1126734443。".into(),published_at:String::new(),popup:true}],local_notices_seeded:false,remote_notices_loaded:false,popup:None,popup_shown:false,popup_pass:None,open_notices:HashSet::new(),last_checked:None,pending,install_prompt:false}
+            .unwrap_or_else(|| "当前使用 Rust 版更新通道。".into());
+        let (title, body) = if VERSION == "2.0.0" {
+            (
+                "Rust 正式版 2.0.0".to_owned(),
+                "Jade 幻兽帕鲁工具箱 Rust 正式版已发布。支持搜索与问答、配种规划、头像选取和世界地图。侧栏接缝已修复，可从顶部和侧栏空白处拖动窗口。QQ 交流群：1126734443。",
+            )
+        } else {
+            (
+                format!("Rust 版 {VERSION}"),
+                "查看设置中的公告和更新，获取版本说明。QQ 交流群：1126734443。",
+            )
+        };
+        Self {
+            root: data_dir,
+            exe: exe_path,
+            started: Instant::now(),
+            checked: false,
+            busy: false,
+            channel: None,
+            latest: None,
+            status,
+            progress: None,
+            notices: vec![Notice {
+                id: format!("rust-release-{VERSION}"),
+                title,
+                body: body.into(),
+                published_at: String::new(),
+                popup: true,
+            }],
+            local_notices_seeded: false,
+            remote_notices_loaded: false,
+            popup: None,
+            popup_shown: false,
+            popup_pass: None,
+            open_notices: HashSet::new(),
+            last_checked: None,
+            pending,
+            install_prompt: false,
+        }
     }
     /// Bundled notices arrive on the data worker. Seed them exactly once when
     /// ready, retaining this version's fallback if an older package feed omits it.
@@ -182,7 +219,7 @@ impl UpdateState {
         }
         self.busy = true;
         self.checked = true;
-        self.status = "正在检查 Rust 测试版更新…".into();
+        self.status = "正在检查 Rust 版更新…".into();
         let (tx, rx) = mpsc::channel();
         self.channel = Some(rx);
         let ctx = ctx.clone();
@@ -248,12 +285,11 @@ impl UpdateState {
                     }
                     match result {
                         Ok(Some(release)) => {
-                            self.status =
-                                format!("发现 Rust 测试版 {}。", release.manifest.version);
+                            self.status = format!("发现 Rust 版 {}。", release.manifest.version);
                             self.latest = Some(release);
                             auto_download = state["autoDownload"] == true;
                         }
-                        Ok(None) => self.status = "当前已是最新 Rust 测试版。".into(),
+                        Ok(None) => self.status = "当前已是最新 Rust 版。".into(),
                         Err(e) => self.status = format!("暂时无法检查更新：{e}"),
                     }
                 }
@@ -308,7 +344,7 @@ impl UpdateState {
                     }
                     ui.add_space(10.);
                     ui.label(format!(
-                        "Rust 测试版 {} 已下载并校验通过。",
+                        "Rust 版 {} 已下载并校验通过。",
                         self.pending
                             .as_ref()
                             .map(|p| p.version.as_str())
@@ -338,40 +374,35 @@ impl UpdateState {
         }
         action
     }
-    pub fn show(&mut self, ui: &mut egui::Ui, state: &mut Value) -> Option<UpdateAction> {
-        egui::ScrollArea::vertical()
-            .id_salt("release-center-scroll")
-            .show(ui, |ui| {
-                if ui.available_width() >= 850. {
-                    let width = (ui.available_width() - 18.) / 2.2;
-                    ui.horizontal_top(|ui| {
-                        ui.spacing_mut().item_spacing.x = 18.;
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(width * 1.2, 0.),
-                            egui::Layout::top_down(egui::Align::Min),
-                            |ui| {
-                                self.notices_card(ui, state, width * 1.2);
-                            },
-                        );
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(width, 0.),
-                            egui::Layout::top_down(egui::Align::Min),
-                            |ui| {
-                                self.updates_card(ui, state, width);
-                            },
-                        );
-                    });
-                } else {
-                    let width = ui.available_width();
-                    self.notices_card(ui, state, width);
-                    ui.add_space(12.);
-                    self.updates_card(ui, state, width);
-                }
+    pub fn show(&mut self, ui: &mut egui::Ui, state: &mut Value) {
+        if ui.available_width() >= 850. {
+            let width = (ui.available_width() - 18.) / 2.2;
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = 18.;
+                ui.allocate_ui_with_layout(
+                    egui::vec2(width * 1.2, 0.),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        self.notices_card(ui, state, width * 1.2);
+                    },
+                );
+                ui.allocate_ui_with_layout(
+                    egui::vec2(width, 0.),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        self.updates_card(ui, state, width);
+                    },
+                );
             });
+        } else {
+            let width = ui.available_width();
+            self.notices_card(ui, state, width);
+            ui.add_space(12.);
+            self.updates_card(ui, state, width);
+        }
         // A notice opened from this screen must also work in an offline/QA run
         // where the background update poller is intentionally not executed.
         self.show_notice_popup(ui.ctx());
-        None
     }
     fn queue_announcement(&mut self, state: &mut Value) {
         if self.popup.is_some()
@@ -587,7 +618,7 @@ impl UpdateState {
             ui.separator();
             ui.add_space(5.);
             let mut check = state["autoCheckUpdates"] != false;
-            let response = crate::design::checkbox(ui, &mut check, "启动后检查测试版更新");
+            let response = crate::design::checkbox(ui, &mut check, "启动后检查更新");
             update_test_rect(ui, "update-auto-check", &response);
             if response.changed() {
                 state["autoCheckUpdates"] = json!(check);
@@ -620,7 +651,7 @@ impl UpdateState {
                 ui.ctx().open_url(egui::OpenUrl::new_tab(url));
             }
             ui.add_space(5.);
-            ui.small("Rust 测试版使用独立更新通道。");
+            ui.small("Rust 版使用独立更新通道。");
         });
     }
 }
@@ -728,18 +759,56 @@ fn sha_valid(s: &str) -> bool {
         && s.bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
-fn beta_version(s: &str) -> Option<(u64, u64, u64, u64)> {
-    let (main, beta) = s.split_once("-beta.")?;
-    let p: Vec<_> = main.split('.').collect();
-    if p.len() != 3 {
-        return None;
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+enum ReleaseStage {
+    Beta(u64),
+    Stable,
+}
+
+type ReleaseVersion = (u64, u64, u64, ReleaseStage);
+
+fn release_version(value: &str) -> Option<ReleaseVersion> {
+    fn number(value: &str) -> Option<u64> {
+        if !value.bytes().all(|byte| byte.is_ascii_digit())
+            || (value.len() > 1 && value.starts_with('0'))
+        {
+            return None;
+        }
+        value.parse().ok()
     }
-    Some((
-        p[0].parse().ok()?,
-        p[1].parse().ok()?,
-        p[2].parse().ok()?,
-        beta.parse().ok()?,
-    ))
+
+    let (base, stage) = match value.split_once("-beta.") {
+        Some((base, beta)) => (base, ReleaseStage::Beta(number(beta)?)),
+        None => (value, ReleaseStage::Stable),
+    };
+    let mut components = base.split('.');
+    let version = (
+        number(components.next()?)?,
+        number(components.next()?)?,
+        number(components.next()?)?,
+        stage,
+    );
+    components.next().is_none().then_some(version)
+}
+
+fn newest_release(feed: &[Value], current: ReleaseVersion) -> Option<&Value> {
+    feed.iter()
+        .filter(|release| release["draft"] == false)
+        .filter_map(|release| {
+            let tag = release["tag_name"].as_str()?.strip_prefix("rust-v")?;
+            let version = release_version(tag)?;
+            let prerelease = version.3 != ReleaseStage::Stable;
+            (release["prerelease"].as_bool()? == prerelease
+                && matches_channel(current, version)
+                && version > current)
+                .then_some((version, release))
+        })
+        .max_by_key(|(version, _)| *version)
+        .map(|(_, release)| release)
+}
+
+fn matches_channel(current: ReleaseVersion, candidate: ReleaseVersion) -> bool {
+    current.3 != ReleaseStage::Stable || candidate.3 == ReleaseStage::Stable
 }
 fn safe_relative(value: &str) -> Result<PathBuf> {
     if value.is_empty()
@@ -776,7 +845,7 @@ fn safe_relative(value: &str) -> Result<PathBuf> {
 }
 fn validate_package(package: &PackageManifest) -> Result<()> {
     if package.schema != 1
-        || beta_version(&package.version).is_none()
+        || release_version(&package.version).is_none()
         || package.files.is_empty()
         || package.files.len() > 100_000
     {
@@ -845,7 +914,7 @@ fn agent(timeout: u64) -> ureq::Agent {
 fn get_json(url: &str) -> Result<Value> {
     let mut response = agent(25)
         .get(url)
-        .header("User-Agent", "Jade-Palworld-Rust-Beta")
+        .header("User-Agent", "Jade-Palworld-Rust")
         .header("Accept", "application/vnd.github+json")
         .call()
         .map_err(|e| e.to_string())?;
@@ -865,23 +934,9 @@ fn check_release() -> Result<Option<Release>> {
     let feed = get_json(&format!(
         "https://api.github.com/repos/{REPO}/releases?per_page=100"
     ))?;
-    let current = beta_version(VERSION).ok_or("当前测试版版本号无效")?;
-    let Some(release) = feed
-        .as_array()
-        .ok_or("发布列表格式无效")?
-        .iter()
-        .filter(|r| r["prerelease"] == true && r["draft"] != true)
-        .filter_map(|r| {
-            r["tag_name"]
-                .as_str()
-                .and_then(|tag| tag.strip_prefix("rust-v"))
-                .and_then(beta_version)
-                .map(|v| (v, r))
-        })
-        .filter(|(v, _)| *v > current)
-        .max_by_key(|(v, _)| *v)
-        .map(|(_, r)| r)
-    else {
+    let current = release_version(VERSION).ok_or("当前 Rust 版本号无效")?;
+    let rows = feed.as_array().ok_or("发布列表格式无效")?;
+    let Some(release) = newest_release(rows, current) else {
         return Ok(None);
     };
     let tag = release["tag_name"].as_str().ok_or("版本标签缺失")?;
@@ -1146,12 +1201,17 @@ fn read_pending(root: &Path) -> Result<Option<Pending>> {
     }
     let pending: Pending = serde_json::from_slice(&fs::read(file).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
+    let staged = release_version(&pending.version).ok_or("待安装更新版本号无效。")?;
     if !pending.stage.starts_with("stage-")
         || uuid::Uuid::parse_str(&pending.stage[6..]).is_err()
         || !sha_valid(&pending.manifest_sha256)
-        || beta_version(&pending.version).is_none()
     {
         return Err("待安装更新记录无效。".into());
+    }
+    // A manual upgrade can leave a previously downloaded package in the shared data directory.
+    let current = release_version(VERSION).ok_or("当前 Rust 版本号无效")?;
+    if !matches_channel(current, staged) || staged < current {
+        return Ok(None);
     }
     Ok(Some(pending))
 }
@@ -1297,7 +1357,7 @@ fn apply_lock(_install: &Path) -> Result<()> {
 }
 fn begin_install(root: &Path, exe: &Path) -> Result<()> {
     if other_app_window(exe) {
-        return Err("请先关闭其它 Rust 测试版窗口，再安装更新。正式版窗口不受影响。".into());
+        return Err("请先关闭其它 Rust 版窗口，再安装更新。".into());
     }
     pending_package(root)?;
     let install = exe
@@ -1306,7 +1366,7 @@ fn begin_install(root: &Path, exe: &Path) -> Result<()> {
         .canonicalize()
         .map_err(|e| e.to_string())?;
     if exe.file_name().and_then(|v| v.to_str()) != Some(EXE) || !install.join(PACKAGE).exists() {
-        return Err("请从完整 Rust 测试版程序包运行更新。".into());
+        return Err("请从完整 Rust 版程序包运行更新。".into());
     }
     let helper = root
         .join("updates")
@@ -1492,7 +1552,7 @@ fn run_install(root: &Path, install: &Path, pid: u32) -> Result<()> {
     let (pending, stage, package) = pending_package(root)?;
     wait_parent(pid)?;
     if other_app_window(&install.join(EXE)) {
-        return Err("请先关闭其它 Rust 测试版窗口，再安装更新。更新文件已保留。".into());
+        return Err("请先关闭其它 Rust 版窗口，再安装更新。更新文件已保留。".into());
     }
     let backup = root
         .join("updates")
@@ -1539,10 +1599,8 @@ fn run_install(root: &Path, install: &Path, pid: u32) -> Result<()> {
         fs::remove_file(root.join("updates/pending.json")).map_err(|e| e.to_string())?;
         atomic_write(
             &root.join("updates/result.json"),
-            &serde_json::to_vec(
-                &json!({"message":format!("已安装 Rust 测试版 {}。",pending.version)}),
-            )
-            .unwrap(),
+            &serde_json::to_vec(&json!({"message":format!("已安装 Rust 版 {}。",pending.version)}))
+                .unwrap(),
         )?;
         return Ok(());
     }
@@ -1838,8 +1896,85 @@ mod tests {
             assert!(safe_relative(bad).is_err(), "{bad}")
         }
         assert!(safe_relative("data/assets/moon.webp").is_ok());
-        assert!(beta_version("2.0.0-beta.2") > beta_version("2.0.0-beta.1"));
-        assert!(beta_version("1.0.18").is_none());
+        assert!(release_version(VERSION).is_some());
+        assert_eq!(Some(VERSION), env!("CARGO_PKG_VERSION").split('+').next());
+    }
+    #[test]
+    fn release_versions_order_stable_after_the_same_beta() {
+        let ordered = [
+            "2.0.0-beta.1",
+            "2.0.0-beta.13",
+            "2.0.0",
+            "2.1.0-beta.2",
+            "2.1.0",
+        ]
+        .map(|version| release_version(version).unwrap());
+        assert!(ordered.windows(2).all(|pair| pair[0] < pair[1]));
+        for invalid in [
+            "2.0",
+            "02.0.0",
+            "2.0.0.1",
+            "2.0.0-beta.01",
+            "2.0.0-beta.13+assistant.26",
+            "2.0.0-rc.1",
+        ] {
+            assert_eq!(release_version(invalid), None, "{invalid}");
+        }
+    }
+    #[test]
+    fn stable_updates_skip_legacy_releases_drafts_and_beta_builds() {
+        let row = |tag: &str, prerelease, draft| json!({"tag_name":tag,"prerelease":prerelease,"draft":draft});
+        let rows = [
+            row("v3.0.0", false, false),
+            row("rust-v2.0.0-beta.13+assistant.26", true, false),
+            row("rust-v2.0.0", false, false),
+            row("rust-v2.0.2", false, false),
+            row("rust-v2.0.3", true, false),
+            row("rust-v2.0.4-beta.1", false, false),
+            row("rust-v2.0.5-beta.1", true, false),
+            row("rust-v2.0.6", false, true),
+        ];
+        assert_eq!(
+            newest_release(&rows, release_version("2.0.0").unwrap()),
+            Some(&rows[3])
+        );
+        assert_eq!(
+            newest_release(&rows, release_version("2.0.0-beta.13").unwrap()),
+            Some(&rows[6])
+        );
+        assert_eq!(
+            newest_release(&rows[..3], release_version("2.0.0-beta.13").unwrap()),
+            Some(&rows[2])
+        );
+        assert_eq!(
+            newest_release(&rows, release_version("2.0.2").unwrap()),
+            None
+        );
+    }
+    #[test]
+    fn update_manifest_accepts_official_version_and_requires_matching_release_url() {
+        for version in ["2.0.0", "2.0.0-beta.13"] {
+            let tag = format!("rust-v{version}");
+            let name = format!("Jade-Palworld-Rust-{version}-windows-x64.zip");
+            let mut package = package(vec![file(EXE, b"app")]);
+            package.version = version.into();
+            let mut update = UpdateManifest {
+                schema: 1,
+                version: version.into(),
+                release_tag: tag.clone(),
+                package,
+                full: Archive {
+                    url: format!("https://github.com/{REPO}/releases/download/{tag}/{name}"),
+                    name,
+                    size: 10,
+                    sha256: digest(b"archive"),
+                },
+                deltas: vec![],
+            };
+            assert!(validate_update(&update).is_ok());
+            update.full.url = update.full.url.replace("rust-v", "v");
+            assert!(validate_update(&update).is_err());
+        }
     }
     #[test]
     fn copies_verified_data_and_rolls_back() {
@@ -1892,6 +2027,35 @@ mod tests {
         )
         .unwrap();
         assert!(read_pending(&root).is_err());
+        let _ = fs::remove_dir_all(root);
+    }
+    #[test]
+    fn pending_downloads_respect_installed_version_and_channel() {
+        let root = dir();
+        create_dir(&root.join("updates")).unwrap();
+        let path = root.join("updates/pending.json");
+        let current = release_version(VERSION).unwrap();
+        for (version, eligible) in [
+            ("0.0.0-beta.0", false),
+            ("999.0.0-beta.1", current.3 != ReleaseStage::Stable),
+            ("999.0.0", true),
+        ] {
+            fs::write(
+                &path,
+                serde_json::to_vec(&Pending {
+                    version: version.into(),
+                    stage: format!("stage-{}", uuid::Uuid::new_v4()),
+                    manifest_sha256: "0".repeat(64),
+                })
+                .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                read_pending(&root).unwrap().is_some(),
+                eligible,
+                "{version}"
+            );
+        }
         let _ = fs::remove_dir_all(root);
     }
     fn zip_file(path: &Path, entries: &[(&str, &[u8])]) {

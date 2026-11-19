@@ -14,6 +14,7 @@ pub struct TabStrip {
     pub selected_rect: Option<Rect>,
     pub viewport: Rect,
     pub offset: f32,
+    pub trailing_space: Option<Rect>,
 }
 
 /// Reveal the current page when navigation or the available width changes.
@@ -39,10 +40,12 @@ pub fn show_tabs(ui: &mut egui::Ui, tabs: &[(&str, &str)], page: &str) -> TabStr
         .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
         .show(ui, |ui| {
             let mut selected_rect = None;
+            let mut last_right = ui.next_widget_position().x;
             ui.horizontal(|ui| {
                 for (name, id) in tabs {
                     let selected = page == *id;
                     let response = design::tab_with_icon(ui, name, design::tab_icon(id), selected);
+                    last_right = response.rect.right();
                     if selected {
                         selected_rect = Some(response.rect);
                         if reveal {
@@ -54,15 +57,21 @@ pub fn show_tabs(ui: &mut egui::Ui, tabs: &[(&str, &str)], page: &str) -> TabStr
                     }
                 }
             });
-            selected_rect
+            (selected_rect, last_right)
         });
     ui.ctx()
         .data_mut(|data| data.insert_temp(reveal_id, (page.to_owned(), width)));
+    let (selected_rect, last_right) = output.inner;
+    let mut trailing_space = output.inner_rect;
+    trailing_space.min.x = trailing_space
+        .left()
+        .max(last_right + ui.spacing().item_spacing.x);
     TabStrip {
         clicked,
-        selected_rect: output.inner,
+        selected_rect,
         viewport: output.inner_rect,
         offset: output.state.offset.x,
+        trailing_space: (trailing_space.width() >= 8.).then_some(trailing_space),
     }
 }
 

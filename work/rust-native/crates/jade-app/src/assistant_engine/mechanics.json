@@ -1,0 +1,166 @@
+[
+  {
+    "topic": "配种中转与固定组合",
+    "groups": [["配种","配对","繁殖","育种","breeding","breed"],["必经","必备中转","万能亲本","万能父母","通用亲本","通用中转","生万物","什么都能配","universal parent","universal breeder","any offspring","every species","all species","mandatory intermediate"]],
+    "exclude": ["最短路线用哪","我的仓库","my palbox","in my roster"],
+    "zh": "没有一只帕鲁是所有配种路线都要经过的。可以先在配种表里反查目标子代。比如阿努比斯有多组亲本；空涡龙的记录只有一只公空涡龙与一只母空涡龙。传词条时，从实际带词条的亲本出发，每一代留能接上下一组、且确实继承了词条的子代。给出目标物种和现有亲本后，就能缩小到能走通的路线。",
+    "en": "There is no required intermediate Pal for every breeding route. Start by looking up the desired offspring's parent combinations. Anubis has many pairs, while Jetragon's recorded pair is a male and a female Jetragon. To transfer a passive, start with an actual carrier and keep an offspring that inherited it and can mate with the next parent. The target species and the parents you have determine the workable route.",
+    "source": "https://github.com/tylercamp/palcalc/blob/08fe1eea5dcd627f83eadf0876a2010574d29f67/PalCalc.Model/db.json"
+  },
+  {
+    "topic": "世界地图",
+    "groups": [["地图","地形","岛屿","矿点","矿脉","资源点","terrain","map","resource node","ore deposit","ore vein"],["随机生成","随机的","是否随机","是随机","会随机","每个存档","不同存档","随机化","random","randomized","randomised","procedurally generated","different for each"]],
+    "exclude": ["迷宫","地下城内部","dungeon layout","random encounter"],
+    "zh": "普通世界的岛屿地形和固定矿点有共用坐标，换存档也能按同一张地图找矿。采走的矿石要等矿点刷新。世界设置里的随机模式改变野生帕鲁的分布，可以产生不同的野怪组合。",
+    "en": "The standard world uses the same island terrain and fixed resource-node locations across saves. A depleted node has to respawn. The world's random Pal mode can change which wild Pals appear in an area.",
+    "source": "https://docs.palworldgame.com/settings-and-operation/configuration/",
+    "route": "#map"
+  },
+  {
+    "topic": "个体值",
+    "groups": [["个体值","个体潜力","iv","ivs","individual value","talent value"],["什么意思","是什么","怎么看","哪里看","怎么查","如何看","干什么","有啥用","有何用","what are","what is","what does","what do","check","see","view","mean","affect"]],
+    "exclude": ["遗传概率","遗传率","最强","calculate","formula","chance of inheriting","how many","best","highest","raise","提升","上升","怎么加","个体值果实","个体果实","生命果实","力量果实","坚韧果实","iv fruit","hp fruit","power fruit","stout fruit"],
+    "zh": "同种、同级的两只帕鲁也会有不同的生命、攻击和防御。三项各有一个 0–100 的个体值，数值越高，相应属性的成长越好。装备伯乐眼镜可以直接查看这三项，挑亲本时也能据此比较。",
+    "en": "IVs are the individual potential for a Pal's HP, Attack and Defense. Each has its own score from 0 to 100. A higher score gives more of that stat at the same species and level. Equip Ability Glasses to inspect all three when choosing a Pal or a parent.",
+    "source": "https://paldb.cc/en/Ability_Glasses",
+    "route": "#items/Accessory_TalentChecker"
+  },
+  {
+    "topic": "据点传送",
+    "groups": [["传送","fast travel","teleport"],["据点","帕鲁终端","帕鲁箱","基地","palbox","my base","between bases","our base","to base"]],
+    "exclude": ["跨界","global palbox","搬家","搬迁","move my base","relocate","传送药","teleportation potion","端控制台要","控制台配方","fast travel point near","传送点在哪","找不到传送点","坐标","which coordinates","nearest fast travel","closest fast travel","山洞里","from any cave"],
+    "zh": "从 1.0 起，身处据点范围内就可以打开大地图，直接选择其他据点或已激活的巨鹫之像，无须走回帕鲁终端。在野外也可从已激活的巨鹫之像出发。帕鲁终端控制台用来远程管理据点帕鲁，不会增加一个地图传送目的地。",
+    "en": "Since 1.0, open the map anywhere inside your base and select another base or an activated Great Eagle Statue. You do not have to walk to the Palbox. In the field you can also depart from an activated statue. The Palbox Control Device is for remote management and does not add another travel destination.",
+    "source": "https://store.steampowered.com/news/app/1623730/view/686383649529010623",
+    "route": "#work/facilities/Palbox_Control_Device"
+  },
+  {
+    "topic": "专服加入密码",
+    "groups": [["专服","专用服务器","服务器","dedicated server","server"],["加入密码","设置密码","登录密码","进服密码","服务器密码","设置加入密码","join password","server password","login password","password for joining","password protect","password to join"],["设置","设定","设密码","修改","更换","启用","添加","配置","set","change","configure","enable","add","protect","password protect"]],
+    "exclude": ["管理员密码","admin password","adminpassword"],
+    "zh": "作为服主，停止服务器，打开该服务器正在使用的 PalWorldSettings.ini，在 OptionSettings 中填写 ServerPassword 的值，保存并重启。玩家加入时输入这个密码。",
+    "en": "Stop your dedicated server and open its active PalWorldSettings.ini. Set ServerPassword in OptionSettings, save it, and restart the server. Players enter that password when joining.",
+    "source": "https://docs.palworldgame.com/settings-and-operation/configuration/"
+  },
+  {
+    "topic": "跨界终端导入",
+    "groups": [["跨界帕鲁终端","跨界终端","global palbox"],["导入","导出","拿不出","取不出","下载","服务器设置","import","export","can't take","cannot take","download","transfer between"]],
+    "exclude": ["物资","道具","equipment","inventory"],
+    "zh": "在来源世界先把帕鲁登记到跨界帕鲁终端，然后在目标世界的跨界终端选择已登记的帕鲁。专服由服主检查来源世界的 bAllowGlobalPalboxExport 和目标世界的 bAllowGlobalPalboxImport 是否允许对应方向；修改配置后重启对应服务器。",
+    "en": "Register the Pal in the source world's Global Palbox, then select its record at a Global Palbox in the destination world. On dedicated servers, the host should check bAllowGlobalPalboxExport on the source and bAllowGlobalPalboxImport on the destination. Restart any server whose configuration changed.",
+    "source": "https://docs.palworldgame.com/settings-and-operation/configuration/",
+    "route": "#work/facilities/Global_Palbox"
+  },
+  {
+    "topic": "商人来访",
+    "groups": [["流浪商人","旅行商人","游商","行商","wandering trader","wandering merchant","travelling merchant","traveling merchant"],["来访","造访","拜访","来据点","来基地","到访","触发","visit","visitor","trigger","come to my base","show up at"]],
+    "exclude": ["卖价","进货","刷新商品","stock refresh","inventory refresh","赚金币","赚钱","earn gold","make money","get more coins","护卫掉落"],
+    "zh": "据点里出现的旅行商人属于来访事件。建好据点后留意来客提示，游戏没有给这个商人一个可保证的来访操作或倒计时。想马上交易，可传送到小型聚落，直接找固定商人；不同商人出售的物品不同。",
+    "en": "A wandering merchant arriving at your base is a visitor event. Watch for the arrival message after establishing the base. There is no guaranteed action or countdown for a particular merchant to visit. To trade now, go to the fixed merchant at the Small Settlement and check their stock.",
+    "source": "https://paldb.cc/en/Incidents",
+    "route": "#map"
+  },
+  {
+    "topic": "商人事件",
+    "groups": [["流浪商人","旅行商人","游商","wandering merchant","wandering trader"],["商人事件","事件商人","事件流浪商人","incident","merchant event"]],
+    "exclude": ["位置","地点","概率","刷新时间","多久","掉落","where","how often","how long","drop rate","location","loot"],
+    "zh": "你遇到的是据点来了商人的提示，还是路上碰到商人和护卫？如果是据点来访，可以趁对方停留时交谈交易；如果想找固定货源，可以从小型聚落的商店查起。",
+    "en": "Was this a visitor arriving at your base, or a merchant encounter out on the road? For a visitor, speak to them while they're at the base to trade. For a fixed shop, try the merchant at the Small Settlement. Tell me which encounter or item you're looking for.",
+    "source": "https://paldb.cc/en/Incidents",
+    "route": "#map"
+  },
+  {
+    "topic": "批量出售帕鲁",
+    "groups": [["卖帕鲁","出售帕鲁","卖掉帕鲁","sell pals","selling pals","sell my pals"],["批量","一键","快速","一起","很多","quick","quickly","quicksell","bulk","mass","at once","multiple"]],
+    "exclude": ["出售价格","最值钱","哪个贵","best price","most valuable","sell price"],
+    "zh": "找帕鲁商人打开出售帕鲁界面，依次点选要卖的个体，核对选中列表后一起确认。一次交易可以卖多只，同一物种的不同个体仍需要分别选中。",
+    "en": "At a Pal Merchant choose the option to sell Pals. Mark each individual you intend to sell, review the selection and confirm the transaction together. Selling several in one transaction still involves selecting each Pal individually.",
+    "source": "https://palworld.wiki.gg/wiki/Pal_Merchant"
+  },
+  {
+    "topic": "头目图纸",
+    "groups": [["屠宰","分解帕鲁","屠刀","解体","butcher","butchering","butchered","disassemble","disassembly"],["头目","alpha"],["设计图","图纸","schematic","blueprint"]],
+    "exclude": ["掉率多少","具体概率","what percentage","exact drop rate"],
+    "zh": "繁殖孵出的头目个体也能在屠宰时掷本物种的头目掉落表。先确认目标图纸列在该物种的头目掉落里，再核对个体确有头目标记。产自配种牧场不影响这次判定，结果仍是随机，屠宰也会消耗该个体。",
+    "en": "A bred and hatched Alpha can roll its species' Alpha loot when butchered. Check that the specific schematic appears in that species' Alpha drops and that the individual actually has the Alpha mark. Bred origin does not disqualify it. The roll can miss and butchering consumes the Pal.",
+    "source": "https://palworld.wiki.gg/wiki/Alpha_Pals"
+  },
+  {
+    "topic": "野生头目刷新",
+    "groups": [["野外头目","野外首领","矿洞首领","矿洞头目","灼焰牛","blazamut","field boss","field alpha","overworld boss","overworld alpha"],["刷新时间","多久刷新","多久复活","多久重生","何时刷新","刷新周期","几天刷新","respawn","respawns","resets at","respawning"]],
+    "exclude": ["殁殃","团体战","祭坛","raid","blazamut ryu","slab","summon","碎片","掉落","封印","地下城入口","sealed realm","sealed dungeon","treasure chest","宝箱","dungeon portal"],
+    "zh": "常规野外头目（例如灼热矿道里的灼焰牛）随游戏内新的一天重新出现。回到它的固定点检查；昼夜速度设置会改变实际要等的分钟数。如果打的是封印领域里的头目，请看领域入口显示的重试计时。",
+    "en": "For an overworld Alpha such as Blazamut in the Scorching Mineshaft, check its fixed spot again after the in-game day turns over. Day and night speed affect the wait in real minutes. A Sealed Realm boss is a different encounter with a retry timer shown at the entrance.",
+    "source": "https://palworld.wiki.gg/wiki/Alpha_Pals"
+  },
+  {
+    "topic": "八云犬与突变被动",
+    "groups": [["八云犬","yakumo","物以类聚","birds of a feather"],["突变词条","突变被动","不死之身","特异体质","重装甲","mutation passive","mutation trait","immortality","idiosyncratic","heavily armored","sky strider"],["抓","捕","贴","传给","传递","同步","capture","catch","pass","transfer","copy","apply"]],
+    "exclude": ["配种链","配种公式","breed a yakumo","breed yakumo","八云犬哪里抓","哪里抓八云犬","哪里捕捉八云犬","去哪里抓八云犬","where can i capture yakumo","where can i catch yakumo","where to catch yakumo","where do i get yakumo","where to find yakumo","yakumo location"],
+    "zh": "八云犬的伙伴技能只会提高野捕时出现合格被动的机会。不死之身等突变被动被排除，八云犬即使带着该词条也无法在捕捉时复制它。可用已有该突变的亲本尝试配种遗传，或在手术台消耗对应的植入体。",
+    "en": "Yakumo's Birds of a Feather increases the chance of eligible passives on capture. Mutation passives such as Immortality are excluded even if Yakumo has the trait. A parent with the mutation can pass it to offspring through breeding, or you can use the matching disposable implant at a Surgery Table.",
+    "source": "https://paldb.cc/en/Mutation",
+    "route": "#details/partner/GuardianDog"
+  },
+  {
+    "topic": "野外蛋的地区池",
+    "groups": [["野外蛋","捡蛋","帕鲁蛋","dark egg","scorching egg","wild egg","type of egg","types of eggs"],["区域","地区","地形","刷在哪里","哪里多","哪里刷","哪里找","哪里捡","分布","spawn point","spawn location","spawn more","region","biome","where","find"]],
+    "exclude": ["期望","头目蛋","蛋数量","连理龙","笑魇猫","bonus egg","extra egg","alpha egg","on average","how many","孵化时间","孵化温度","孵蛋器","incubator","incubation","hatch faster"],
+    "zh": "先看地图上的野外蛋点，再查该区域的蛋池。地点、蛋的属性和大小共同限定可孵出的物种；在两个地区捡到外观相同的蛋，候选也可能不同。比如要从大型暗黑帕鲁蛋孵出墨罗娜，可去世界树有对应蛋池的区域找，捡到一个大型暗黑蛋并不保证是它。",
+    "en": "Look for wild egg points in the region whose egg pool contains the species. Region, egg type and size all matter; two identical-looking eggs from different regions can have different candidates. For example, Solenne is in a Large Dark Egg pool on the World Tree, alongside other possible hatches.",
+    "source": "https://paldb.cc/en/Eggs",
+    "route": "#map"
+  },
+  {
+    "topic": "多工种工作台",
+    "groups": [["塞赫麦特","sekhmet"],["工作台","流水线","建筑","制药","设施","building","workbench","station","production line","facility"],["低级","低阶","换回","降级","没法","需要","制药","weaker","lower","downgrade","medicine","cannot","can't"]],
+    "exclude": ["种族值","配种","哪里抓","saddle","breed","coordinates"],
+    "zh": "可以保留高级设施。塞赫麦特会加快自己在工作台和作业工厂的工作，可以负责手工阶段。遇到同时列出手工作业和制药的古代文明工作台，再分配一只制药适性达到要求的帕鲁完成对应工作。观察哪个工序在等人，再决定是否用另一条生产线分流。",
+    "en": "You can keep higher-tier facilities. Sekhmet gets an efficiency bonus while working at workbenches and assembly lines and can cover handiwork. At an Ancient Workbench requiring both handiwork and medicine production, assign a second Pal with the required medicine suitability. Check which task is waiting before adding another line.",
+    "source": "https://paldb.cc/en/Sekhmet",
+    "route": "#details/partner/Sekhmet"
+  },
+  {
+    "topic": "海上油田要塞",
+    "groups": [["油田要塞","石油钻井平台","海上油井","oil rig"],["怎么打","怎么过","怎么上去","如何打","打法","稳妥","比较稳","怎么靠近","登上","攻略","how to beat","how to approach","how to reach","how do i get to","how to raid","safe approach","strategy","survive"]],
+    "exclude": ["坐标","哪里","掉率","多少钱","油田位置","coordinates","drop rate","how much"],
+    "zh": "先在岸边备好能回程的水上坐骑、弹药、护盾和回复品，从水面接近平台可避开针对飞行坐骑的防空激光。上平台后先找掩体，逐段清敌并留好撤回水面的路线。挑战顶级平台争夺大箱时还要为武装直升机预留弹药和掩体。",
+    "en": "Prepare a swimming mount, ammo, a shield and healing items on shore. Approach at water level to avoid the anti-air lasers that target flying mounts. Once aboard, clear enemies from cover and keep a route back to the water. On the high-level rig, save ammo and cover for the attack chopper guarding the big chest.",
+    "source": "https://palworld.wiki.gg/wiki/Oil_Rig"
+  },
+  {
+    "topic": "困难塔科技点",
+    "groups": [["困难模式","困难塔","困难难度","hard mode","hard-mode","hard tower"],["塔","tower"],["科技点","科技点数","古代点数","技术点","technology point","tech point"]],
+    "exclude": ["如何解锁","怎样解锁","how to unlock","如何打","打法","怎样打","怎么打","怎么过","how to beat","how do i beat"],
+    "zh": "普通塔首通的古代科技点和困难重赛的奖励是两项。困难塔不会再发普通或古代科技点，刷科技点应改找科技手册等来源。困难塔有对应首领头饰等通关奖励。",
+    "en": "The Ancient Technology Points from a normal tower's first clear are separate from Hard Mode rematch rewards. The Hard rematch gives zero regular or Ancient Technology Points; use technology manuals if points are the goal. Hard clears have other rewards such as the tower boss's headwear.",
+    "source": "https://palworld.wiki.gg/wiki/Tower_Boss"
+  },
+  {
+    "topic": "野生捕获力",
+    "groups": [["翠叶鼠雕像","翠叶鼠之像","lifmunk effigy","lifmunk effigies"],["捕获力","捕捉力","捕获率","抓捕率","几个","多少","生效","有用","how many","capture power","catch rate","capture rate","start working","upgrade"]],
+    "exclude": ["坐标","位置","地图","少了一个","遗漏","where","location","coordinate","missing one","how many exist","how many are there"],
+    "zh": "把翠叶鼠雕像交给力量石像，购买玩家捕获力升级后才生效。1.0 的第一级只花 1 个。由零起算，1–15 级的累计消耗依次是 1、3、6、10、15、21、28、37、46、55、64、73、82、91、100，具体成功率还取决于球和目标。",
+    "en": "Offer Lifmunk Effigies at a Statue of Power and buy the player capture-power upgrade. Rank 1 already works and costs one effigy. In 1.0 the cumulative costs from rank zero through ranks 1–15 are 1, 3, 6, 10, 15, 21, 28, 37, 46, 55, 64, 73, 82, 91 and 100. Actual catch chance also depends on the sphere and target.",
+    "source": "https://paldb.gg/statues-of-power/",
+    "route": "#work/facilities/Statue_of_Power"
+  },
+  {
+    "topic": "搬运工与生产设施",
+    "groups": [["伐木场","采石场","logging site","logging camp","stone pit","stone quarry"],["搬空","取走","搬走","收集","搬运","积压","送到箱子","empty","haul","transport","carry","move the wood","move the stone"],["帕鲁","自动","pal","automatically"]],
+    "exclude": ["合成","配方","解锁","怎么建","craft","build a","how to build","recipe","unlock"],
+    "zh": "在据点分配有搬运适性的帕鲁，把允许木材或石头的储物箱放在设施附近。确认箱内有空间、帕鲁能走通两端，并在监控台检查搬运任务是否启用；作业帕鲁负责生产，另派搬运帕鲁能防止产物积压。",
+    "en": "Assign a Pal with Transporting at the base and put a chest accepting wood or stone within reach of the production site. Check free chest space and the path to both ends. Enable Transporting at the Monitoring Stand; a separate hauler can clear output while the producer keeps working.",
+    "source": "https://paldb.cc/en/Transporting",
+    "route": "#work/facilities/Monitoring_Stand"
+  },
+  {
+    "topic": "配种牧场开工",
+    "groups": [["配种牧场","配种场","breeding farm","breeding pen"],["不工作","不繁殖","不生蛋","不肯待","跑出来","没有蛋","won't breed","not breeding","won't stay","wont stay","not producing","no eggs","stop breeding"]],
+    "exclude": ["配方","产出概率","孵化速度","hatching time","which offspring","chance of","产蛋速度","如何提速","how often","how long","breeding speed"],
+    "zh": "在同一据点给配种牧场各分配一只可配种的异性帕鲁，确认牧场界面能识别双亲。把蛋糕放进牧场自带的箱子，并腾出产蛋区。若有一只总是离开，检查它能否走到牧场、是否失去工作能力，再用监控台重新固定分配。",
+    "en": "Assign two breedable Pals of opposite sex to the same Breeding Farm and check that the farm recognizes both parents. Put cake in the farm's own chest and clear space for eggs. If a parent leaves, check its path and condition and reassign it at the Monitoring Stand.",
+    "source": "https://paldb.cc/en/Breeding_Farm",
+    "route": "#work/facilities/Breeding_Farm"
+  }
+]

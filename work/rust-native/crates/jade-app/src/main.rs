@@ -1,4 +1,36 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod assistant_basic;
+mod assistant_client;
+mod assistant_host;
+mod assistant_modules;
+mod assistant_search;
+mod assistant_view;
+// The GUI's unit suite also exercises the protocol worker's domain logic against
+// the full handbook. These modules are compiled into the separate kernel at release.
+#[cfg(test)]
+mod assistant_breeding;
+#[cfg(test)]
+mod assistant_cloud;
+#[cfg(test)]
+mod assistant_compare;
+#[cfg(test)]
+mod assistant_data;
+#[cfg(test)]
+mod assistant_discovery;
+#[cfg(test)]
+mod assistant_elements;
+#[cfg(test)]
+mod assistant_engine;
+#[cfg(test)]
+mod assistant_equipment;
+#[cfg(test)]
+mod assistant_intent;
+#[cfg(test)]
+mod assistant_local;
+#[cfg(test)]
+mod assistant_recommend;
+#[cfg(test)]
+mod assistant_survival;
 mod breeding_ui;
 mod calculators_ui;
 mod catalog;
@@ -15,9 +47,11 @@ mod map;
 mod navigation;
 mod overlay;
 mod overlay_ui;
+mod pal_picker;
 mod qa;
 mod search;
 mod search_rows;
+mod settings_page;
 mod skins;
 mod store;
 mod terrain;
@@ -44,6 +78,7 @@ const SECTIONS: &[(&str, &str, &[(&str, &str)])] = &[
             ("目标配种", "planner"),
         ],
     ),
+    ("搜索与问答", "assistant", &[("搜索与问答", "assistant")]),
     (
         "世界地图",
         "map",
@@ -98,15 +133,7 @@ const SECTIONS: &[(&str, &str, &[(&str, &str)])] = &[
             ("探索手记", "guide/journals"),
         ],
     ),
-    (
-        "设置",
-        "settings/skins",
-        &[
-            ("皮肤", "settings/skins"),
-            ("游戏悬浮窗", "settings/overlay"),
-            ("公告与更新", "settings/updates"),
-        ],
-    ),
+    ("设置", "settings/skins", settings_page::TABS),
 ];
 fn page_for(route: &str) -> String {
     let raw = route.trim_start_matches('#');
@@ -168,6 +195,7 @@ fn page_header(
     heading: &str,
     d: &Data,
     origin: Option<(&str, &str)>,
+    assistant_label: Option<&str>,
 ) -> Option<String> {
     let p = design::palette(ui.ctx());
     if ["lookup", "warehouse", "offspring", "planner"].contains(&page) {
@@ -265,8 +293,6 @@ fn page_header(
         "enemies" => "查找敌人等级、掉落物与地图位置。",
         "merchants" => "查询商人出售的物品或帕鲁，定位其所在位置。",
         "neutrals" => "查看其他中立单位的相关资料。",
-        "settings/skins" => "选择辉月伊配色，或使用普通颜色主题。",
-        "settings/overlay" => "在幻兽帕鲁画面上呼出完整工具箱，按快捷键收起后继续游戏。",
         _ => "",
     };
     let mut nav = None;
@@ -285,6 +311,11 @@ fn page_header(
                 nav = Some(route.to_owned());
             }
         }
+        if let Some(label) = assistant_label
+            && design::small_action(ui, "chat", label).clicked()
+        {
+            nav = Some("#assistant".into());
+        }
     });
     if !description.is_empty() {
         ui.label(RichText::new(description).size(13.).color(p.muted));
@@ -296,6 +327,8 @@ fn page_header(
 struct App {
     data: Data,
     store: store::Store,
+    assistant: assistant_host::AssistantHost,
+    settings_page: settings_page::SettingsPage,
     catalog: catalog::Catalog,
     breeding: breeding_ui::Breeding,
     calculators: calculators_ui::Calculators,
@@ -305,16 +338,6 @@ struct App {
     route: String,
     history: navigation::History<ViewBookmark>,
     ui_ctx: egui::Context,
-    search_open: bool,
-    search: String,
-    search_kind: String,
-    search_selected: usize,
-    search_index: Option<search::GlobalIndex>,
-    search_index_tables: usize,
-    search_hits: Vec<search::SearchHit>,
-    search_cache_key: Option<(String, String)>,
-    search_kinds: Vec<String>,
-    search_focus: bool,
     about: bool,
     last_tables: usize,
     last_save: Instant,
@@ -405,28 +428,24 @@ impl App {
         updates: updates::UpdateState,
         qa_output: Option<PathBuf>,
     ) -> Self {
+        let assistant = assistant_host::AssistantHost::new(store.root.clone(), data.root.clone());
+        let route = std::env::var("JADE_QA_ROUTE").unwrap_or("#lookup".into());
+        let mut settings_page = settings_page::SettingsPage::default();
+        settings_page.select(&page_for(&route), true);
         Self {
             data,
             store,
+            assistant,
+            settings_page,
             catalog: catalog::Catalog::default(),
             breeding: breeding_ui::Breeding::default(),
             calculators: calculators_ui::Calculators::default(),
             worlds: worlds_ui::Worlds::default(),
             map: map::MapState::default(),
             spawns: map::MapState::default(),
-            route: std::env::var("JADE_QA_ROUTE").unwrap_or("#lookup".into()),
+            route,
             history: navigation::History::default(),
             ui_ctx: ctx,
-            search_open: false,
-            search: String::new(),
-            search_kind: String::new(),
-            search_selected: 0,
-            search_index: None,
-            search_index_tables: 0,
-            search_hits: vec![],
-            search_cache_key: None,
-            search_kinds: vec![],
-            search_focus: false,
             about: false,
             last_tables: 0,
             last_save: Instant::now(),
@@ -539,7 +558,8 @@ impl App {
                 self.ui_ctx
                     .data(|m| m.get_temp::<String>(egui::Id::new("element-guide-selection"))),
             ),
-            "settings/skins" | "settings/overlay" | "settings/updates" => ViewState::Other,
+            "assistant" => ViewState::Other,
+            page if page.starts_with("settings/") => ViewState::Other,
             _ => ViewState::Catalog(self.catalog.navigation_state(&page)),
         };
         navigation::Entry {
@@ -548,7 +568,11 @@ impl App {
             state: ViewBookmark {
                 world_id: text(self.store.world(), "id").into(),
                 view,
-                scrolls: navigation::capture_scrolls(&self.ui_ctx),
+                scrolls: if page == "assistant" {
+                    Default::default()
+                } else {
+                    navigation::capture_scrolls(&self.ui_ctx)
+                },
             },
         }
     }
@@ -558,7 +582,19 @@ impl App {
         self.go_from(target, current);
     }
     fn go_from(&mut self, target: String, current: navigation::Entry<ViewBookmark>) {
+        if current.route == "#assistant" && target == "#assistant" {
+            self.assistant.reset_session();
+            return;
+        }
         let page = page_for(&current.route);
+        if page.starts_with("settings/")
+            && self
+                .settings_page
+                .select(target.trim_start_matches('#'), true)
+        {
+            self.ui_ctx.request_repaint();
+            return;
+        }
         let same_tool = target == format!("#{page}")
             && [
                 "lookup",
@@ -579,8 +615,12 @@ impl App {
         self.activate(target);
     }
     fn restore_entry(&mut self, entry: navigation::Entry<ViewBookmark>) {
+        if self.route == "#assistant" || entry.route == "#assistant" {
+            self.assistant.reset_session();
+        }
         self.route = entry.route;
-        self.search_open = false;
+        self.settings_page
+            .select(&page_for(&self.route), entry.state.scrolls.is_empty());
         let same_world = entry.state.world_id == text(self.store.world(), "id");
         let world_scoped = matches!(
             &entry.state.view,
@@ -608,7 +648,9 @@ impl App {
                 }),
                 ViewState::Other => {}
             }
-            navigation::restore_scrolls(&self.ui_ctx, &entry.state.scrolls);
+            if self.route != "#assistant" {
+                navigation::restore_scrolls(&self.ui_ctx, &entry.state.scrolls);
+            }
         } else {
             self.activate(self.route.clone());
         }
@@ -622,7 +664,7 @@ impl App {
     fn has_overlay(&self) -> bool {
         let page = page_for(&self.route);
         egui::Popup::is_any_open(&self.ui_ctx)
-            || self.search_open
+            || (page == "assistant" && self.assistant.has_dialog())
             || self.about
             || self.worlds.open
             || self.updates.has_overlay()
@@ -635,7 +677,7 @@ impl App {
                 "work/relic",
             ]
             .contains(&page.as_str())
-                && self.calculators.picker)
+                && self.calculators.has_overlay())
             || (page == "map" && self.map.has_overlay())
             || (page == "spawns" && self.spawns.has_overlay())
     }
@@ -654,8 +696,7 @@ impl App {
             self.about = false;
             return true;
         }
-        if self.search_open {
-            self.search_open = false;
+        if self.route == "#assistant" && self.assistant.dismiss_dialog() {
             return true;
         }
         let page = page_for(&self.route);
@@ -671,9 +712,8 @@ impl App {
             "work/relic",
         ]
         .contains(&page.as_str())
-            && self.calculators.picker
+            && self.calculators.dismiss_overlay()
         {
-            self.calculators.picker = false;
             return true;
         }
         if page == "map" {
@@ -728,9 +768,13 @@ impl App {
         true
     }
     fn activate(&mut self, route: String) {
-        self.route = decode_route(&route);
-        self.search_open = false;
+        let route = decode_route(&route);
+        if self.route == "#assistant" || route == "#assistant" {
+            self.assistant.reset_session();
+        }
+        self.route = route;
         let page = page_for(&self.route);
+        self.settings_page.select(&page, true);
         let key = self
             .route
             .trim_start_matches('#')
@@ -777,195 +821,6 @@ impl App {
         self.theme = id.clone();
         design::apply(ctx, &id);
     }
-    fn search_dialog(&mut self, ctx: &egui::Context) -> Option<String> {
-        let mut nav = None;
-        if !self.search_open {
-            return None;
-        }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            self.search_open = false;
-            return None;
-        }
-        let mut open = true;
-        let mut close_search = false;
-        let search_size = Vec2::new(
-            (ctx.content_rect().width() - 48.).clamp(280., 960.),
-            (ctx.content_rect().height() - 80.).clamp(240., 640.),
-        );
-        egui::Window::new("全局搜索")
-            .open(&mut open)
-            .title_bar(false)
-            .default_size(search_size)
-            .min_size(Vec2::new(280., 200.))
-            .max_size(search_size)
-            .constrain_to(ctx.content_rect().shrink(16.))
-            .show(ctx, |ui| {
-                if design::dialog_header(ui, "search", "全局搜索").clicked() {
-                    close_search = true;
-                }
-                ui.separator();
-                let input = ui.add(
-                    egui::TextEdit::singleline(&mut self.search)
-                        .hint_text("名称、编号、别名或近似说法，例如防空炮")
-                        .desired_width(f32::INFINITY),
-                );
-                if self.search_focus {
-                    input.request_focus();
-                    self.search_focus = false;
-                }
-                if input.changed() {
-                    self.search_selected = 0;
-                }
-                // Build only when the search is opened, then reuse its prepared rows
-                // and results while the user scrolls or moves the pointer.
-                if self.search_index.is_none() || self.search_index_tables != self.data.tables.len()
-                {
-                    let rows = search_rows::all(&self.data);
-                    let index = search::GlobalIndex::new(&rows);
-                    self.search_kinds = index
-                        .rows()
-                        .iter()
-                        .map(|r| r.kind.clone())
-                        .collect::<std::collections::BTreeSet<_>>()
-                        .into_iter()
-                        .collect();
-                    self.search_index = Some(index);
-                    self.search_index_tables = self.data.tables.len();
-                    self.search_cache_key = None;
-                }
-                ui.horizontal_wrapped(|ui| {
-                    ui.selectable_value(&mut self.search_kind, String::new(), "全部");
-                    for kind in &self.search_kinds {
-                        ui.selectable_value(&mut self.search_kind, kind.clone(), kind.as_str());
-                    }
-                });
-                let cache_key = (
-                    data::normalize(self.search.trim()),
-                    self.search_kind.clone(),
-                );
-                if self.search_cache_key.as_ref() != Some(&cache_key) {
-                    self.search_hits = self.search_index.as_ref().unwrap().search(
-                        &cache_key.0,
-                        &cache_key.1,
-                        usize::MAX,
-                    );
-                    self.search_cache_key = Some(cache_key);
-                    self.search_selected = 0;
-                }
-                let index = self.search_index.as_ref().unwrap();
-                let found = &self.search_hits;
-                self.search_selected = self.search_selected.min(found.len().saturating_sub(1));
-                let down =
-                    ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown));
-                let up = ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp));
-                if down {
-                    self.search_selected =
-                        (self.search_selected + 1).min(found.len().saturating_sub(1));
-                }
-                if up {
-                    self.search_selected = self.search_selected.saturating_sub(1);
-                }
-                if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
-                    if let Some(r) = found.get(self.search_selected) {
-                        nav = Some(index.rows()[r.row_index].href.clone());
-                    }
-                }
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(format!("{} 条结果", found.len()));
-                    if !self.search.trim().is_empty()
-                        && found
-                            .iter()
-                            .any(|h| h.match_kind != search::MatchKind::Exact)
-                    {
-                        ui.weak("包含别名或近似匹配，请按名称、类别和坐标选择。");
-                    }
-                });
-                let mut scroll = egui::ScrollArea::vertical();
-                if up || down {
-                    scroll = scroll.vertical_scroll_offset(self.search_selected as f32 * 45.);
-                }
-                scroll.show_rows(ui, 45., found.len(), |ui, range| {
-                    for i in range {
-                        let hit = &found[i];
-                        let r = &index.rows()[hit.row_index];
-                        let href = r.href.as_str();
-                        let (rect, response) = ui.allocate_exact_size(
-                            Vec2::new(ui.available_width(), 41.),
-                            egui::Sense::click(),
-                        );
-                        let p = design::palette(ui.ctx());
-                        if i == self.search_selected || response.hovered() {
-                            ui.painter().rect_filled(rect, 5, p.selected);
-                        }
-                        let mut row = ui.new_child(
-                            egui::UiBuilder::new()
-                                .id_salt(("search-result", href))
-                                .max_rect(rect.shrink(3.))
-                                .layout(egui::Layout::left_to_right(egui::Align::Center)),
-                        );
-                        row.set_clip_rect(rect.intersect(ui.clip_rect()));
-                        if href.starts_with("#details/passive/")
-                            || href.starts_with("#details/surgery/")
-                        {
-                            let key = href.rsplit('/').next().unwrap_or("");
-                            let rank = self.data.get("pal-details-data")["passives"][key]["rank"]
-                                .as_i64()
-                                .unwrap_or(0);
-                            breeding_ui::passive_rank(&mut row, &self.data, rank, 22.);
-                        } else if !r.image.is_empty() {
-                            row.add(
-                                egui::Image::new(self.data.image_source(&r.image))
-                                    .fit_to_exact_size(Vec2::splat(30.)),
-                            );
-                        } else if let Some(source) = self.catalog.image_for_route(&self.data, href)
-                        {
-                            let image =
-                                egui::Image::new(source).fit_to_exact_size(Vec2::splat(30.));
-                            row.add(image);
-                        } else {
-                            row.allocate_space(Vec2::splat(30.));
-                        }
-                        row.add_sized(
-                            Vec2::new(72., 32.),
-                            egui::Label::new(
-                                RichText::new(r.kind.as_str()).size(12.).color(p.muted),
-                            )
-                            .halign(egui::Align::Min)
-                            .truncate(),
-                        );
-                        let name_width = (row.available_width() * 0.47).max(90.);
-                        row.add_sized(
-                            Vec2::new(name_width, 32.),
-                            egui::Label::new(RichText::new(r.name.as_str()).size(14.))
-                                .halign(egui::Align::Min)
-                                .truncate(),
-                        );
-                        row.add_sized(
-                            Vec2::new(row.available_width(), 32.),
-                            egui::Label::new(
-                                RichText::new(if hit.match_kind == search::MatchKind::Exact {
-                                    r.hint.clone()
-                                } else {
-                                    format!("{} · {}", r.hint, hit.match_kind.label())
-                                })
-                                .size(11.)
-                                .color(p.muted),
-                            )
-                            .halign(egui::Align::Min)
-                            .truncate(),
-                        );
-                        if response
-                            .on_hover_text(format!("{}\n{}\n{}", r.name, r.hint, hit.explanation))
-                            .clicked()
-                        {
-                            nav = Some(href.into());
-                        }
-                    }
-                });
-            });
-        self.search_open = open && !close_search;
-        nav
-    }
     fn hide_game_overlay(&mut self) {
         if self.store.has_pending_changes() {
             self.store.flush();
@@ -978,27 +833,25 @@ impl App {
         }
         self.overlay.return_to_desktop();
     }
-    fn settings(&mut self, ui: &mut egui::Ui, page: &str) {
+    fn settings_section(&mut self, ui: &mut egui::Ui, page: &str) {
         if page == "settings/skins" {
-            egui::ScrollArea::vertical()
-                .id_salt("skin-settings-page")
-                .show(ui, |ui| {
-                    if let Some(theme) = skins::show(ui, &self.theme) {
-                        self.store.state["theme"] = json!(theme);
-                        self.store.changed();
-                    }
-                    ui.add_space(18.);
-                    ui.separator();
-                    self.external.show(ui, &self.data);
-                });
+            if let Some(theme) = skins::show(ui, &self.theme) {
+                self.store.state["theme"] = json!(theme);
+                self.store.changed();
+            }
+            ui.add_space(12.);
+            self.external.show(ui, &self.data);
+        } else if page == "settings/assistant" {
+            design::card(ui).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                design::section(ui, "帕鲁助手内核");
+                self.assistant.module_settings(ui);
+            });
         } else if page == "settings/overlay" {
             let mut config = overlay_ui::read_preferences(&self.store.state);
             let before = config;
             let status = self.overlay.snapshot();
-            let action = navigation::ScrollArea::vertical()
-                .id_salt("game-overlay-settings")
-                .show(ui, |ui| overlay_ui::show(ui, &mut config, &status))
-                .inner;
+            let action = overlay_ui::show(ui, &mut config, &status);
             if config != before {
                 overlay_ui::write_preferences(&mut self.store.state, config);
                 self.store.changed();
@@ -1011,20 +864,29 @@ impl App {
                 overlay_ui::Action::ReturnToDesktop => self.restore_toolbox_window(),
             }
         } else {
-            let before = self.store.state.clone();
-            if self.updates.show(ui, &mut self.store.state) == Some(updates::UpdateAction::Restart)
+            const FIELDS: [&str; 4] = [
+                "readAnnouncements",
+                "announcementPopups",
+                "autoCheckUpdates",
+                "autoDownload",
+            ];
+            let before = FIELDS.map(|key| self.store.state[key].clone());
+            self.updates.show(ui, &mut self.store.state);
+            if FIELDS
+                .into_iter()
+                .zip(before)
+                .any(|(key, value)| self.store.state[key] != value)
             {
-                self.store.changed();
-                self.store.flush();
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-            }
-            if before != self.store.state {
                 self.store.changed();
             }
         }
     }
 }
 impl eframe::App for App {
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        visuals.panel_fill.to_normalized_gamma_f32()
+    }
+
     fn raw_input_hook(&mut self, _ctx: &egui::Context, input: &mut egui::RawInput) {
         self.probe.raw_input_hook(input);
     }
@@ -1033,6 +895,9 @@ impl eframe::App for App {
         self.frames += 1;
         if self.last_save.elapsed() > Duration::from_secs(1) {
             self.store.flush();
+            if self.route != "#assistant" {
+                self.assistant.poll_hidden();
+            }
             self.last_save = Instant::now();
         }
         self.overlay
@@ -1068,9 +933,8 @@ impl eframe::App for App {
             self.last_tables = self.data.tables.len();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::CTRL, egui::Key::K)) {
-            if !self.worlds.open && !self.updates.has_overlay() {
-                self.search_open = true;
-                self.search_focus = true;
+            if !self.has_overlay() {
+                self.go("#assistant".into());
             }
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::ArrowLeft))
@@ -1086,7 +950,13 @@ impl eframe::App for App {
             self.new_window();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            self.dismiss_overlay();
+            if !self.dismiss_overlay() && self.route == "#assistant" {
+                if self.history.back_entries().len() > 0 {
+                    self.travel_back(1);
+                } else {
+                    self.go("#lookup".into());
+                }
+            }
         }
         let page = page_for(&self.route);
         let section = SECTIONS
@@ -1096,9 +966,12 @@ impl eframe::App for App {
         let mut nav = None;
         let mut history_request = None;
         let mut departure_map = None;
+        let mut assistant_prefill = None;
         let palette = design::palette(ctx);
+        let mut caption_areas = [None; 4];
         egui::SidePanel::left("navigation")
             .resizable(false)
+            .show_separator_line(false)
             .exact_width(108.)
             .frame(
                 egui::Frame::new()
@@ -1134,7 +1007,12 @@ impl eframe::App for App {
                     ui.label(RichText::new("Jade").size(21.).strong());
                     ui.label(RichText::new("幻兽帕鲁工具箱").size(10.));
                 });
-                window_header::drag_handle(ui, brand.response.rect, "brand-window-drag", false);
+                let brand_rect = egui::Rect::from_x_y_ranges(
+                    ui.max_rect().x_range(),
+                    brand.response.rect.y_range(),
+                );
+                caption_areas[0] = Some(brand_rect.intersect(ui.clip_rect()));
+                window_header::drag_handle(ui, brand_rect, "brand-window-drag", false);
                 if overlay_state.session {
                     ui.add_space(4.);
                     ui.small("游戏悬浮窗");
@@ -1153,23 +1031,18 @@ impl eframe::App for App {
                 }
                 ui.add_space(5.);
                 ui.separator();
-                if ui
-                    .add_sized(
-                        [90., 34.],
-                        egui::Button::image_and_text(
-                            egui::Image::new(design::icon_source("search"))
-                                .fit_to_exact_size(Vec2::splat(14.))
-                                .tint(ui.visuals().text_color()),
-                            RichText::new("全局搜索").size(12.),
-                        )
-                        .wrap_mode(egui::TextWrapMode::Extend)
-                        .fill(Color32::TRANSPARENT),
-                    )
-                    .on_hover_text("搜索全部资料 · Ctrl+K")
-                    .clicked()
+                if design::nav_button(
+                    ui,
+                    "搜索与问答",
+                    "search",
+                    page == "assistant",
+                    34.,
+                    self.theme == "moon",
+                )
+                .on_hover_text("全局搜索与帕鲁助手 · Ctrl+K")
+                .clicked()
                 {
-                    self.search_open = true;
-                    self.search_focus = true;
+                    nav = Some("#assistant".into());
                 }
                 egui::ScrollArea::vertical()
                     .id_salt("sidebar")
@@ -1177,10 +1050,13 @@ impl eframe::App for App {
                     .show(ui, |ui| {
                         ui.spacing_mut().item_spacing.y = if compact { 1. } else { 4. };
                         let icons = [
-                            "egg", "worldmap", "paldex", "enemy", "book", "ranch", "items",
+                            "egg", "chat", "worldmap", "paldex", "enemy", "book", "ranch", "items",
                             "compass", "settings",
                         ];
                         for (i, (name, route, _)) in SECTIONS.iter().enumerate() {
+                            if *route == "assistant" {
+                                continue;
+                            }
                             if design::nav_button(
                                 ui,
                                 name,
@@ -1195,31 +1071,32 @@ impl eframe::App for App {
                             }
                         }
                     });
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                    ui.label(
-                        RichText::new(if self.data.pending > 0 {
-                            "正在准备资料"
-                        } else {
-                            "● 离线可用"
-                        })
-                        .size(10.),
-                    );
-                    if ui
-                        .add(
-                            egui::Button::image_and_text(
-                                egui::Image::new(design::icon_source("info"))
-                                    .fit_to_exact_size(Vec2::splat(12.))
-                                    .tint(ui.visuals().text_color()),
-                                RichText::new("数据说明").size(11.),
+                let blank_top = ui.next_widget_position().y;
+                let footer_top = ui
+                    .with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                        ui.label(
+                            RichText::new(if self.data.pending > 0 {
+                                "正在准备资料"
+                            } else {
+                                "● 离线可用"
+                            })
+                            .size(10.),
+                        );
+                        if ui
+                            .add(
+                                egui::Button::image_and_text(
+                                    egui::Image::new(design::icon_source("info"))
+                                        .fit_to_exact_size(Vec2::splat(12.))
+                                        .tint(ui.visuals().text_color()),
+                                    RichText::new("数据说明").size(11.),
+                                )
+                                .frame(false),
                             )
-                            .frame(false),
-                        )
-                        .clicked()
-                    {
-                        self.about = true;
-                    }
-                    if ui
-                        .add_sized(
+                            .clicked()
+                        {
+                            self.about = true;
+                        }
+                        let worlds = ui.add_sized(
                             [88., 46.],
                             egui::Button::new(
                                 RichText::new(format!(
@@ -1230,12 +1107,20 @@ impl eframe::App for App {
                             )
                             .wrap()
                             .fill(Color32::from_white_alpha(28)),
-                        )
-                        .clicked()
-                    {
-                        self.worlds.open = true;
-                    }
-                });
+                        );
+                        if worlds.clicked() {
+                            self.worlds.open = true;
+                        }
+                        worlds.rect.top()
+                    })
+                    .inner;
+                if footer_top - blank_top >= 8. {
+                    let blank = egui::Rect::from_x_y_ranges(
+                        ui.max_rect().x_range(),
+                        blank_top..=footer_top,
+                    );
+                    caption_areas[1] = Some(blank.intersect(ui.clip_rect()));
+                }
             });
         egui::TopBottomPanel::top("tabs")
             .exact_height(58.)
@@ -1261,6 +1146,7 @@ impl eframe::App for App {
                 ) {
                     self.hide_game_overlay();
                 }
+                caption_areas[2] = Some(layout.drag.intersect(ui.clip_rect()));
                 window_header::drag_handle(ui, layout.drag, "header-window-drag", true);
                 let mut content = ui.new_child(
                     egui::UiBuilder::new()
@@ -1376,13 +1262,22 @@ impl eframe::App for App {
                     if design::announcement_button(ui, unread).clicked() {
                         nav = Some("#settings/updates".into());
                     }
-                    let tabs = window_header::show_tabs(ui, SECTIONS[section].2, &page);
+                    let selected = if page.starts_with("settings/") {
+                        self.settings_page.active()
+                    } else {
+                        &page
+                    };
+                    let tabs = window_header::show_tabs(ui, SECTIONS[section].2, selected);
+                    caption_areas[3] = tabs.trailing_space.map(|rect| {
+                        egui::Rect::from_x_y_ranges(rect.x_range(), layout.content.y_range())
+                            .intersect(ui.clip_rect())
+                    });
                     if let Some(href) = tabs.clicked {
                         nav = Some(href);
                     }
                     if self.probe.enabled() {
                         let rect = |r: egui::Rect| [r.left(), r.top(), r.right(), r.bottom()];
-                        let proof = json!({"page":page,"viewport":rect(tabs.viewport),
+                        let proof = json!({"page":selected,"viewport":rect(tabs.viewport),
                             "selected":tabs.selected_rect.map(rect),"offset":tabs.offset,
                             "controls":rect(layout.controls),"drag":rect(layout.drag)});
                         ctx.data_mut(|m| m.insert_temp(egui::Id::new("jade-header-probe"), proof));
@@ -1412,7 +1307,40 @@ impl eframe::App for App {
                 } else {
                     None
                 };
-                if let Some(route) = page_header(ui, &page, heading, &self.data, origin) {
+                let ask_about = self
+                    .catalog
+                    .entry_for_route(&self.route)
+                    .filter(|(page, _)| matches!(*page, "paldex" | "items" | "guide/gathering"));
+                let ask_label = ask_about.map(|(page, _)| {
+                    if page == "paldex" && self.assistant.enhanced() {
+                        "问配种"
+                    } else {
+                        "问助手"
+                    }
+                });
+                let is_settings = page.starts_with("settings/");
+                if let Some(route) = page_header(
+                    ui,
+                    if is_settings { "settings" } else { &page },
+                    if is_settings { "设置" } else { heading },
+                    &self.data,
+                    origin,
+                    ask_label,
+                ) {
+                    if route == "#assistant"
+                        && let Some((source, entry)) = ask_about
+                    {
+                        let name = &entry.name;
+                        let question = match source {
+                            "paldex" if self.assistant.enhanced() => {
+                                format!("我仓库里哪两只能配出{name}？")
+                            }
+                            "paldex" => format!("{name}是什么属性？"),
+                            "guide/gathering" => format!("{name}怎么采集？"),
+                            _ => format!("{name}怎么获得？"),
+                        };
+                        assistant_prefill = Some(question);
+                    }
                     nav = Some(route);
                 }
                 if let Some(e) = &self.store.error {
@@ -1436,6 +1364,9 @@ impl eframe::App for App {
                     });
                 }
                 let next = match page.as_str() {
+                    "assistant" => self
+                        .assistant
+                        .ui(ui, &self.data, &self.store, &self.catalog),
                     "lookup" => self.breeding.lookup(ui, &self.data, &mut self.store),
                     "warehouse" => self.breeding.warehouse(ui, &self.data, &mut self.store),
                     "planner" | "offspring" => {
@@ -1474,8 +1405,10 @@ impl eframe::App for App {
                         .show(ui, &self.data, &page, self.store.world(), &self.route),
                     "work/suitability" => self.calculators.suitability(ui, &self.data, &self.route),
                     "guide/elements" => catalog::elements(ui, &self.data),
-                    "settings/skins" | "settings/overlay" | "settings/updates" => {
-                        self.settings(ui, &page);
+                    _ if is_settings => {
+                        let mut settings = std::mem::take(&mut self.settings_page);
+                        settings.show(ui, |ui, id| self.settings_section(ui, id));
+                        self.settings_page = settings;
                         None
                     }
                     _ => {
@@ -1493,9 +1426,6 @@ impl eframe::App for App {
                     nav = next;
                 }
             });
-        if let Some(route) = self.search_dialog(ctx) {
-            nav = Some(route);
-        }
         self.worlds.show(ctx, &mut self.store, &self.data);
         if std::mem::take(&mut self.worlds.new_window_requested) {
             self.new_window();
@@ -1511,7 +1441,7 @@ impl eframe::App for App {
                     }
                     ui.separator();
                     ui.label("非官方玩家工具。游戏美术与文本归 Pocketpair 等原权利人所有。");
-                    ui.label("原生 Rust 界面与计算；测试版独立保存数据。");
+                    ui.label("Rust 原生版，工具箱资料与游戏存档分别保存。");
                     catalog::render_value(
                         ui,
                         &self.data,
@@ -1524,6 +1454,14 @@ impl eframe::App for App {
                 self.about = false;
             }
         }
+        if overlay_state.session
+            || self.has_overlay()
+            || ctx.memory(|memory| memory.top_modal_layer().is_some())
+            || egui::Popup::is_any_open(ctx)
+        {
+            caption_areas = [None; 4];
+        }
+        self.chrome.set_caption_areas(ctx, caption_areas);
         if let Some(request) = history_request {
             match request {
                 HistoryRequest::Dismissed => {}
@@ -1538,6 +1476,12 @@ impl eframe::App for App {
                 self.go_from(decode_route(&route), origin);
             } else {
                 self.go(route);
+            }
+            if self.route == "#assistant"
+                && let Some(question) = assistant_prefill
+            {
+                self.assistant
+                    .prefill(text(self.store.world(), "id"), question);
             }
         }
         if overlay_state.session && self.store.has_pending_changes() {
@@ -1572,7 +1516,7 @@ impl eframe::App for App {
                 .collect();
             let value = json!({"canonicalRoute":self.canonical_route(),"back":self.history.back_entries().map(|e|e.route.clone()).collect::<Vec<_>>(),
                 "forward":self.history.forward_targets(&self.canonical_route(),64).iter().map(|e|e.route.clone()).collect::<Vec<_>>(),
-                "scrolls":scrolls,"tabs":ctx.data(|m|m.get_temp::<Value>(egui::Id::new("jade-header-probe"))),"searchOpen":self.search_open,"worldsOpen":self.worlds.open,"aboutOpen":self.about,
+                "scrolls":scrolls,"tabs":ctx.data(|m|m.get_temp::<Value>(egui::Id::new("jade-header-probe"))),"searchOpen":self.route == "#assistant","worldsOpen":self.worlds.open,"aboutOpen":self.about,
                 "gameOverlay":{"registered":game_overlay.registered,"session":game_overlay.session,"visible":game_overlay.visible,"status":game_overlay.status},
                 "editorOpen":self.breeding.has_edit_draft(),"suspendedEditor":self.breeding.has_suspended_edit_for(text(self.store.world(),"id")),
                 "calculator":{"pal":text(&self.data.species[self.calculators.pal],"key"),"level":self.calculators.level,"traits":self.calculators.traits},
@@ -1617,15 +1561,11 @@ fn main() -> eframe::Result {
     };
     let resources = arg("--resources").unwrap_or_else(|| {
         let adjacent = exe.parent().unwrap().join("data");
-        if adjacent.exists()
-            || !(cfg!(debug_assertions)
-                || arg("--qa-output").is_some()
-                || std::env::var_os("JADE_QA_OUTPUT").is_some())
-        {
-            adjacent
-        } else {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data")
+        #[cfg(debug_assertions)]
+        if !adjacent.exists() {
+            return PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
         }
+        adjacent
     });
     let qa = arg("--qa-output");
     let icon = image::load_from_memory(include_bytes!("../assets/atlas.ico"))
@@ -1730,13 +1670,12 @@ mod navigation_tests {
     fn back_closes_the_foreground_window_without_advancing_history() {
         let (mut app, _temp) = app();
         app.go("#paldex/SheepBall".into());
-        app.search_open = true;
+        app.go("#assistant".into());
         app.worlds.open = true;
         app.back();
-        assert!(!app.worlds.open && app.search_open);
-        assert_eq!(app.route, "#paldex/SheepBall");
+        assert!(!app.worlds.open);
+        assert_eq!(app.route, "#assistant");
         app.back();
-        assert!(!app.search_open);
         assert_eq!(app.route, "#paldex/SheepBall");
         app.back();
         assert!(app.route.starts_with("#lookup/"));

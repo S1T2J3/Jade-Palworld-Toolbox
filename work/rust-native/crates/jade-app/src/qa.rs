@@ -361,6 +361,8 @@ impl Probe {
                             "Enter" => Some(egui::Key::Enter),
                             "Tab" => Some(egui::Key::Tab),
                             "Home" => Some(egui::Key::Home),
+                            "ArrowDown" => Some(egui::Key::ArrowDown),
+                            "ArrowUp" => Some(egui::Key::ArrowUp),
                             "AltLeft" => Some(egui::Key::ArrowLeft),
                             "AltRight" => Some(egui::Key::ArrowRight),
                             "CtrlK" => Some(egui::Key::K),

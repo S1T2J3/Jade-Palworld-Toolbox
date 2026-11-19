@@ -405,9 +405,12 @@ impl Catalog {
             })
             .collect();
     }
-    pub fn image_for_route(&self, d: &Data, route: &str) -> Option<egui::ImageSource<'static>> {
+    pub fn entry_for_route(&self, route: &str) -> Option<(&str, &Entry)> {
         let (page, index) = self.route_entries.get(route)?;
-        let entry = self.pages.get(page)?.get(*index)?;
+        Some((page, self.pages.get(page)?.get(*index)?))
+    }
+    pub fn image_for_route(&self, d: &Data, route: &str) -> Option<egui::ImageSource<'static>> {
+        let (page, entry) = self.entry_for_route(route)?;
         crate::catalog_views::entry_image(d, page, entry)
     }
     pub fn show(
@@ -586,15 +589,14 @@ impl Catalog {
         crate::design::card(ui).inner_margin(10).show(ui, |ui| {
             ui.set_min_width(ui.available_width());
             ui.horizontal_wrapped(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.query)
-                        .hint_text("模糊搜索名称、编号或效果")
-                        .desired_width(if ui.ctx().content_rect().width() < 1120. {
-                            200.
-                        } else {
-                            250.
-                        }),
-                );
+                let search_width = if ui.ctx().content_rect().width() < 1120. {
+                    200.
+                } else {
+                    250.
+                };
+                crate::design::clearable_text_edit(ui, &mut self.query, search_width, |edit| {
+                    edit.hint_text("模糊搜索名称、编号或效果")
+                });
                 if !groups.is_empty()
                     && !["details/partner", "details/active", "details/fruits"].contains(&page)
                 {
@@ -642,7 +644,12 @@ impl Catalog {
                         })
                         .width(170.)
                         .show_ui(ui, |ui| {
-                            ui.text_edit_singleline(&mut self.pal_query);
+                            crate::design::clearable_text_edit(
+                                ui,
+                                &mut self.pal_query,
+                                f32::INFINITY,
+                                |edit| edit.hint_text("名称或编号"),
+                            );
                             ui.selectable_value(&mut self.pal_filter, String::new(), "全部帕鲁");
                             let q = crate::data::normalize(&self.pal_query);
                             for p in &d.species {

@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "targetGameVersion": "1.0.5",
+  "checkedOn": "2026-11-18",
+  "sources": [
+    {
+      "id": "feybreak",
+      "version": "0.4.11",
+      "publisher": "Pocketpair",
+      "title": "Feybreak update",
+      "url": "https://store.steampowered.com/news/app/1623730/view/518574472406499343",
+      "material": "original summary of gameplay facts"
+    },
+    {
+      "id": "crossplay",
+      "version": "0.5.0",
+      "publisher": "Pocketpair",
+      "title": "Crossplay update",
+      "url": "https://store.steampowered.com/news/app/1623730/view/571499455390418196",
+      "material": "original summary of gameplay facts"
+    },
+    {
+      "id": "terraria",
+      "version": "0.6.0",
+      "publisher": "Pocketpair",
+      "title": "Tides of Terraria",
+      "url": "https://store.steampowered.com/news/app/1623730/view/518590951147438122",
+      "material": "original summary of gameplay facts"
+    },
+    {
+      "id": "release",
+      "version": "1.0",
+      "publisher": "Pocketpair",
+      "title": "Palworld 1.0 changelog",
+      "url": "https://store.steampowered.com/news/app/1623730/view/686383649529010623",
+      "material": "original summary of gameplay facts"
+    },
+    {
+      "id": "august",
+      "version": "1.0.3",
+      "publisher": "Pocketpair",
+      "title": "Balance adjustments and bug fixes",
+      "url": "https://store.steampowered.com/news/app/1623730/view/695395286786244642",
+      "material": "original summary of gameplay facts"
+    },
+    {
+      "id": "september",
+      "version": "1.0.4",
+      "publisher": "Pocketpair",
+      "title": "Balance adjustments and bug fixes",
+      "url": "https://store.steampowered.com/news/app/1623730/view/695397189431592457",
+      "material": "original summary of gameplay facts"
+    },
+    {
+      "id": "palcalc-v28",
+      "version": "1.0.5",
+      "publisher": "Tyler Camp",
+      "title": "PalCalc v28 data model",
+      "url": "https://github.com/tylercamp/palcalc/tree/08fe1eea5dcd627f83eadf0876a2010574d29f67/PalCalc.Model",
+      "material": "selected structured facts checked against packaged data",
+      "license": "MIT",
+      "notice": "PalCalc-MIT.txt"
+    },
+    {
+      "id": "atlas-25247047",
+      "version": "1.0.5",
+      "publisher": "Adam Young",
+      "title": "Palworld Atlas Data build 25247047",
+      "url": "https://github.com/Awy64/palworld-atlas-data/tree/feb0ca61c5e578617e19e4de799cdc6023a42d92/published/v1/builds/25247047",
+      "material": "secondary structured source for breeding records in the packaged species table",
+      "license": "MIT",
+      "notice": "Atlas-MIT.txt"
+    }
+  ],
+  "entries": [
+    {"id":"guild-chest","category":"multiplayer","source":"feybreak","version":"0.4.11","section":"New Buildings","terms":{"zh":["公会箱","公会储物箱","共享材料","跨据点取物"],"en":["guild chest","shared materials","storage between bases"]},"text":{"zh":"同一公会的公会箱共用内容。想从另一处取回材料，先把材料放进公会箱，再到另一个公会箱打开。","en":"Move supplies between guild chests by depositing them at one and withdrawing them at another."}},
+    {"id":"base-storage-search","category":"base","source":"feybreak","version":"0.4.11","section":"New Buildings","terms":{"zh":["道具取出机","仓库搜索","忘了放在哪","翻箱子"],"en":["item retrieval machine","find item in chests","search base storage"]},"text":{"zh":"忘了材料放在哪个箱子时，在该据点用道具取出机搜索并取出。搜索范围是当前据点的箱子。","en":"At the base, use the Item Retrieval Machine to find and withdraw supplies from its chests."}},
+    {"id":"expedition-dispatch","category":"growth","source":"feybreak","version":"0.4.11","section":"Expeditions","terms":{"zh":["远征所","派遣帕鲁","远征物资","离队任务"],"en":["expedition station","dispatch pals","expedition supplies"]},"text":{"zh":"在帕鲁远征所组织队伍去远征，完成远征可领取物资。挑选目标时先对照各远征的奖励清单。","en":"Dispatch Pals at an Expedition Station for supplies. Choose the destination by its reward list."}},
+    {"id":"research-rewards","category":"base","source":"feybreak","version":"0.4.11","section":"Research","terms":{"zh":["劳动研究所","工作研究","据点增益","工作速度建筑"],"en":["labor research laboratory","base productivity","research rewards"]},"text":{"zh":"在帕鲁劳动研究所推进研究可获得持续的据点生产加成。有些提高工作速度的设施也需要先完成研究。","en":"Research at the Pal Labor Research Laboratory provides lasting productivity upgrades and unlocks some work-speed facilities."}},
+    {"id":"skill-cooldowns","category":"combat","source":"feybreak","version":"0.4.11","section":"Pals","terms":{"zh":["主动技能全冷却","普通攻击","等冷却","三招冷却"],"en":["all moves on cooldown","basic move","waiting for cooldowns"]},"text":{"zh":"召出的帕鲁三项主动技能都在冷却时，仍可使用其属性的基础攻击。","en":"A summoned Pal can use a basic elemental attack while all three equipped moves are cooling down."}},
+    {"id":"work-books","category":"growth","source":"feybreak","version":"0.4.11","section":"Pals","terms":{"zh":["技术书","工作适性书","永久提高适性","提高工作等级"],"en":["work suitability book","technique book","permanent suitability"]},"text":{"zh":"对应工种的技术书可永久提高一只帕鲁的该项工作适性。先选要培养的个体，再核对书对应的工种。","en":"Choose the worker and match the technique book to its job. The suitability increase is permanent."}},
+    {"id":"flea-market","category":"multiplayer","source":"feybreak","version":"0.4.11","section":"New Buildings","terms":{"zh":["跳蚤市场","玩家摆摊","玩家交易","卖给朋友"],"en":["flea market","player stall","trade with players"]},"text":{"zh":"可在跳蚤市场向其他玩家出售帕鲁或物品。想找固定商品的 NPC 商店时，需要查商人货单。","en":"A Flea Market lets players offer Pals or items for sale to other players."}},
+    {"id":"storage-privacy","category":"multiplayer","source":"crossplay","version":"0.5.0","section":"New Content","terms":{"zh":["异次元帕鲁仓库","次元帕鲁储藏箱","公会成员","帕鲁仓库私有"],"en":["dimensional pal storage","guild access","private pal storage"]},"text":{"zh":"异次元帕鲁仓库可让公会成员共同使用，也可在权限里设为私人储存。开放前先核对访问设置。","en":"Dimensional Pal Storage can be shared with guild members or set to private use."}},
+    {"id":"drafting-table","category":"crafting","source":"crossplay","version":"0.5.0","section":"New Content","terms":{"zh":["制图台","设计台","低阶设计图","合成图纸"],"en":["drafting table","combine schematics","low rarity blueprints"]},"text":{"zh":"把可合成的低稀有度设计图拿到制图台，可以制成更高稀有度的图纸。制作装备仍要查成品配方。","en":"Use a Drafting Table to combine eligible lower-rarity schematics into a higher-rarity schematic."}},
+    {"id":"market-cooling","category":"base","source":"crossplay","version":"0.5.0","section":"Specification Adjustments","terms":{"zh":["跳蚤市场保鲜","摆摊食物腐坏","冰属性帕鲁","商品变质"],"en":["flea market spoilage","ice pal","food decay","market storage"]},"text":{"zh":"在跳蚤市场安排冰属性帕鲁，可减慢已存放或正在出售物品的腐坏速度。","en":"Assign an Ice Pal to the Flea Market to slow spoilage for stock in storage or on sale."}},
+    {"id":"photo-wheel","category":"exploration","source":"crossplay","version":"0.5.0","section":"New Content","terms":{"zh":["拍照模式","隐藏界面","相机移动","无界面截图"],"en":["photo mode","hide hud","free camera","screenshot"]},"text":{"zh":"打开帕鲁指令轮盘进入拍照模式，可隐藏界面并调整相机位置。","en":"Open Photo Mode from the Pal command wheel to hide the interface and reposition the camera."}},
+    {"id":"cosmetic-armour","category":"crafting","source":"crossplay","version":"0.5.0","section":"New Content","terms":{"zh":["外观盔甲","古董梳妆台","外观不变属性","幻化"],"en":["cosmetic armor","antique dresser","appearance slot","transmog"]},"text":{"zh":"在古董梳妆台设置护甲外观即可换造型，战斗属性由实际穿戴装备决定。","en":"Set a cosmetic appearance at an Antique Dresser while keeping the stats of the equipped armour."}},
+    {"id":"cross-platform","category":"multiplayer","source":"crossplay","version":"0.5.0","section":"New Content","terms":{"zh":["跨平台联机","不同平台一起玩","跨平台组队"],"en":["crossplay","cross platform co-op","play across platforms"]},"text":{"zh":"0.5.0 开始支持跨平台一起游玩。跨平台联机和跨世界带走帕鲁是两个功能；后者使用跨界帕鲁终端。","en":"Cross-platform multiplayer arrived in 0.5.0. For transferring a Pal between worlds, use a Global Palbox."}},
+    {"id":"fishing-shadows","category":"exploration","source":"terraria","version":"0.6.0","section":"Fishing","terms":{"zh":["水里鱼影","第一次钓鱼","鱼饵","抛竿位置"],"en":["fish shadows","fishing rod and bait","where to cast","start fishing"]},"text":{"zh":"先准备钓竿和鱼饵，再去水中有鱼影的钓点抛竿。","en":"Prepare a rod and bait, then cast where fish silhouettes mark a fishing spot."}},
+    {"id":"sea-salvage","category":"exploration","source":"terraria","version":"0.6.0","section":"Salvage System","terms":{"zh":["海上打捞","海底物资","水上坐骑","打捞矿石"],"en":["salvage at sea","water mount","seafloor ore","salvage supplies"]},"text":{"zh":"骑能在水上行动的帕鲁到海面打捞点操作钓竿，可回收包括矿石在内的物资。","en":"Ride a water mount to a marine salvage spot and use the fishing rod to recover supplies, including ore."}},
+    {"id":"trust-growth","category":"growth","source":"terraria","version":"0.6.0","section":"Pal Trust Mechanic","terms":{"zh":["帕鲁信赖度","培养感情","陪伴帕鲁","弱帕鲁成长"],"en":["pal trust","bond with pal","trust stat growth"]},"text":{"zh":"和帕鲁相处可提升信赖并增加属性。基础属性较低的帕鲁可获得较大的信赖修正。","en":"Time spent with a Pal builds trust and improves stats. Lower starting stats receive a larger trust adjustment."}},
+    {"id":"zoe-recruitment","category":"exploration","source":"terraria","version":"0.6.0","section":"Zoe's Special Mission","terms":{"zh":["佐伊入队","招募佐伊","佐伊任务"],"en":["recruit zoe","zoe as an ally","zoe mission"]},"text":{"zh":"想让佐伊成为同伴，推进她的专属任务，完成任务取得她的信任。","en":"Complete Zoe's own missions to earn her trust and recruit her."}},
+    {"id":"arena-modes","category":"combat","source":"terraria","version":"0.6.0","section":"Arena","terms":{"zh":["竞技场单人","战斗票券","观看竞技场","竞技场禁用帕鲁"],"en":["solo arena","battle tickets","arena spectator","arena rules"]},"text":{"zh":"单人竞技场挑战可通过胜利提高排名、获取战斗票券。多人竞技场另有观战和对战规则设置。","en":"Solo Arena victories raise rank and award battle tickets. Multiplayer also supports spectating and match restrictions."}},
+    {"id":"parallel-incubation","category":"breeding","source":"terraria","version":"0.6.0","section":"New Buildings","terms":{"zh":["大型孵蛋器","同时孵蛋","多蛋孵化","排队孵蛋"],"en":["large incubator","multiple eggs","hatch in parallel"]},"text":{"zh":"要同时孵多颗蛋，可使用大型孵蛋器，把各颗待孵的蛋放进去。","en":"A Large Incubator hatches several eggs at the same time."}},
+    {"id":"faction-blueprints","category":"crafting","source":"terraria","version":"0.6.0","section":"Enemy Bases","terms":{"zh":["阵营建筑图纸","敌对据点奖励","阵营基地","建筑蓝图"],"en":["faction building blueprint","enemy base reward","raid enemy base"]},"text":{"zh":"进攻敌对阵营的基地，有机会带回该阵营建筑使用的设计图。","en":"Enemy faction bases are a source of blueprints for that faction's buildings."}},
+    {"id":"watchtower-reveal","category":"exploration","source":"release","version":"1.0","section":"New Areas and World Improvements / Watchtowers","terms":{"zh":["瞭望塔","点亮地图","解除战争迷雾","地图探索"],"en":["watchtower","reveal map","uncover area","exploration tower"]},"text":{"zh":"抵达瞭望塔并与其互动，可显示周围地图；之后还能把它用作传送点。","en":"Activate a watchtower to reveal nearby terrain and use it as a travel point."}},
+    {"id":"base-map-travel","category":"exploration","source":"release","version":"1.0","section":"Base and Building / Other Adjustments","terms":{"zh":["据点范围内传送","不用摸终端","原地传送","从据点大地图传送"],"en":["base range fast travel","travel from map","without touching palbox"]},"text":{"zh":"身处据点范围时，可直接打开大地图选择可用目的地，无须先走回帕鲁终端。","en":"Inside base range, select an available destination on the map without walking back to the Palbox."}},
+    {"id":"repair-supplies","category":"base","source":"release","version":"1.0","section":"Base and Building / Other Adjustments","terms":{"zh":["维修建筑","修理包","手工作业维修","谁能修据点"],"en":["repair kits","repair buildings","handiwork repair"]},"text":{"zh":"1.0 的手工作业帕鲁修理建筑不消耗修理包。检查据点是否有可工作的手工作业帕鲁。","en":"Handiwork Pals can repair structures without repair kits in 1.0."}},
+    {"id":"visit-progression","category":"base","source":"release","version":"1.0","section":"Base and Building / Other Adjustments","terms":{"zh":["商人来访","据点等级影响商人","弹药商人","来访商人种类"],"en":["visiting merchant","base level merchant","specialist trader"]},"text":{"zh":"据点等级影响可能到访的专业商人种类。弹药、药品和食材商人各有分工。","en":"Base level influences which visiting specialists can appear, including ammunition, medicine and food traders."}},
+    {"id":"awakening-gems","category":"growth","source":"release","version":"1.0","section":"Pals / Awakening","terms":{"zh":["帕鲁觉醒","辉光宝石","世界树宝石","觉醒材料"],"en":["pal awakening","radiant gems","world tree gems"]},"text":{"zh":"深入世界树寻找觉醒使用的辉光宝石，用于强化选中的帕鲁。","en":"Find Radiant Gems in the World Tree for a Pal's awakening."}},
+    {"id":"guild-roles","category":"multiplayer","source":"release","version":"1.0","section":"Multiplayer / Improved Guild Features","terms":{"zh":["公会权限","成员打不开建筑","公会角色","职级"],"en":["guild role","member permissions","access structure"]},"text":{"zh":"公会可按角色授予权限，某些建筑还支持按角色限制访问。让管理员同时检查成员角色和建筑访问设置。","en":"Guild roles carry permissions. For a restricted structure, check both the member's role and that structure's access settings."}},
+    {"id":"simultaneous-raids","category":"multiplayer","source":"release","version":"1.0","section":"Multiplayer / Other Adjustments","terms":{"zh":["同时召唤团体战","公会突袭上限","两个祭坛","团体战并发"],"en":["simultaneous raid bosses","second summoning altar","guild raid limit"]},"text":{"zh":"同一公会同一时间可进行一场团体战首领战，先结束进行中的战斗再开下一场。","en":"Each guild can run one raid-boss battle at a time."}},
+    {"id":"aquatic-unlock","category":"crafting","source":"august","version":"1.0.3","section":"Items and Equipment","terms":{"zh":["水上建筑套件","水上建造","水上建设工具","古代科技点","水上建造套装"],"en":["aquatic construction kit","build on water","ancient tech cost"]},"text":{"zh":"1.0.3 把水上建造套装的解锁条件改为角色 23 级、1 点古代科技点。","en":"The Aquatic Construction Kit unlock costs one Ancient Technology Point at level 23 in 1.0.3."}},
+    {"id":"holy-water-sources","category":"exploration","source":"august","version":"1.0.3","section":"Items and Equipment","terms":{"zh":["世界树圣水","钓鱼池圣水","远征圣水","刷圣水"],"en":["world tree holy water","large fishing pond","holy water expeditions"]},"text":{"zh":"1.0.3 的来源包括世界树远征、世界树区域钓鱼和大型钓鱼池，可按已有设施选择途径。","en":"World Tree expeditions, fishing in the World Tree and Large Fishing Ponds can yield World Tree Holy Water."}},
+    {"id":"holy-water-weight","category":"crafting","source":"august","version":"1.0.3","section":"Items and Equipment","terms":{"zh":["世界树圣水负重","圣水单个重量","携带圣水"],"en":["holy water weight","carry holy water","encumbrance holy water"]},"text":{"zh":"世界树圣水在 1.0.3 的单个基础重量是 0.1，计算搬运负重时可用数量乘 0.1。","en":"Each unit of World Tree Holy Water has a base weight of 0.1 in 1.0.3."}},
+    {"id":"production-refund","category":"base","source":"september","version":"1.0.4","section":"Bases and Building","terms":{"zh":["取消生产","退还材料","制作中止","材料返还到哪里"],"en":["cancel crafting","production refund","returned materials"]},"text":{"zh":"在生产设施取消工作时，退回的材料进入背包。若取消的是建筑施工或拆建筑，则还要考虑超重物品的自动拾取设置。","en":"Canceling a production order returns materials to inventory. Building cancellation and dismantling use separate overweight-pickup rules."}},
+    {"id":"critics-target","category":"exploration","source":"september","version":"1.0.4","section":"Items and Rewards","terms":{"zh":["樱花岛鉴定师","天空岛鉴定师","帕鲁评论家","展示哪只帕鲁"],"en":["pal critic requirement","sakurajima critic","sunreach critic"]},"text":{"zh":"1.0.4 中，樱岛的帕鲁评论家想看汪宗师，Sunreach 的评论家想看伊西斯。按地点准备对应帕鲁。","en":"In 1.0.4, the Sakurajima Pal Critic asks to see Dogen and the Sunreach critic asks for Faleris Aqua."}},
+    {"id":"quest-fisherman","category":"exploration","source":"september","version":"1.0.4","section":"New Missions","terms":{"zh":["超越次元","渔村任务","来自月球的彼端","黑曜火山渔村"],"en":["beyond dimensions","fisherman's point","from the far side of the moon"]},"text":{"zh":"在黑曜火山的渔村找 NPC 接 Beyond Dimensions。完成后再推进后续任务 From the Far Side of the Moon。","en":"Start Beyond Dimensions with the NPC at Fisherman's Point on Mount Obsidian to unlock the follow-up moon mission."}},
+    {"id":"campfire-burn","category":"combat","source":"september","version":"1.0.4","section":"Bases and Building","terms":{"zh":["踩篝火着火","自建营火","据点帕鲁烧伤","自己造的篝火"],"en":["built campfire","pal burns at base","step on campfire"]},"text":{"zh":"1.0.4 起，接触玩家建造的篝火不会点燃玩家、召出的帕鲁或据点帕鲁。此条只针对玩家建造的篝火。","en":"Contact with a player-built campfire no longer sets players, summoned Pals or base Pals alight in 1.0.4."}},
+    {"id":"battle-selection","category":"combat","source":"september","version":"1.0.4","section":"Pals and Skills","terms":{"zh":["据点帕鲁出招","召唤帕鲁技能选择","战斗出招优先级"],"en":["skill selection","summoned pal attack choice","base pal attack priority"]},"text":{"zh":"召出的帕鲁和据点帕鲁选择主动招式时，会优先考虑预期伤害较高的招式。","en":"Summoned and base Pals prioritize skills with higher expected damage in 1.0.4."}},
+    {"id":"reptyro-cryst-pair","category":"breeding","source":"palcalc-v28","version":"1.0.5","alsoSources":["atlas-25247047"],"section":"Parent combinations","terms":{"zh":["寒霜兽亲本","熔岩兽配吹雪狐","冰属性熔岩兽","配种寒霜兽"],"en":["reptyro cryst parents","reptyro foxcicle","breed reptyro cryst"]},"text":{"zh":"可用异性的吹雪狐和熔岩兽配出寒霜兽。把这两只设为亲本，再给配种牧场备蛋糕。","en":"An opposite-sex Foxcicle and Reptyro pair produces Reptyro Cryst."},"checks":[["pair","IceFox","VolcanicMonster","VolcanicMonster_Ice"]]},
+    {"id":"pengullet-pair","category":"breeding","source":"palcalc-v28","version":"1.0.5","alsoSources":["atlas-25247047"],"section":"Parent combinations","terms":{"zh":["企丸丸亲本","棉悠悠配燎火鹿","配种企丸丸"],"en":["pengullet parents","lamball and rooby","breed pengullet"]},"text":{"zh":"棉悠悠和燎火鹿是产出企丸丸的一组亲本。给牧场安排一公一母。","en":"An opposite-sex Lamball and Rooby pair produces Pengullet."},"checks":[["pair","SheepBall","FlameBambi","Penguin"]]},
+    {"id":"flambelle-pair","category":"breeding","source":"palcalc-v28","version":"1.0.5","alsoSources":["atlas-25247047"],"section":"Parent combinations","terms":{"zh":["融焰娘亲本","棉悠悠配猫蝠怪","配种融焰娘"],"en":["flambelle parents","lamball tombat","breed flambelle"]},"text":{"zh":"棉悠悠和猫蝠怪是获得融焰娘的一组亲本，分别选择不同性别。","en":"An opposite-sex Lamball and Tombat pair produces Flambelle."},"checks":[["pair","SheepBall","CatBat","LavaGirl"]]},
+    {"id":"anubis-level-55","category":"combat","source":"palcalc-v28","version":"1.0.5","section":"Active skills / Anubis","terms":{"zh":["阿努比斯沙暴","阿努比斯升级技能","沙尘龙卷","沙尘暴"],"en":["anubis sand twister","learn sand twister","anubis level move"]},"text":{"zh":"阿努比斯在 55 级自然学会沙尘暴。培养现有个体等升级即可解锁这招。","en":"Anubis learns Sand Twister by reaching level 55."},"checks":[["level","Anubis",55,"SandTwister"]]},
+    {"id":"lamball-level-22","category":"combat","source":"palcalc-v28","version":"1.0.5","section":"Active skills / Lamball","terms":{"zh":["棉悠悠自爆","绵悠悠自爆","自爆几级学","棉悠悠技能"],"en":["lamball self destruct","lamball implosion","lamball level move"]},"text":{"zh":"棉悠悠的等级招式表在 22 级列有自爆。想让现有个体学这招，可以直接培养到该等级。","en":"Lamball's level-up list includes the self-destructing move Implode at level 22."},"checks":[["level","SheepBall",22,"SelfDestruct"]]}
+  ]
+}

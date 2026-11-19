@@ -1,12 +1,23 @@
 [package]
 name = "jade-app"
-version = "2.0.0-beta.13"
+version = "2.0.0"
 edition = "2024"
 license = "GPL-3.0-only"
+default-run = "Jade-Palworld-Rust"
+
+[features]
+assistant-kernel = []
 
 [[bin]]
 name = "Jade-Palworld-Rust"
 path = "src/main.rs"
+
+[[bin]]
+name = "Jade-Pal-Assistant-Kernel"
+path = "src/assistant_kernel_main.rs"
+required-features = ["assistant-kernel"]
+test = false
+bench = false
 
 [dependencies]
 eframe = { version = "=0.33.3", default-features = false, features = ["default_fonts", "glow", "accesskit"] }

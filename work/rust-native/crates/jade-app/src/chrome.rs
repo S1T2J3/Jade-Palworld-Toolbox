@@ -1,7 +1,7 @@
 //! Native resizing and physical clipping for our undecorated Windows window.
 use eframe::egui;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use std::ffi::c_void;
+use std::{cell::Cell, ffi::c_void};
 type Handle = *mut c_void;
 #[repr(C)]
 #[derive(Default)]
@@ -11,9 +11,15 @@ struct Rect {
     right: i32,
     bottom: i32,
 }
+#[repr(C)]
+struct Point {
+    x: i32,
+    y: i32,
+}
 #[link(name = "user32")]
 unsafe extern "system" {
     fn GetWindowRect(hwnd: Handle, rect: *mut Rect) -> i32;
+    fn ScreenToClient(hwnd: Handle, point: *mut Point) -> i32;
     fn IsZoomed(hwnd: Handle) -> i32;
     fn IsIconic(hwnd: Handle) -> i32;
     fn GetDpiForWindow(hwnd: Handle) -> u32;
@@ -32,6 +38,31 @@ unsafe extern "system" {
 const RESIZE_SUBCLASS: usize = 0x4a414445;
 const WM_NCHITTEST: u32 = 0x0084;
 const WM_NCDESTROY: u32 = 0x0082;
+const HTCLIENT: isize = 1;
+const HTCAPTION: isize = 2;
+
+#[derive(Clone, Copy)]
+struct CaptionAreas {
+    hwnd: isize,
+    pixels_per_point: f32,
+    rects: [Option<egui::Rect>; 4],
+}
+
+thread_local! {
+    static CAPTION_AREAS: Cell<Option<CaptionAreas>> = const { Cell::new(None) };
+}
+
+fn caption_hit(hwnd: Handle, point: Point) -> bool {
+    CAPTION_AREAS.with(|areas| {
+        areas.get().is_some_and(|areas| {
+            if areas.hwnd != hwnd as isize {
+                return false;
+            }
+            let pos = egui::pos2(point.x as f32, point.y as f32) / areas.pixels_per_point;
+            areas.rects.iter().flatten().any(|rect| rect.contains(pos))
+        })
+    })
+}
 
 /// Return Windows' resize direction only within a narrow border. Corners have
 /// longer targets along the edge, so the rounded cutout does not hide the grip.
@@ -82,6 +113,11 @@ unsafe extern "system" fn resize_subclass(
 ) -> isize {
     unsafe {
         if message == WM_NCDESTROY {
+            CAPTION_AREAS.with(|areas| {
+                if areas.get().is_some_and(|areas| areas.hwnd == hwnd as isize) {
+                    areas.set(None);
+                }
+            });
             RemoveWindowSubclass(hwnd, resize_subclass, id);
         } else if message == WM_NCHITTEST
             && IsZoomed(hwnd) == 0
@@ -105,7 +141,15 @@ unsafe extern "system" fn resize_subclass(
         }
         // Keep winit's cursor, native size loop, minimum size, keyboard/system
         // commands, accessibility, and all existing client controls intact.
-        DefSubclassProc(hwnd, message, wparam, lparam)
+        let hit = DefSubclassProc(hwnd, message, wparam, lparam);
+        if message == WM_NCHITTEST && hit == HTCLIENT {
+            let (x, y) = screen_point(lparam);
+            let mut point = Point { x, y };
+            if ScreenToClient(hwnd, &mut point) != 0 && caption_hit(hwnd, point) {
+                return HTCAPTION;
+            }
+        }
+        hit
     }
 }
 #[link(name = "gdi32")]
@@ -150,6 +194,16 @@ pub struct WindowChrome {
     subclass: Option<isize>,
 }
 impl WindowChrome {
+    pub fn set_caption_areas(&self, ctx: &egui::Context, rects: [Option<egui::Rect>; 4]) {
+        CAPTION_AREAS.with(|areas| {
+            areas.set(self.subclass.map(|hwnd| CaptionAreas {
+                hwnd,
+                pixels_per_point: ctx.pixels_per_point(),
+                rects,
+            }));
+        });
+    }
+
     pub fn apply(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
         let Ok(handle) = frame.window_handle() else {
             return;

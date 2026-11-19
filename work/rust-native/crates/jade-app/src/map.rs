@@ -1535,11 +1535,9 @@ fn edit_window(ctx: &egui::Context, state: &mut MapState, notes: &mut Value) {
             }
             ui.separator();
             ui.label("名称");
-            ui.add(
-                egui::TextEdit::singleline(&mut editor.name)
-                    .char_limit(80)
-                    .desired_width(340.),
-            );
+            crate::design::clearable_text_edit(ui, &mut editor.name, 340., |edit| {
+                edit.char_limit(80)
+            });
             ui.horizontal(|ui| {
                 ui.label("X");
                 ui.add(egui::DragValue::new(&mut editor.x));
@@ -1692,10 +1690,11 @@ pub fn show(
                             }
                         });
                     });
-                    ui.add(
-                        egui::TextEdit::singleline(&mut state.search)
-                            .hint_text("搜索名称、资源或别名…")
-                            .desired_width(f32::INFINITY),
+                    crate::design::clearable_text_edit(
+                        ui,
+                        &mut state.search,
+                        f32::INFINITY,
+                        |edit| edit.hint_text("搜索名称、资源或别名…"),
                     );
                     ui.horizontal(|ui| {
                         egui::ComboBox::from_id_salt("map-completion")
@@ -1935,11 +1934,9 @@ pub fn show_spawns(
     let previous = state.spawn_key.clone();
     ui.horizontal_wrapped(|ui| {
         ui.label("查找帕鲁");
-        ui.add(
-            egui::TextEdit::singleline(&mut state.spawn_search)
-                .hint_text("名称 / 编号")
-                .desired_width(160.),
-        );
+        crate::design::clearable_text_edit(ui, &mut state.spawn_search, 160., |edit| {
+            edit.hint_text("名称 / 编号")
+        });
         egui::ComboBox::from_id_salt("spawn-species")
             .selected_text(data.pal_name(&state.spawn_key))
             .height(400.)

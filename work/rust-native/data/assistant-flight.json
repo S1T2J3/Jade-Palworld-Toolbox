@@ -1,0 +1,17 @@
+{
+  "source": "https://paldb.cc/en/Flying_Mounts",
+  "gameVersion": "1.0.5",
+  "fields": ["species", "rideSprintSpeed", "stamina"],
+  "mounts": [
+    ["Panthalus",3000,100], ["Nitewing",750,100], ["Elphidran",1000,130],
+    ["Vanwyrm",850,150], ["Vanwyrm Cryst",850,150], ["Helzephyr",1100,170],
+    ["Beakon",1200,160], ["Elphidran Aqua",1000,130], ["Ragnahawk",1300,150],
+    ["Quivern",1400,220], ["Astegon",1100,300], ["Suzaku",1100,350],
+    ["Suzaku Aqua",1100,350], ["Quivern Botan",1400,220], ["Helzephyr Lux",1100,170],
+    ["Shadowbeak",1600,250], ["Selyne",1600,300], ["Faleris",1400,230],
+    ["Faleris Aqua",1400,230], ["Frostallion",1800,300], ["Frostallion Noct",1800,300],
+    ["Dynamoff",1000,140], ["Xenolord",2700,300], ["Eidrolon",2750,130],
+    ["Jetragon",3300,110], ["Beakon Cryst",1200,160], ["Roujay",1350,200],
+    ["Eidrolon Ignis",2750,130], ["Shaolong",2800,100]
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "source": "https://huggingface.co/flowercomputers/bekko-static-v1-slim-100k",
+  "revision": "0632f49fb427965d300718792fee2b7ac6c43e5a",
+  "license": "MIT",
+  "upstream": "https://huggingface.co/hotchpotch/bekko-static-embedding-v1",
+  "inputs": {
+    "model.safetensors": "71275a2465b4bd7deb4a5449ef1c553403d518afc9a73fc3ec998b80e434c687",
+    "tokenizer.json": "e62ff15cea0e85fefc2ea8a1ff5808c6c750f0cf10d5da5967ec8ec0b20043dc"
+  },
+  "dimensions": 256,
+  "vocabulary": 100000,
+  "records": 5288,
+  "recordInputs": {
+    "crates/jade-app/src/assistant_discovery/survival_guides.json": "d066cbb91836b6ddea4091ef677ce014a76f188a84a8dd0fea89a4bdfd32c9e9",
+    "data/assistant-articles.json": "ef1f616f302592d857011e50a668f905e15e926cfc6a94c614ff5d9427b12ec9",
+    "data/search-index-data.json": "52f3ade69c2b1bc48771bee32d9d8a1cb57ae40b68bdd22c8302ff8745120f97",
+    "data/paldex-data.json": "9b8c4a131e65a239033b37279cbfe2989b5ae5ad26c3c93972d45be4bee8583a",
+    "data/pal-details-data.json": "dd126eb498547826b190fca3d720ae0a7d37bb1f1d37d9363d219421897ef04b",
+    "data/spawn-data.json": "ec621d87dc2295093985e66f016d0c8db5aa11f3168007c1ae22d360f1618021",
+    "data/db.json": "bfe61ab1699045b7bd02d6f2ac2a7f545196a608baa1f3baab20b8cae7decac4",
+    "data/expedition-data.json": "746fce911d2927aa5a5f31a0af3c1758c5ea9ac9916b6c0c98e1fcbd654b7d7e"
+  },
+  "formatNotes": "First 256 dimensions of the pinned matrix. Per-row signed int8 with float32 scales. Lookup keys point back to shipped passages or game records.",
+  "sha256": "19869071fe81dbfa6dd366dd889a7397b75414fad518c5b6c35fef92805dfd96",
+  "bytes": 28348692
+}

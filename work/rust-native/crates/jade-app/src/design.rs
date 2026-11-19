@@ -200,6 +200,7 @@ pub const ICON_NAMES: &[&str] = &[
     "bell",
     "book",
     "branch",
+    "chat",
     "check",
     "close",
     "compass",
@@ -256,6 +257,7 @@ pub fn icon_source(name: &str) -> egui::ImageSource<'static> {
         "book" => egui::include_image!("../assets/book.svg"),
         "branch" => egui::include_image!("../assets/branch.svg"),
         "check" => egui::include_image!("../assets/check.svg"),
+        "chat" => egui::include_image!("../assets/chat.svg"),
         "close" => egui::include_image!("../assets/close.svg"),
         "compass" => egui::include_image!("../assets/compass.svg"),
         "dark" => egui::include_image!("../assets/dark.svg"),
@@ -374,6 +376,40 @@ pub fn small_icon_button(ui: &mut egui::Ui, name: &str, tooltip: &str) -> egui::
     .on_hover_text(tooltip)
     .on_hover_cursor(egui::CursorIcon::PointingHand)
 }
+
+/// Reserve the clear button's width even while empty so results and filters
+/// don't move sideways between the first keystroke and clearing the field.
+pub fn clearable_text_edit(
+    ui: &mut egui::Ui,
+    value: &mut String,
+    total_width: f32,
+    configure: impl for<'a> FnOnce(egui::TextEdit<'a>) -> egui::TextEdit<'a>,
+) -> egui::Response {
+    const BUTTON: f32 = 20.;
+    const GAP: f32 = 4.;
+    let available = total_width.min(ui.available_width());
+    let width = if available.is_finite() {
+        available
+    } else {
+        ui.spacing().text_edit_width
+    };
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = GAP;
+        let editor =
+            egui::TextEdit::singleline(value).desired_width((width - BUTTON - GAP - 8.).max(24.));
+        let mut response = ui.add(configure(editor));
+        if value.is_empty() {
+            ui.allocate_space(Vec2::new(BUTTON, 0.));
+        } else if small_icon_button(ui, "close", "清空输入").clicked() {
+            value.clear();
+            response.mark_changed();
+            response.request_focus();
+        }
+        response
+    })
+    .inner
+}
+
 pub fn checkbox(
     ui: &mut egui::Ui,
     checked: &mut bool,
@@ -411,6 +447,7 @@ pub fn dialog_header(ui: &mut egui::Ui, name: &str, title: &str) -> egui::Respon
 }
 pub fn tab_icon(page: &str) -> &str {
     match page {
+        "assistant" => "chat",
         "lookup" => "branch",
         "warehouse" => "warehouse",
         "offspring" => "egg",

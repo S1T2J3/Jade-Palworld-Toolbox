@@ -1,6 +1,8 @@
 use crate::{
-    breeding_ui::{element_badges, pal_picker, panel, trait_badge, trait_checkbox, trait_picker},
+    breeding_ui::{element_badges, panel, trait_badge, trait_checkbox, trait_picker},
     data::{Data, array, search, text},
+    design::clearable_text_edit,
+    pal_picker::Picker,
 };
 use eframe::egui;
 use serde_json::{Value, json};
@@ -51,7 +53,9 @@ pub struct Calculators {
     pub pal: usize,
     pub query: String,
     pub traits: Vec<String>,
-    pub picker: bool,
+    trait_picker_open: bool,
+    pal_picker: Picker,
+    pal_query: String,
     pub level: u32,
     pub stars: u32,
     pub trust: u32,
@@ -108,7 +112,9 @@ impl Default for Calculators {
             pal: 0,
             query: String::new(),
             traits: vec![],
-            picker: false,
+            trait_picker_open: false,
+            pal_picker: Picker::default(),
+            pal_query: String::new(),
             level: 1,
             stars: 0,
             trust: 0,
@@ -235,7 +241,7 @@ impl Calculators {
                 job: self.job.clone(),
             },
         );
-        self.picker = false;
+        self.dismiss_overlay();
         match state.page.as_str() {
             "details/stats" => {
                 self.level = state.level;
@@ -291,14 +297,18 @@ impl Calculators {
             _ => {}
         }
     }
+    pub fn has_overlay(&self) -> bool {
+        self.trait_picker_open || self.pal_picker.is_open()
+    }
     pub fn dismiss_overlay(&mut self) -> bool {
-        std::mem::take(&mut self.picker)
+        let traits_open = std::mem::take(&mut self.trait_picker_open);
+        self.pal_picker.dismiss() || traits_open
     }
     fn enter_page(&mut self, page: &str) {
         if self.active_page == page {
             return;
         }
-        self.picker = false;
+        self.dismiss_overlay();
         if !self.active_page.is_empty() {
             self.page_inputs.insert(
                 self.active_page.clone(),
@@ -325,6 +335,7 @@ impl Calculators {
     }
     pub fn activate_pal(&mut self, page: &str, index: usize) {
         self.enter_page(page);
+        self.dismiss_overlay();
         self.pal = index;
         self.query.clear();
     }
@@ -345,17 +356,21 @@ impl Calculators {
                     panel(ui).show(ui, |ui| {
                         ui.set_width(ui.available_width());
                         ui.horizontal_wrapped(|ui| {
-                            let key = text(&d.species[self.pal], "key");
+                            let pal = &d.species[self.pal];
+                            let key = text(pal, "key");
                             if d.portrait_link(ui, key, 50.) {
                                 nav = Some(format!("#paldex/{key}"));
                             }
-                            pal_picker(ui, d, &mut self.pal, &mut self.query);
-                            element_badges(ui, &d.species[self.pal]["types"]);
-                            if ui.link("图鉴资料").clicked() {
-                                nav =
-                                    Some(format!("#paldex/{}", text(&d.species[self.pal], "key")));
+                            let label =
+                                format!("更换帕鲁 · #{} {}", text(pal, "dex"), text(pal, "zh"));
+                            if crate::design::action(ui, "paldex", &label).clicked() {
+                                self.pal_query.clear();
+                                self.pal_picker.open();
                             }
-                            let key = text(&d.species[self.pal], "key");
+                            element_badges(ui, &pal["types"]);
+                            if ui.link("图鉴资料").clicked() {
+                                nav = Some(format!("#paldex/{key}"));
+                            }
                             let skill_name = text(&d.get("partner-skills-data")[key], "name");
                             if !skill_name.is_empty()
                                 && crate::design::small_action(
@@ -368,8 +383,7 @@ impl Calculators {
                                 nav = Some(format!("#details/partner/{key}"));
                             }
                             if crate::design::small_action(ui, "pin", "刷新位置").clicked() {
-                                nav =
-                                    Some(format!("#spawns/{}", text(&d.species[self.pal], "key")));
+                                nav = Some(format!("#spawns/{key}"));
                             }
                         });
                     });
@@ -383,8 +397,50 @@ impl Calculators {
                     _ => {}
                 }
             });
-        if self.picker {
-            trait_picker(ui.ctx(), d, &mut self.picker, &mut self.traits);
+        if self.trait_picker_open {
+            trait_picker(ui.ctx(), d, &mut self.trait_picker_open, &mut self.traits);
+        }
+        if self.pal_picker.is_open() {
+            match page {
+                "details/stats" | "details/capture" => {
+                    let title = if page == "details/capture" {
+                        "选择捕捉目标"
+                    } else {
+                        "选择计算属性的帕鲁"
+                    };
+                    if let Some(index) = self.pal_picker.show(
+                        ui.ctx(),
+                        d,
+                        Some(self.pal),
+                        &mut self.pal_query,
+                        title,
+                    ) {
+                        self.pal = index;
+                        ui.ctx().request_repaint();
+                    }
+                }
+                "work/efficiency" if self.work_origin == "dex" => {
+                    let selected = d
+                        .species
+                        .iter()
+                        .position(|p| text(p, "key") == self.work_source);
+                    if let Some(index) = self.pal_picker.show(
+                        ui.ctx(),
+                        d,
+                        selected,
+                        &mut self.pal_query,
+                        "选择计算工作效率的帕鲁",
+                    ) && Some(index) != selected
+                    {
+                        self.work_source = text(&d.species[index], "key").into();
+                        self.pick_work(d, world, None);
+                        ui.ctx().request_repaint();
+                    }
+                }
+                _ => {
+                    self.pal_picker.dismiss();
+                }
+            }
         }
         nav
     }
@@ -524,7 +580,7 @@ impl Calculators {
                 crate::design::section(ui, "面板被动词条");
                 crate::design::badge(ui, format!("{} / 4", self.traits.len()));
                 if crate::design::action(ui, "list", "选择全部词条").clicked() {
-                    self.picker = true;
+                    self.trait_picker_open = true;
                 }
                 if !self.traits.is_empty()
                     && crate::design::action(ui, "close", "清空词条").clicked()
@@ -546,10 +602,10 @@ impl Calculators {
             if self.traits.iter().any(|key| key == "MutationPal_Mutant") {
                 ui.small("「特殊体质」的防御加成按帕鲁在队伍中时计算。");
             }
-            ui.add(
-                egui::TextEdit::singleline(&mut self.stat_trait_query)
-                    .hint_text("模糊搜索会影响面板的词条名称或效果"),
-            );
+            clearable_text_edit(ui, &mut self.stat_trait_query, f32::INFINITY, |edit| {
+                edit.id_salt("stat-trait-search")
+                    .hint_text("模糊搜索会影响面板的词条名称或效果")
+            });
             let mut choices: Vec<_> = array(&d.get("trait-data")["traits"])
                 .iter()
                 .filter(|t| {
@@ -869,6 +925,7 @@ impl Calculators {
         }
         if self.work_route != route {
             self.work_route = route.into();
+            self.dismiss_overlay();
             let parts: Vec<String> = route
                 .trim_start_matches('#')
                 .split('/')
@@ -919,105 +976,93 @@ impl Calculators {
             if previous != self.work_origin {
                 self.work_source.clear();
                 self.work_query.clear();
+                self.pal_picker.dismiss();
                 self.pick_work(d, world, None);
             }
         });
-        if self.work_origin != "manual" {
-            ui.add(
-                egui::TextEdit::singleline(&mut self.work_query)
-                    .hint_text("搜索帕鲁、编号或个体名字"),
-            );
-            let mut picked = false;
-            if self.work_origin == "dex" {
-                egui::ComboBox::from_id_salt("work-source-dex")
-                    .width(330.)
-                    .height(400.)
-                    .selected_text(if self.work_source.is_empty() {
-                        "请选择帕鲁".into()
-                    } else {
-                        d.pal_name(&self.work_source)
-                    })
-                    .show_ui(ui, |ui| {
-                        for p in &d.species {
-                            if search(p, &self.work_query) {
-                                picked |= ui
-                                    .selectable_value(
-                                        &mut self.work_source,
-                                        text(p, "key").into(),
-                                        format!("#{} {}", text(p, "dex"), text(p, "zh")),
-                                    )
-                                    .changed();
-                            }
-                        }
-                    });
+        if self.work_origin == "dex" {
+            let label = if self.work_source.is_empty() {
+                "选择帕鲁".into()
             } else {
-                let records = array(&world["inventory"]["records"]);
-                let label = records
-                    .iter()
-                    .find(|r| text(r, "id") == self.work_source)
-                    .map(|r| {
-                        format!(
-                            "{} · {}",
+                format!("更换帕鲁 · {}", d.pal_name(&self.work_source))
+            };
+            if crate::design::action(ui, "paldex", &label).clicked() {
+                self.pal_query.clear();
+                self.pal_picker.open();
+            }
+        } else if self.work_origin == "warehouse" {
+            let width = ui.available_width().min(440.);
+            clearable_text_edit(ui, &mut self.work_query, width, |edit| {
+                edit.id_salt("work-warehouse-search")
+                    .hint_text("搜索帕鲁、编号或个体名字")
+            });
+            let mut picked = false;
+            let records = array(&world["inventory"]["records"]);
+            let label = records
+                .iter()
+                .find(|r| text(r, "id") == self.work_source)
+                .map(|r| {
+                    format!(
+                        "{} · {}",
+                        text(r, "name"),
+                        d.pal_name(text(r, "speciesKey"))
+                    )
+                })
+                .unwrap_or_else(|| {
+                    if records.is_empty() {
+                        "当前世界仓库为空".into()
+                    } else {
+                        "请选择仓库个体".into()
+                    }
+                });
+            egui::ComboBox::from_id_salt("work-source-stock")
+                .width(width)
+                .height(400.)
+                .selected_text(label)
+                .show_ui(ui, |ui| {
+                    for r in records {
+                        let label = format!(
+                            "{} · {} · {} · {}",
                             text(r, "name"),
-                            d.pal_name(text(r, "speciesKey"))
-                        )
-                    })
-                    .unwrap_or_else(|| {
-                        if records.is_empty() {
-                            "当前世界仓库为空".into()
-                        } else {
-                            "请选择仓库个体".into()
+                            d.pal_name(text(r, "speciesKey")),
+                            match text(r, "sex") {
+                                "M" => "雄",
+                                "F" => "雌",
+                                _ => "性别未知",
+                            },
+                            text(r, "id")
+                                .chars()
+                                .rev()
+                                .take(8)
+                                .collect::<String>()
+                                .chars()
+                                .rev()
+                                .collect::<String>()
+                        );
+                        if self.work_query.is_empty()
+                            || label.contains(&self.work_query)
+                            || search(r, &self.work_query)
+                        {
+                            picked |= ui
+                                .selectable_value(
+                                    &mut self.work_source,
+                                    text(r, "id").into(),
+                                    label,
+                                )
+                                .changed();
                         }
-                    });
-                egui::ComboBox::from_id_salt("work-source-stock")
-                    .width(ui.available_width().min(440.))
-                    .height(400.)
-                    .selected_text(label)
-                    .show_ui(ui, |ui| {
-                        for r in records {
-                            let label = format!(
-                                "{} · {} · {} · {}",
-                                text(r, "name"),
-                                d.pal_name(text(r, "speciesKey")),
-                                match text(r, "sex") {
-                                    "M" => "雄",
-                                    "F" => "雌",
-                                    _ => "性别未知",
-                                },
-                                text(r, "id")
-                                    .chars()
-                                    .rev()
-                                    .take(8)
-                                    .collect::<String>()
-                                    .chars()
-                                    .rev()
-                                    .collect::<String>()
-                            );
-                            if self.work_query.is_empty()
-                                || label.contains(&self.work_query)
-                                || search(r, &self.work_query)
-                            {
-                                picked |= ui
-                                    .selectable_value(
-                                        &mut self.work_source,
-                                        text(r, "id").into(),
-                                        label,
-                                    )
-                                    .changed();
-                            }
-                        }
-                    });
-                let signature = records
-                    .iter()
-                    .find(|r| text(r, "id") == self.work_source)
-                    .map(|r| format!("{}|{}|{}", text(world, "id"), r["speciesKey"], r["traits"]))
-                    .unwrap_or_default();
-                if !self.work_source.is_empty() && signature.is_empty() {
-                    self.work_source.clear();
-                    picked = true;
-                } else if signature != self.work_signature {
-                    picked = true;
-                }
+                    }
+                });
+            let signature = records
+                .iter()
+                .find(|r| text(r, "id") == self.work_source)
+                .map(|r| format!("{}|{}|{}", text(world, "id"), r["speciesKey"], r["traits"]))
+                .unwrap_or_default();
+            if !self.work_source.is_empty() && signature.is_empty() {
+                self.work_source.clear();
+                picked = true;
+            } else if signature != self.work_signature {
+                picked = true;
             }
             if picked {
                 self.pick_work(d, world, None);
@@ -1056,7 +1101,7 @@ impl Calculators {
                     .range(0..=array(&data["levels"][&self.job]).len()),
             );
             if crate::design::action(ui, "list", "选择被动词条").clicked() {
-                self.picker = true;
+                self.trait_picker_open = true;
             }
         });
         let selected = self.work_origin == "manual" || !self.work_source.is_empty();
@@ -1091,10 +1136,10 @@ impl Calculators {
             ui.selectable_value(&mut self.work_relevant, true, "与本项相关");
             ui.selectable_value(&mut self.work_relevant, false, "全部词条");
         });
-        let response = ui.add(
-            egui::TextEdit::singleline(&mut self.work_trait_query)
-                .hint_text("模糊搜索名称或效果；回车添加明确匹配，多个用顿号隔开"),
-        );
+        let response = clearable_text_edit(ui, &mut self.work_trait_query, f32::INFINITY, |edit| {
+            edit.id_salt("work-trait-search")
+                .hint_text("模糊搜索名称或效果；回车添加明确匹配，多个用顿号隔开")
+        });
         if response.changed() {
             self.work_trait_feedback.clear();
         }
@@ -1432,11 +1477,10 @@ impl Calculators {
                                 "可能产物"
                             },
                         );
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.relic_target)
+                        clearable_text_edit(ui, &mut self.relic_target, f32::INFINITY, |edit| {
+                            edit.id_salt("relic-item-search")
                                 .hint_text("查找名称、英文名或物品 ID")
-                                .desired_width(ui.available_width()),
-                        );
+                        });
                         if !self.relic_reverse {
                             let mut categories: Vec<_> = items
                                 .values()

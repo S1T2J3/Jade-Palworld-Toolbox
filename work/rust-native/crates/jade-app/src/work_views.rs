@@ -259,7 +259,9 @@ impl RanchState {
                     });
                     ui.separator();
                     ui.small(if reverse {"查找材料"} else {"查找帕鲁"});
-                    ui.add(egui::TextEdit::singleline(query).desired_width(f32::INFINITY).hint_text(if reverse {"中文名、英文名或物品 ID"} else {"中文名、英文名或图鉴编号"}));
+                    crate::design::clearable_text_edit(ui, query, f32::INFINITY, |edit| {
+                        edit.hint_text(if reverse {"中文名、英文名或物品 ID"} else {"中文名、英文名或图鉴编号"})
+                    });
                     let q = normalize(query);
                     let matches: Vec<_> = candidates.iter().filter(|key| {
                         let name = if reverse {d.item_name(key)} else {d.pal_name(key)};
@@ -359,11 +361,9 @@ pub fn suitability(
     crate::design::card(ui).show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.horizontal_wrapped(|ui| {
-            ui.add(
-                egui::TextEdit::singleline(query)
-                    .desired_width(230.)
-                    .hint_text("搜索帕鲁名称、英文或编号"),
-            );
+            crate::design::clearable_text_edit(ui, query, 230., |edit| {
+                edit.hint_text("搜索帕鲁名称、英文或编号")
+            });
             egui::ComboBox::from_id_salt("suitability-element")
                 .selected_text(if *dark {
                     "仅暗属性"

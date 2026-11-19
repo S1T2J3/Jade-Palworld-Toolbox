@@ -14,7 +14,8 @@ unsafe extern "system" {
     fn SetForegroundWindow(h: *mut c_void) -> i32;
     fn MessageBoxW(h: *mut c_void, text: *const u16, title: *const u16, style: u32) -> i32;
 }
-pub const TITLE: &str = "Jade · 幻兽帕鲁工具箱 · Rust 测试版";
+pub const TITLE: &str = "Jade · 幻兽帕鲁工具箱";
+const PREVIOUS_TITLE: &str = "Jade · 幻兽帕鲁工具箱 · Rust 测试版";
 pub struct Guard(*mut c_void);
 impl Drop for Guard {
     fn drop(&mut self) {
@@ -37,21 +38,28 @@ pub fn acquire(root: &Path, new_window: bool) -> Option<Guard> {
         return Some(Guard(h));
     }
     if unsafe { GetLastError() } == 183 && !new_window {
-        let title: Vec<u16> = TITLE.encode_utf16().chain(Some(0)).collect();
-        let w = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
-        if !w.is_null() {
-            unsafe {
-                ShowWindow(w, 9);
-                SetForegroundWindow(w);
-                CloseHandle(h);
+        for title in [TITLE, PREVIOUS_TITLE] {
+            let title: Vec<u16> = title.encode_utf16().chain(Some(0)).collect();
+            let w = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
+            if !w.is_null() {
+                unsafe {
+                    ShowWindow(w, 9);
+                    SetForegroundWindow(w);
+                    CloseHandle(h);
+                }
+                return None;
             }
-            return None;
         }
     }
     Some(Guard(h))
 }
 pub fn show_error(error: &str) {
-    let body:Vec<u16>=format!("无法打开 Rust 测试版：\n{error}\n\n请确认 data 文件夹完整，显卡驱动支持 OpenGL 2.0。测试版未修改正式版数据。").encode_utf16().chain(Some(0)).collect();
+    let body: Vec<u16> = format!(
+        "无法打开 Jade 幻兽帕鲁工具箱。\n\n{error}\n\n请确认 data 文件夹完整，显卡驱动支持 OpenGL 2.0。"
+    )
+    .encode_utf16()
+    .chain(Some(0))
+    .collect();
     let title: Vec<u16> = TITLE.encode_utf16().chain(Some(0)).collect();
     unsafe {
         MessageBoxW(std::ptr::null_mut(), body.as_ptr(), title.as_ptr(), 0x10);
