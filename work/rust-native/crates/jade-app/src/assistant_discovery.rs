@@ -5,7 +5,7 @@ use serde_json::Value;
 mod handbook;
 mod record_query;
 pub(crate) fn filtered_records(d: &Data, q: &str) -> Option<AssistantReply> {
-    record_query::filters::lookup(d,q)
+    record_query::filters::lookup(d,q).or_else(|| catalog_text::item_effect_comparison(d, q))
 }
 pub(crate) fn verified_record(d: &Data, q: &str) -> Option<AssistantReply> {
     record_query::lookup(d, q)
@@ -14,8 +14,9 @@ pub(crate) fn combat_preparation(d: &Data, q: &str) -> Option<AssistantReply> {
     record_query::combat_passive(d,q)
 }
 pub(crate) fn verified_procedure(q: &str) -> Option<AssistantReply> {
-    survival_guides::procedure(q)
+    environment::spawn_mode(q).or_else(|| survival_guides::procedure(q))
 }
+pub(crate) use reference_search::article_definition;
 mod base_staff;
 pub(crate) use base_staff::{carrying, workers};
 mod reference_search;
@@ -35,6 +36,7 @@ mod team;
 mod flight;
 pub(crate) mod environment;
 mod survival_guides;
+pub(crate) use survival_guides::bounded_excerpt;
 mod updates;
 pub(crate) use updates::{handbook_version_matches, staffing_evidence};
 
@@ -241,29 +243,21 @@ pub(crate) fn relevant_names<'a>(rows: &'a [Value], question: &str) -> Vec<&'a V
             if q != term && (term.chars().count() < 2 || term.is_ascii() && term.len() < 4) {
                 continue;
             }
-            let Some(start) = q.find(&term) else {
-                continue;
-            };
-            let end = start + term.len();
-            if term.is_ascii()
-                && (q[..start]
-                    .chars()
-                    .next_back()
-                    .is_some_and(|c| c.is_ascii_alphanumeric())
-                    || q[end..]
-                        .chars()
-                        .next()
-                        .is_some_and(|c| c.is_ascii_alphanumeric()))
-            {
-                continue;
-            }
+            if !q.contains(&term) { continue; }
             let preferred = q.contains(kind)
                 || kind == "设施" && has(&q, &["建造", "解锁"])
                 || kind == "主动技能" && has(&q, &["冷却", "威力", "cd"])
                 || kind == "手术台" && has(&q, &["手术", "植入", "改造"])
                 || kind == "据点生产" && has(&q, &["生产", "产出", "供电", "耗电", "产一个"])
                 || kind == "任务" && q.contains("任务");
-            matches.push((start, end, alias, !preferred, row));
+            for (start, _) in q.match_indices(&term) {
+                let end = start + term.len();
+                if term.is_ascii() && (q[..start].ends_with(|c: char| c.is_ascii_alphanumeric())
+                    || q[end..].starts_with(|c: char| c.is_ascii_alphanumeric())) {
+                    continue;
+                }
+                matches.push((start, end, alias, !preferred, row));
+            }
         }
     }
     // Prefer the longest nonoverlapping mention. This preserves both operands in a comparison.
@@ -1033,6 +1027,24 @@ mod tests {
         let food = catalog_text::lookup(&d, "Why do I have separate food slots?", &[]).unwrap();
         assert!(food.links.iter().any(|(_, route)| route == "#items/AutoMealPouch_Tier5"));
         assert!(catalog_text::lookup(&d, "What is my email password?", &[]).is_none());
+    }
+
+    #[test]
+    fn named_item_effects_remain_attached_to_the_requested_subject() {
+        let d = handbook();
+        let q = "白天热、夜里又冷，我只留一个饰品位。耐热内衣和耐热防寒内衣，哪件本身同时管两种温度？";
+        let answer = filtered_records(&d, q).unwrap();
+        assert!(answer.text.contains("耐热内衣：拥有耐热效果") && answer.text.contains("耐热防寒内衣：同时拥有耐热、耐寒效果"), "{}", answer.text);
+        let nested = filtered_records(&d, "耐热防寒内衣和防寒内衣，哪件同时管两种温度？").unwrap();
+        assert_eq!(nested.links.len(), 2);
+        assert!(catalog_text::item_effect_comparison(&d, "耐热内衣和耐热防寒内衣买哪个好？哪个便宜？").is_none());
+        assert!(catalog_text::item_effect_comparison(&d, "耐热内衣和耐热防寒内衣哪件会加工作速度？").is_none());
+        let guide = survival_guides::guides().first().unwrap();
+        let facts = format!("{}\n耐热内衣（物品）：拥有耐热效果的饰品。\n耐热防寒内衣（物品）：同时拥有耐热、耐寒效果的饰品。",guide.zh);
+        let options = offered_passages(&d, q, &facts);
+        assert!(options.iter().any(|p| p.body == "耐热防寒内衣（物品）：同时拥有耐热、耐寒效果的饰品。"));
+        let crossed = format!("{}\n耐热防寒内衣（物品） · #items/Accessory_HeatColdResist_1\n另一件饰品：同时拥有耐热、耐寒效果的饰品。",guide.zh);
+        assert!(!offered_passages(&d, q, &crossed).iter().any(|p| p.title == "耐热防寒内衣（物品）"));
     }
 
     #[test]

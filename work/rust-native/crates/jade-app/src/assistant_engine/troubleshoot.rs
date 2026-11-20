@@ -262,7 +262,15 @@ fn base(q: &str, n: &mut Note) -> bool {
         return true;
     }
     if !local {
-        return false;
+        let unspecified_pickup = pal && has(q, &["不捡","不会捡","不去捡","不肯捡","不拾取"])
+            && has(q, &["东西","材料","木材","木头","石头","矿石","地上","物资"])
+            && !has(q, &["队伍","随身","野外","掉落率","帕鲁蛋","伙伴技能","控制器","手柄"]);
+        if unspecified_pickup {
+            n.say("For a base worker, check Transporting suitability, allowed jobs, and a reachable chest with a free slot that accepts the material. For a party Pal, which species and location are involved?",
+                "如果说的是据点工人，先确认有帕鲁具备搬运适性，并在监控台允许它搬运。检查目标箱还有空位、允许接收那种材料，而且工人能走到掉落物和箱子两端。若你说的是随行帕鲁，请说明是哪一只以及事发地点。");
+            n.link("监控台", "#work/facilities/Monitoring_Stand");
+        }
+        return unspecified_pickup;
     }
     let hauling = has(
         q,
@@ -278,6 +286,8 @@ fn base(q: &str, n: &mut Note) -> bool {
             "不搬",
             "不捡",
             "不收货",
+            "不会捡",
+            "不去捡",
             "不收东西",
             "没人捡",
         ],
@@ -303,6 +313,8 @@ fn base(q: &str, n: &mut Note) -> bool {
             "没人",
             "不肯",
             "一直堆",
+            "不会捡",
+            "不去捡",
             "不收",
         ],
     );

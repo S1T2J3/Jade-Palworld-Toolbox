@@ -84,7 +84,7 @@ impl Worker {
         }
     }
 
-    fn dispatch(&mut self, request: Request) -> Result<Value, String> {
+    fn dispatch(&mut self, request: Request, evidence_trace: &mut Value) -> Result<Value, String> {
         match request {
             Request::Ask { question, world } => {
                 if !world.is_object()
@@ -197,7 +197,7 @@ impl Worker {
                 let passages = if partner.is_none() && history.is_empty() {
                     assistant_discovery::offered_passages(data, &question, &facts)
                 } else { Vec::new() };
-                assistant_local::compose(&model, &question, &facts, &history, partner.as_deref(), &passages, || {
+                assistant_local::compose(data, &model, &question, &facts, &history, partner.as_deref(), &passages, evidence_trace, || {
                     assistant_engine::HandbookField::verified_excerpt(data, &question, &history, &facts)
                         .or_else(|| relation.clone().filter(|body| facts.contains(body)))
                         .or_else(|| assistant_discovery::team_evidence(data, &question)
@@ -207,7 +207,12 @@ impl Worker {
                     // A complete table row is already player-readable. Keep its
                     // units and labels when it is the sole source, e.g. reward
                     // probability is not expedition success probability.
-                    Value::String(relation.filter(|body|body.trim()==facts.trim()).unwrap_or(answer))
+                    if let Some(row) = relation.filter(|body| body.trim() == facts.trim()) {
+                        evidence_trace["outcome"] = json!("sole_structured_record");
+                        Value::String(row)
+                    } else {
+                        Value::String(answer)
+                    }
                 })
             },
             Request::Cloud { key, prompt } => {
@@ -247,13 +252,17 @@ fn serve(input: &mut impl BufRead, output: &mut impl Write, worker: &mut Worker)
             output.flush()?;
             return Ok(());
         }
+        let mut evidence_trace = Value::Null;
         let result = serde_json::from_slice::<Request>(&line)
             .map_err(|_| "内核请求格式有误，或调用了不支持的操作。".to_owned())
-            .and_then(|request| worker.dispatch(request));
-        let response = match result {
+            .and_then(|request| worker.dispatch(request, &mut evidence_trace));
+        let mut response = match result {
             Ok(value) => json!({"ok":value}),
             Err(message) => json!({"error":message}),
         };
+        if !evidence_trace.is_null() {
+            response["evidenceTrace"] = evidence_trace;
+        }
         let mut encoded = serde_json::to_vec(&response)?;
         if encoded.len() + 1 > MAX_OUTPUT {
             encoded = serde_json::to_vec(&json!({"error":"内核回答太长，请缩小查询范围。"}))?;

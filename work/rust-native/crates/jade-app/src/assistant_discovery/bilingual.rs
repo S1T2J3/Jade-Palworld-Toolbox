@@ -74,17 +74,22 @@ pub(crate) fn offered_passages(d: &Data, question: &str, facts: &str) -> Vec<Evi
         let Some((_, source)) = entry.links.first() else {
             continue;
         };
-        if source.starts_with('#') {
+        let catalog_row = source.starts_with('#');
+        let mut offered_at = at;
+        if catalog_row {
             // An unnamed item's tooltip describes its bearer, not another
             // mechanic the player is asking about. Keep its name in scope.
             let name = entry.caption.split(['（', '(']).next().unwrap_or("").trim();
             let id = source.rsplit('/').next().unwrap_or("");
-            if (!facts.contains(source) && !facts.contains(&entry.caption))
-                || !(name.len() > 1 && asked.contains(&crate::assistant_engine::field_text(name))
+            if !(name.len() > 1 && asked.contains(&crate::assistant_engine::field_text(name))
                     || id.len() > 2 && asked.contains(&crate::assistant_engine::field_text(id)))
             {
                 continue;
             }
+            // A generic tooltip can be shared by several items. Bind it to the
+            // row in the actual evidence rather than to a title elsewhere in it.
+            let Some(position) = catalog_position(facts, &entry.caption, source, &entry.body) else { continue };
+            offered_at = position;
         }
         let body = if english {
             entry.english.as_deref().unwrap_or(&entry.body)
@@ -92,20 +97,28 @@ pub(crate) fn offered_passages(d: &Data, question: &str, facts: &str) -> Vec<Evi
             &entry.body
         };
         if body.chars().count() <= 700 {
-            results.push((at, entry.caption.as_str(), body));
+            results.push((offered_at, entry.caption.as_str(), body, catalog_row));
         }
     }
-    results.sort_by_key(|(at, _, _)| *at);
+    results.sort_by_key(|(at, _, _, _)| *at);
     let mut seen = HashSet::new();
     results
         .into_iter()
-        .filter(|(_, _, body)| seen.insert(*body))
+        .filter(|(_, caption, body, catalog_row)| seen.insert((catalog_row.then_some(*caption), *body)))
         .take(12)
-        .map(|(_, caption, body)| EvidencePassage {
+        .map(|(_, caption, body, catalog_row)| EvidencePassage {
             title: caption.trim_start_matches("生存指南 · ").into(),
-            body: body.into(),
+            body: if catalog_row { format!("{caption}：{body}") } else { body.into() },
         })
         .collect()
+}
+
+fn catalog_position(facts: &str, caption: &str, route: &str, body: &str) -> Option<usize> {
+    let inline = format!("{caption}：{body}");
+    let linked = format!("{caption} · {route}\n{body}");
+    [inline, linked].iter().filter_map(|row| {
+        facts.match_indices(row).find(|(at, _)| *at == 0 || facts[..*at].ends_with('\n')).map(|(at, _)| at)
+    }).min()
 }
 
 impl Index {
@@ -224,6 +237,23 @@ impl Index {
         rows.sort_by(|a, b| b.1.1.total_cmp(&a.1.1).then(a.0.cmp(&b.0)));
         rows.into_iter().take(10).map(|(i, _)| i).collect()
     }
+
+    // A nearest neighbour for a rare name can still describe an unrelated
+    // mechanic. Prefer a retrieved passage with an actual rare query term.
+    // Ignore planner-added terms here; they did not originate in the question.
+    fn prefer_matching_subject(&self, ranked: &mut [(usize, f64)], question: &str, translation: &str) {
+        let mut anchored = HashSet::new();
+        for term in words(question.lines().next().unwrap_or("")).into_iter()
+            .chain(words(translation.lines().next().unwrap_or(""))) {
+            if let Some(rows) = self.postings.get(&term)
+                && rows.len() * 25 <= self.entries.len() {
+                anchored.extend(rows.iter().map(|&(id, _)| id));
+            }
+        }
+        if !anchored.is_empty() {
+            ranked.sort_by_key(|(id, _)| !anchored.contains(id));
+        }
+    }
 }
 
 pub(super) fn lookup(
@@ -278,6 +308,7 @@ pub(super) fn lookup(
     } else if no_translation_match {
         return None;
     }
+    index.prefer_matching_subject(&mut ranked, &asked, &translated);
     let english = !asked
         .chars()
         .any(|c| ('\u{3400}'..='\u{9fff}').contains(&c));
@@ -291,7 +322,8 @@ pub(super) fn lookup(
         } else {
             &e.body
         };
-        if !seen_bodies.insert(body) {
+        let subject = e.links.first().filter(|(_, link)| link.starts_with('#')).map(|_| &e.caption);
+        if !seen_bodies.insert((subject, body)) {
             continue;
         }
         snippets.push(format!("{} · {}\n{}", e.caption, e.links.first()?.1, body));

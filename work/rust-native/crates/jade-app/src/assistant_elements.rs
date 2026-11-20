@@ -477,8 +477,12 @@ impl ElementSession {
         }
         let found = mentions(d, book, &q);
         let active = !self.focus.is_empty();
+        let mut outside_names = q.clone();
+        for mention in found.iter().rev().filter(|m| m.pal.is_some()) {
+            outside_names.replace_range(mention.start..mention.end, " ");
+        }
         let explicit = has(
-            &q,
+            &outside_names,
             &[
                 "打",
                 "对付",

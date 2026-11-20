@@ -8,12 +8,17 @@ use std::sync::OnceLock;
 struct Guide {
     topic: String,
     groups: Vec<Vec<String>>,
+    // The subject may be established in a preceding sentence. In that case the
+    // actual question must still ask for a relationship this guide answers.
+    #[serde(default)]
+    followup_groups: Vec<Vec<String>>,
     #[serde(default)]
     exclude: Vec<String>,
     zh: String,
     en: String,
-    #[allow(dead_code)] // A maintained citation for the offline guide; validated in tests.
     source: String,
+    #[serde(default)]
+    also: Vec<String>,
     #[serde(default)]
     route: String,
 }
@@ -39,17 +44,13 @@ fn contains(q: &str, term: &str) -> bool {
     })
 }
 
-impl Guide {
-    fn score(&self, question: &str) -> Option<usize> {
-        self.groups.iter().try_fold(0, |score, group| {
-            let longest = group
-                .iter()
-                .filter(|term| contains(question, term))
-                .map(|term| term.chars().count())
-                .max()?;
-            Some(score + longest + 2)
-        })
-    }
+fn score_groups(groups: &[Vec<String>], question: &str) -> Option<usize> {
+    if groups.is_empty() { return None; }
+    groups.iter().try_fold(0, |score, group| {
+        let longest = group.iter().filter(|term| contains(question, term))
+            .map(|term| term.chars().count()).max()?;
+        Some(score + longest + 2)
+    })
 }
 
 pub(super) fn answer(q: &str) -> Option<AssistantReply> {
@@ -122,14 +123,17 @@ pub(super) fn answer(q: &str) -> Option<AssistantReply> {
                 if g.exclude.iter().any(|term| contains(q, term)) {
                     return None;
                 }
-                let score = g.score(focus).or_else(|| {
+                let score = score_groups(&g.groups, focus).or_else(|| {
+                    if focus == clause && score_groups(&g.followup_groups, focus).is_some() {
+                        return score_groups(&g.groups, q);
+                    }
                     if context.is_empty()
                         || focus != clause
                         || !g.groups.first()?.iter().any(|term| contains(clause, term))
                     {
                         return None;
                     }
-                    g.score(q)
+                    score_groups(&g.groups, q)
                 })?;
                 Some((score, g))
             })
@@ -147,6 +151,11 @@ pub(super) fn answer(q: &str) -> Option<AssistantReply> {
             answers.push(text.as_str());
             if !guide.route.is_empty() && !links.iter().any(|(_, url)| url == &guide.route) {
                 links.push((guide.topic.clone(), guide.route.clone()));
+            }
+            for source in std::iter::once(&guide.source).chain(&guide.also) {
+                if !links.iter().any(|(_, url)| url == source) {
+                    links.push((format!("{} · {}", if english {"Source"} else {"来源"}, guide.topic), source.clone()));
+                }
             }
         }
     }

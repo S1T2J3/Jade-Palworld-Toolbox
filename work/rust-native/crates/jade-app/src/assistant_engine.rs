@@ -16,8 +16,11 @@ pub(crate) use acquisition::sources_for_recipe;
 mod base_plan;
 mod battle_combos;
 mod cake;
+mod catalog_properties;
+pub(crate) mod environmental_help;
 mod field;
 mod facility_effect;
+mod food_bonus;
 pub(crate) use facility_effect::facility as named_facility;
 mod habitat;
 mod mechanics;
@@ -34,6 +37,7 @@ mod recipe_stock;
 mod revival;
 mod skill_fruit;
 mod skill_query;
+mod subject_interaction;
 mod table_relations;
 pub(crate) use skill_query::party_stat_sources;
 mod tower_location;
@@ -128,7 +132,51 @@ impl Conversation {
         self.world_id = id.map(str::to_owned);
         let question = question.trim();
         let normalized = field_text(question);
-        if let Some(answer) = table_relations::answer(data, &normalized) {
+        if let Some(answer) = previous.economy.focused_purchase(data, &normalized) {
+            self.economy = previous.economy;
+            self.direct_result = true;
+            return answer;
+        }
+        if let Some(answer) = recipe_stock::building_budget(data, &normalized) {
+            self.direct_result = true;
+            return answer;
+        }
+        if let Some(answer) = crate::assistant_data::recipe_editions::scoped_ingredients(&previous.reference, &mut self.reference, data, &normalized) {
+            self.field_subject = Some(normalized);
+            self.direct_result = true;
+            return answer.into();
+        }
+        if let Some(answer) = subject_interaction::answer(data, &normalized) {
+            self.field_subject = Some(normalized);
+            self.direct_result = true;
+            return answer;
+        }
+        if let Some(answer) = recipe_stock::level_requirement(data, &normalized)
+            .or_else(|| acquisition::ranch_loot_answer(data, &normalized)) {
+            self.direct_result = true;
+            return answer;
+        }
+        if let Some(mut answer) = environmental_help::answer(data, &normalized) {
+            if environmental_help::temperature(&normalized).is_some()
+                && let Some(mut native) = previous.survival.respond(data, &normalized) {
+                // Keep the level-dependent advice, suggestions and next-turn
+                // state. The extra links point to other verified handbook options.
+                if previous.survival.can_show_alternative_clothing() {
+                    for link in answer.links {
+                        if !native.links.iter().any(|(_, route)| route == &link.1) { native.links.push(link); }
+                    }
+                }
+                answer = native;
+                self.survival = previous.survival;
+            }
+            self.direct_result = true;
+            return answer;
+        }
+        if let Some(answer) = skill_query::compare_move_stats(data, &normalized)
+            .or_else(|| catalog_properties::answer(data, &normalized))
+            .or_else(|| food_bonus::answer(data, &normalized))
+            .or_else(|| acquisition::batch_recipe(data, &normalized))
+            .or_else(|| table_relations::answer(data, &normalized)) {
             self.direct_result = true;
             return answer;
         }
@@ -158,11 +206,13 @@ impl Conversation {
             self.direct_result = true;
             return answer;
         }
-        if let Some(answer) = crate::assistant_discovery::verified_procedure(&normalized) {
+        if let Some(answer) = crate::assistant_discovery::article_definition(data, &normalized)
+            .or_else(|| crate::assistant_discovery::verified_procedure(&normalized)) {
             self.direct_result=true;
             return answer;
         }
-        if let Some(answer) = partner_levels::answer(data, &normalized) {
+        if let Some(answer) = partner_levels::stack_effect(data, field::lookup_question(&normalized))
+            .or_else(|| partner_levels::answer(data, &normalized)) {
             self.field_subject = Some(normalized);
             self.direct_result = true;
             return answer;
@@ -258,13 +308,13 @@ impl Conversation {
             self.direct_result = true;
             return answer;
         }
-        if let Some(answer) = previous.habitat.respond(data, &normalized) {
+        if let Some(answer) = previous.habitat.respond(data, field::lookup_question(&normalized)) {
             self.habitat = previous.habitat;
             self.direct_result = true;
             return answer;
         }
         if main_field.is_none_or(|field| field == HandbookField::Acquisition)
-            && let Some(answer) = acquisition::answer(data, &field_question) {
+            && let Some(answer) = acquisition::answer(data, field::lookup_question(&field_question)) {
             if let Some(id) = answer.links.iter().find_map(|(_, route)| route.strip_prefix("#guide/gathering/")) {
                 self.reference.remember_gathering(id);
             }
@@ -307,11 +357,13 @@ impl Conversation {
             self.equipment = previous.equipment;
             return answer;
         }
+        let had_temperature = previous.survival.has_context();
         if let Some(answer) = previous.survival.respond(data, question) {
+            self.direct_result = had_temperature && !answer.links.is_empty();
             self.survival = previous.survival;
             return answer;
         }
-        if let Some(answer) = previous.elements.respond(data, question) {
+        if let Some(answer) = previous.elements.respond(data, field::lookup_question(question)) {
             self.elements = previous.elements;
             self.direct_result = true;
             return answer;
@@ -815,7 +867,7 @@ mod tests {
     fn queries_bind_power_to_machines_and_loot_to_the_defeated_target() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
         let mut d = Data::new(root.clone(), eframe::egui::Context::default()).unwrap();
-        for id in ["resource-guides-data","partner-skills-data","paldex-data","combat-guide-data",
+        for id in ["resource-guides-data","partner-skills-data","paldex-data","pal-details-data","combat-guide-data",
                    "facilities-data","item-catalog-data","capture-data","spawn-data","map-data"] {
             let row = serde_json::from_slice(&std::fs::read(root.join(format!("{id}.json"))).unwrap()).unwrap();
             d.tables.insert(id.into(),Arc::new(row));
@@ -828,6 +880,11 @@ mod tests {
             ("Does upgrading Cryolinx increase the chance of high quailty pal oil drops? (Dragon hunter)",vec!["dragon","High Quality Pal Oil","+80%","Eligible targets"]),
             ("我带冰棘兽击败伏特喵，能增加掉落吗？",vec!["伏特喵不符合"]),
             ("我带冰棘兽去打普通的精灵龙，能增加它的掉落吗？",vec!["猎龙者","精灵龙符合"]),
+            ("提升掉落的伙伴技能，也能提高团战结算奖励吗？",vec!["属性帕鲁","单凭它无法确定","结算"]),
+            ("暗巫猫的伙伴技能会加倍突袭掉落的蛋吗？",vec!["无属性","奖励蛋"]),
+            ("請問魚餌怎麼做比較快",vec!["简陋钓饵","一组产出 10","黏液"]),
+            ("水流射击和水枪两招的冷却和威力分别是多少？",vec!["水枪威力更高","两招相同","2秒"]),
+            ("种子机关枪和种子地雷两招相比哪个冷却更久？",vec!["4秒","8秒","种子地雷冷却更久"]),
             ("What is the additional crafting probability?",vec!["research","product category"]),
             ("天生潜力100跟练高了吃果实再补到100一样吗？",vec!["面板也相同","重新计算"]),
             ("請問傑諾多蘭帕魯的座標?",vec!["固定的野生捕捉坐标","召唤祭坛"]),
@@ -837,6 +894,7 @@ mod tests {
             assert!(convo.direct_result() && facts.iter().all(|v| answer.text.contains(v)), "{q}: {}", answer.text);
         }
         assert!(partner_loot::answer(&d,"does killing cryolinx drop oil?").is_none());
+        assert!(acquisition::batch_recipe(&d,"怎么钓鱼比较快？").is_none());
         assert!(production_power::answer(&d,"where do you build two oil extractors?").is_none());
     }
 

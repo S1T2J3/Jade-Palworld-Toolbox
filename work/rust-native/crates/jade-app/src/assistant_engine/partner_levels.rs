@@ -118,6 +118,43 @@ fn change(values: &Value, a: usize, b: usize, unit: &str) -> Option<String> {
     ))
 }
 
+pub(super) fn stack_effect(d: &Data, q: &str) -> Option<AssistantReply> {
+    if !any(q, &["几层", "层数", "叠了多少层", "叠多少层", "层上限", "how many stacks", "stack count", "see the stacks", "buff stacks"])
+        || any(q, &["武器词条", "主动技能", "被动词条", "主动招式", "stack size", "stacks of items", "active skill", "passive trait"]) {
+        return None;
+    }
+    let (mentions, _) = species_mentions(&d.species, q);
+    let first = mentions.first()?.0;
+    if !mentions.iter().all(|m| m.0 == first) { return None; }
+    let species = &d.species[first];
+    let id = text(species, "key");
+    let row = &d.get("partner-skills-data")[id];
+    let effect = text(row, "effect");
+    if !effect.contains("累积") || !effect.contains('层') { return None; }
+    let name = text(row, "name");
+    let english = q.is_ascii();
+    let mut answer = if english {
+        let (_, limit) = effect.split_once("累积")?;
+        let (count, duration) = limit.split_once("层，持续")?;
+        let (seconds, _) = duration.split_once('秒')?;
+        let (count, seconds) = (count.parse::<u16>().ok()?, seconds.parse::<u16>().ok()?);
+        let trigger = if effect.contains("子弹击中敌人时") { "when your bullets hit an enemy" }
+            else if effect.contains("打倒敌人时") { "when an enemy is defeated" } else { return None };
+        if !effect.contains("若它在队伍中") || !effect.contains("并肩作战的帕鲁的攻击力与防御力") { return None; }
+        format!("With {} in the party, the Pal fighting alongside you gains attack and defense {trigger}. The effect lasts {seconds} seconds and can reach {count} stacks.", text(species, "en"))
+    } else {
+        format!("{}的伙伴技能「{name}」在本版图鉴中的效果是：{effect}", text(species, "zh"))
+    };
+    if any(q, &["看", "显示", "界面", "图标", "计数器", "hud", "display", "see", "visible", "icon", "show", "track"]) {
+        answer.push_str(if english {
+            " The bundled skill record does not specify where the current stack count appears on screen."
+        } else {
+            " 本版技能资料没有标注当前层数在战斗界面的显示位置。"
+        });
+    }
+    Some(AssistantReply { text: answer, links: vec![(name.into(), format!("#details/partner/{id}"))], suggestions: vec![] })
+}
+
 pub(super) fn answer(d: &Data, q: &str) -> Option<AssistantReply> {
     let (from, to) = levels(q)?;
     let book = d.get("partner-skills-data").as_object()?;
@@ -294,5 +331,25 @@ mod tests {
         }
         assert!(answer(&d, &field_text("我20级，猫蝠怪技能3级能用吗？")).is_none());
         assert!(answer(&d, &field_text("猫蝠怪的主动技能从1级到3级有什么变化？")).is_none());
+    }
+    #[test]
+    fn combat_stacks_use_the_named_partners_own_skill_and_separate_display_evidence() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
+        let mut data = Data::new(root.clone(), eframe::egui::Context::default()).unwrap();
+        for table in ["partner-skills-data", "combat-guide-data"] {
+            data.tables.insert(table.into(), std::sync::Arc::new(serde_json::from_slice(
+                &std::fs::read(root.join(format!("{table}.json"))).unwrap()).unwrap()));
+        }
+        let q = "战斗时怎么看波鲁杰克斯的增益层数？";
+        let answer = Conversation::default().ask_world(q, &data, &Value::Null);
+        assert!(answer.text.contains("子弹击中") && answer.text.contains("30层") && answer.text.contains("没有标注"));
+        let mut elements = crate::assistant_elements::ElementSession::default();
+        assert!(elements.respond(&data, q).is_none());
+        assert!(elements.respond(&data, "波鲁杰克斯怕什么属性？").is_some());
+        let second_species = field_text("How many stacks does Blazamut get?");
+        let second = stack_effect(&data, &second_species).unwrap();
+        assert!(second.text.contains("5 stacks") && second.text.contains("20 seconds"));
+        assert!(stack_effect(&data, "捣蛋猫的增益层数是多少？").is_none());
+        assert!(stack_effect(&data, "波鲁杰克斯的主动技能会叠多少层？").is_none());
     }
 }

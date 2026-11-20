@@ -121,6 +121,24 @@ pub(crate) fn spawn_help(q: &str) -> &'static str {
     )
 }
 
+pub(super) fn spawn_mode(q: &str) -> Option<AssistantReply> {
+    let q = crate::assistant_engine::field_text(q);
+    let title = q.lines().next()?.trim();
+    if !has(title, &["随机刷新", "随机出没", "刷新随机", "随机分布", "帕鲁随机模式",
+        "random pal mode", "randomized pal spawn", "randomised pal spawn", "random spawns"])
+        || !has(title, &["帕鲁", "野生", "世界", "pal ", "pals ", "world", "wild "])
+        || !has(title, &["怎么", "如何", "是什", "有啥区别", "什么意思", "how", "work", "what", "difference"])
+        || has(&q, &["被动", "词条", "技能", "配种", "孵化", "模组", "几率", "概率", "间隔", "冷却", "刷新时间",
+            "passive","trait","skill","breed","hatch"," mod ","modded","chance","rate","timer","interval"]) {
+        return None;
+    }
+    Some(AssistantReply {
+        text: spawn_help(&q).into(),
+        links: vec![("Random Pal Mode".into(), "https://docs.palworldgame.com/settings-and-operation/configuration/".into())],
+        suggestions: Vec::new(),
+    })
+}
+
 // Pocketpair's support notice discusses incompatible mods and missing saves:
 // https://news.palworldgame.com/
 pub(crate) fn troubleshooting(q: &str) -> Option<&'static str> {
@@ -245,6 +263,19 @@ mod tests {
             Some("b"),
             true
         ));
+    }
+
+    #[test]
+    fn world_randomization_explains_spawns_without_answering_trait_or_timer_questions() {
+        for q in ["帕鲁随机刷新是怎么运作的？","how do randomized pal spawns work?"] {
+            let answer=spawn_mode(q).unwrap();
+            assert_eq!(answer.text, spawn_help(q));
+            assert!(answer.links[0].1.contains("docs.palworldgame.com"));
+        }
+        for q in ["孵化的帕鲁随机词条怎么刷？", "帕鲁随机刷新的概率如何计算？",
+            "how do randomized pal spawns affect passive skills?", "怎么找到仓库里的帕鲁？"] {
+            assert!(spawn_mode(q).is_none());
+        }
     }
 
     #[test]

@@ -79,6 +79,24 @@ pub(super) fn answer(d: &Data, q: &str) -> Option<AssistantReply> {
     }
     let en = q.is_ascii();
     let (mentions, _) = species_mentions(&d.species, q);
+    let raid_reward = !en && has(q, &["团战", "突袭", "团本", "结算奖励", "首通奖励"]);
+    let reward_limit = "技能条目确认的是符合条件的敌人掉落。单凭它无法确定团战结算、首通奖励或奖励蛋也有加成。";
+    if raid_reward && mentions.is_empty() && has(q, &["伙伴技能", "掉落加成", "掉落技能", "掉宝技能"]) {
+        for pal in &d.species {
+            let key = text(pal, "key");
+            let row = &d.get("partner-skills-data")[key];
+            let effect = text(row, "effect").split('。').next().unwrap_or("");
+            if effect.starts_with("若它在队伍中，击倒") && effect.contains("属性帕鲁时获得的掉落道具增加") {
+                let name = text(pal, "zh");
+                let skill = text(row, "name");
+                return Some(AssistantReply {
+                    text: format!("要看所带帕鲁和敌人的属性。例如{name}的「{skill}」：{effect}。{reward_limit}"),
+                    links: vec![(skill.to_owned(), format!("#details/partner/{key}"))],
+                    suggestions:vec![],
+                });
+            }
+        }
+    }
     let mut hunters = Vec::new();
     for &(i, start, _) in &mentions {
         let pal = &d.species[i];
@@ -138,6 +156,9 @@ pub(super) fn answer(d: &Data, q: &str) -> Option<AssistantReply> {
         )
     };
     let mut links = vec![(skill.to_owned(), format!("#details/partner/{key}"))];
+    if raid_reward {
+        msg.push_str(reward_limit);
+    }
     let mut seen = Vec::new();
     for &(i, _, _) in &mentions {
         if i == *hunter || seen.contains(&i) {

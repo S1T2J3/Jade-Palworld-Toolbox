@@ -5,6 +5,8 @@ use crate::data::{Data, array, text};
 use serde_json::Value;
 mod totals;
 mod learning;
+mod move_stats;
+pub(super) use move_stats::compare as compare_move_stats;
 mod innate;
 pub(super) use innate::record as innate_passive;
 pub(super) use learning::profile_question;
@@ -1047,7 +1049,7 @@ mod tests {
             &data,
             &world,
         );
-        assert_eq!(alpha.links.len(), 2);
+        assert_eq!(alpha.links.len(), 2, "{} {:?}", alpha.text, alpha.links);
         assert!(alpha.links.iter().all(|(_, p)| p.contains("SakuraSaurus")));
         let speed = chat.ask_world(
             "Which Pal speeds up egg hatching at my base?",

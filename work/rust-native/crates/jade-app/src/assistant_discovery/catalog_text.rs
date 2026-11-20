@@ -110,6 +110,59 @@ impl CatalogText {
     }
 }
 
+/// Compare explicitly named items using their descriptions. A shared Chinese
+/// name can cover several rarity tiers, so quote only the common description.
+pub(super) fn item_effect_comparison(d: &Data, q: &str) -> Option<AssistantReply> {
+    if !super::has(q, &["哪件", "哪一个", "哪个", "哪种", "哪一件", "各有什么效果", "效果有什么区别"])
+        || q.contains('\n') || !super::handbook_version_matches(q)
+        || super::has(q, &["制作", "材料", "哪里", "获得", "解锁", "比较贵", "几级", "多少", "叠加", "免疫", "百分比", "上限", "更高", "更强", "划算"]) {
+        return None;
+    }
+    if !d.ready("search-index-data") || !d.ready("item-effects-data") { return None; }
+    let rows = array(d.get("search-index-data"));
+    let subjects = super::relevant_names(rows, q);
+    if subjects.len() != 2 || subjects.iter().any(|r| text(r,"kind") != "物品") { return None; }
+    let names: Vec<_> = subjects.iter().map(|r| text(r,"name")).collect();
+    if names[0] == names[1] { return None; }
+    let mut focus = q.to_owned();
+    let mut longest_first = names.clone();
+    longest_first.sort_by_key(|name| std::cmp::Reverse(name.len()));
+    for name in longest_first { focus = focus.replace(name, " "); }
+    let all_effects = super::has(&focus, &["各有什么效果", "效果有什么区别", "各有什么作用"]);
+    // The comparison must concern an effect actually recorded in one of the
+    // two descriptions. A question about where to find an item is different.
+    let attributes: &[(&[&str], &[&str])] = &[
+        (&["耐热","耐暑","抗热","怕热","高温","酷暑","冷热","寒热","两种温度","两种气温","昼夜温差"], &["耐热","耐暑","抵御炎热"]),
+        (&["耐寒","防寒","抗寒","低温","寒冷","冷热","寒热","两种温度","两种气温","昼夜温差"], &["耐寒","防寒","抵御寒冷"]),
+        (&["攻击","增伤"], &["攻击"]),
+        (&["防御"], &["防御"]),
+        (&["负重"], &["负重"]),
+        (&["工作速度"], &["工作速度"]),
+        (&["移动速度","跑速"], &["移动速度"]),
+    ];
+    let goals: Vec<_> = attributes.iter().filter(|(markers,_)| super::has(&focus,markers)).collect();
+    if goals.is_empty() && !all_effects { return None; }
+    let effects = &d.get("item-effects-data")["items"];
+    let mut lines = Vec::new();
+    let mut links = Vec::new();
+    let mut descriptions = Vec::new();
+    for (row, name) in subjects.iter().zip(names) {
+        let route = text(row, "href");
+        let description = text(&effects[route.strip_prefix("#items/")?], "description");
+        if description.is_empty() || rows.iter().filter(|r| text(r,"kind")=="物品" && text(r,"name")==name)
+            .any(|r| text(&effects[text(r,"href").trim_start_matches("#items/")], "description") != description) {
+            return None;
+        }
+        lines.push(format!("{name}：{description}"));
+        descriptions.push(description);
+        links.push((name.to_owned(), route.to_owned()));
+    }
+    if !all_effects && !goals.iter().all(|(_, terms)| descriptions.iter().any(|d| super::has(d,terms))) {
+        return None;
+    }
+    Some(AssistantReply { text: lines.join("\n"), links, suggestions: Vec::new() })
+}
+
 pub(super) fn lookup(d: &Data, question: &str, terms: &[String]) -> Option<AssistantReply> {
     if !d.ready("search-index-data") || !d.ready("item-effects-data") {
         return None;
@@ -188,11 +241,11 @@ pub(super) fn lookup(d: &Data, question: &str, terms: &[String]) -> Option<Assis
             break;
         }
         let record = &index.records[i];
-        if !descriptions.insert(&record.description) {
-            continue;
-        }
         let entry = &rows[record.row];
         let name = text(entry, "name");
+        if !descriptions.insert((name, &record.description)) {
+            continue;
+        }
         let caption = if text(entry, "kind") == "伙伴技能" {
             format!("{} · {name}", text(entry, "hint"))
         } else {

@@ -1,5 +1,41 @@
 [
   {
+    "topic": "据点帕鲁吃几口就走又很快回来",
+    "groups": [["饲料箱","饲料盒","饲料槽","食槽","饭槽","饭盆","喂食箱","据点","基地","feed box","food box","base pal","base worker"],["吃","饿","进食","饱","肚子","eat","eats","eating","hungry","hunger","fullness"],["就停","又跑","跑回","又回","又来吃","又饿","往返","折返","来回","频繁","反复","吃一口","啃两口","只吃","吃一点","吃几口","没吃饱","没吃满","没满","不吃满","不吃饱","半饱","到一半","不到一半","又奔","少跑","back to","keeps eating","keep eating","constantly","stop eating","stops eating","stopped eating","so often","half full","frequent trips"]],
+    "followup_groups": [["换","改喂","营养","吃","饭","食物","饱","跑","折返","往返","来回","meal","food","nutrition","trips"],["少跑","减少","少走","少来几趟","少去几趟","不老往","不老跑","不总往","跑一趟","老往回","老来回","折返","不吃满","不吃饱","半饱","顶饱","耐饿","咋回事","怎么回事","更扛饿","不够饱","fewer","less often","reduce","keep going back"]],
+    "exclude": ["玩家自己","我自己吃","食物袋","饲料袋","不能进食","完全不吃","不去吃","卡住","卡墙","卡在","寻路","走不到","走不过去","过不去","够不着","到不了","堵住","堵路","碰不到","无法到达","不掉饱食","食物腐烂","搬运","搬到","搬进","送进","how to build","can't reach","cannot reach","won't eat","pathfinding","feed bag"],
+    "zh": "据点帕鲁饿了会到饲料箱吃东西，吃到足以解除饥饿就可能回去工作。若吃的是低营养食物，一口只补少量饱食度，很快又会饿，于是反复往返。试着把饲料箱里优先供给的红色野莓（营养 15）换成沙拉（84）或果酱面包（51）。这个行为解释来自玩家观察，资料没有确认所有帕鲁都按同一对百分比开始或停止进食。",
+    "en": "Hungry base workers go to the Feed Box. Players report that a worker resumes its job after eating enough to leave the hungry state. A low-nutrition serving may barely get it over that threshold, so it gets hungry again soon. Try replacing the berries you serve (15 nutrition) with salad (84) or jam-filled buns (51). The reports do not establish a universal pair of start and stop percentages.",
+    "source": "https://steamcommunity.com/app/1623730/discussions/0/574921459914359982/",
+    "route": "#items/Salad"
+  },
+  {
+    "topic": "玩家储物箱的私人锁",
+    "groups": [["私人锁","私锁","私人上锁","private lock","private locked","privately locked","private chest","private storage"],["箱","储物柜","chest","storage box"],["拆","移除","搬走","remove","dismantle"]],
+    "exclude": ["野外宝箱","地下城宝箱","treasure chest","dungeon chest"],
+    "zh": "如果是玩家放置的储物箱，有玩家转述私锁提示说，实际放置箱子的人仍可拆除。若还能打开，可先取走物品，再请建造者本人在建造菜单进入拆除模式，对准这只箱子操作。案例中升为会长也没有解决私锁。如果建造者仍看到红色私锁提示，请核对箱子的实际放置者及服务器权限，再请管理员检查。",
+    "en": "For a player-built storage chest, a player report of the private-lock prompt says its original builder can still dismantle it. Have the player who placed it use the build menu's dismantle mode on that chest, after emptying it if possible. In the reported case a guild promotion did not restore access. If the builder still sees the private-lock warning, verify the owner and server permissions with the administrator.",
+    "source": "https://steamcommunity.com/app/1623730/discussions/0/568165608207806895/"
+  },
+  {
+    "topic": "私人储物箱的访问权限",
+    "groups": [["私人锁","私锁","私人上锁","private lock","private locked","privately locked","private chest"],["箱","储物柜","chest","storage box"],["钥匙","开锁工具","能开","能不能开","无法打开","打不开","访问权限","key","lockpick","access","open"]],
+    "exclude": ["我要拆","要拆掉","怎么拆","如何拆","移除","dismantle","remove"],
+    "zh": "消耗品图鉴中的钥匙用于岛上刷新的上锁宝箱。对于玩家建造的私锁储物箱，记录能确认的是建造者仍可尝试拆除，个案中升为公会会长也没有恢复访问。若想保留箱子、只取出物品，请让放置它的玩家先检查箱子设置和当前成员的访问权限。随包资料没有记载可用哪把宝箱钥匙打开这种箱子。",
+    "en": "The consumables record covers keys for locked treasure chests that spawn in the world. For a player-built private storage chest, a reported in-game prompt says the builder can dismantle it. A guild promotion did not restore access in that case. To keep the chest and retrieve its contents, ask its builder to check the storage settings and member access. The records do not identify a treasure key for this player-built container.",
+    "source": "https://steamcommunity.com/app/1623730/discussions/0/568165608207806895/",
+    "also": ["https://www.thepalwiki.com/wiki/consumables"]
+  },
+  {
+    "topic": "配种筛选子代的普通被动",
+    "groups": [["配种","孵蛋","孵出","子代","后代","breed","breeding","hatched","offspring"],["固定词条","固定被动","自带被动","自带词条","天生词条","天生被动","fixed passive","fixed trait","innate passive"],["去掉","洗掉","没有","不带","能去","能消","筛掉","必带","遗传吗","总带","总是","get rid","remove","without","always inherit","always have"]],
+    "exclude": ["手术","突变","植入","特性改造","主动技能","mutated","implant","surgery","active skill"],
+    "zh": "可以培育出不带这类普通固定词条的子代。配种时，子代从亲本的被动中抽取词条，也可能随机产生新被动。可以选没有目标词条的亲本来配出想要的物种，再留下未继承该词条的子代继续繁育。每颗蛋的结果要孵化后确认。这种筛选影响后代，亲本已有的词条会保留。",
+    "en": "You can breed offspring without an ordinary species-fixed passive. A child can inherit a selection of its parents' passives and may roll additional ones. Pick parents without the unwanted trait that can produce your target species, then hatch and keep a child without that passive for further breeding. This selection affects the offspring. The parent's existing traits stay with that individual.",
+    "source": "https://store.steampowered.com/news/app/1623730/view/4122553433962552821",
+    "also": ["https://www.thepalwiki.com/wiki/breeding"]
+  },
+  {
     "topic": "配种中转与固定组合",
     "groups": [["配种","配对","繁殖","育种","breeding","breed"],["必经","必备中转","万能亲本","万能父母","通用亲本","通用中转","生万物","什么都能配","universal parent","universal breeder","any offspring","every species","all species","mandatory intermediate"]],
     "exclude": ["最短路线用哪","我的仓库","my palbox","in my roster"],
@@ -147,12 +183,66 @@
   },
   {
     "topic": "搬运工与生产设施",
-    "groups": [["伐木场","采石场","logging site","logging camp","stone pit","stone quarry"],["搬空","取走","搬走","收集","搬运","积压","送到箱子","empty","haul","transport","carry","move the wood","move the stone"],["帕鲁","自动","pal","automatically"]],
+    "groups": [["伐木场","采石场","采矿场","采矿站","logging site","logging camp","logging station","mining station","mining site","stone pit","stone quarry"],["搬空","取走","搬走","收集","搬运","积压","送到箱子","empty","haul","hauling","transport","transporting","carry","carrying","move the wood","move the stone"],["帕鲁","自动","pal","automatically"]],
     "exclude": ["合成","配方","解锁","怎么建","craft","build a","how to build","recipe","unlock"],
-    "zh": "在据点分配有搬运适性的帕鲁，把允许木材或石头的储物箱放在设施附近。确认箱内有空间、帕鲁能走通两端，并在监控台检查搬运任务是否启用；作业帕鲁负责生产，另派搬运帕鲁能防止产物积压。",
-    "en": "Assign a Pal with Transporting at the base and put a chest accepting wood or stone within reach of the production site. Check free chest space and the path to both ends. Enable Transporting at the Monitoring Stand; a separate hauler can clear output while the producer keeps working.",
+    "zh": "采矿、伐木和把产物搬回箱子是不同工种。在据点安排有搬运适性的帕鲁，在监控台允许它搬运，并检查它是否固定在其他岗位。把有空位、允许接收该产物的储物箱放到设施旁，确认两端都能走到，再观察已完成的产物有没有被搬走。",
+    "en": "Mining, logging, and hauling their output are different jobs. Give a base Pal with Transporting permission to haul at the Monitoring Stand and check that it is not fixed to another job. Place a chest with free space that accepts the material next to the facility. Check the route to both ends and see whether the finished output is picked up.",
     "source": "https://paldb.cc/en/Transporting",
     "route": "#work/facilities/Monitoring_Stand"
+  },
+  {
+    "topic": "玩家属性点重分配",
+    "groups": [["洗点","重置","重新分配","重新加点","reset","resetting","redistribute","reallocate","respec"],["玩家属性","属性点","重置属性","重新分配属性","加点","人物属性","角色属性","stat points","stats","stat point","attribute points","player attributes"]],
+    "exclude": ["词条","技能树","科技点","雕像","洗掉捕获","掉率","配方","材料","passives","technology points","lifmunk","capture power","recipe","ingredients"],
+    "zh": "如果要重分配玩家升级时加的属性点，可以让玩家服用消除记忆药，然后重新加点。物品说明明确写了帕鲁服用无效。",
+    "en": "If you mean the player’s allocated stat points, the player can take Memory Wiping Medicine, then allocate those points again. Its item description says it has no effect when given to a Pal.",
+    "source": "https://paldb.cc/cn/Memory_Wiping_Medicine",
+    "route": "#items/StatusPointResetSan"
+  },
+  {
+    "topic": "据点工人的工种分配",
+    "groups": [["帕鲁","据点","基地","pal","worker","base"],["指定工种","只做一种","指定岗位","指定工作","指定的工作","指定的工种","固定到工位","固定在工位","只做指定","工作优先级","分配工种","specific job","specific task","one job","work priority","working priority","job priorities","restrict jobs"]],
+    "exclude": ["modded","mod to","专属被动","孵蛋速度","recipe","制作材料","怎么解锁","unlock"],
+    "zh": "在监控台选择具体的据点帕鲁，关闭不希望它做的工种，保留它有适性的工作。如果有两个设施都需要同一种适性，工种开关无法区分它们，可以将工人固定分配到目标工位，并确认它能走到那里。",
+    "en": "At the Monitoring Stand, select the base worker and disable the jobs you do not want it doing. Leave a job it has the suitability for enabled. If two facilities use the same suitability, the job toggle applies to both. Assign the worker to the desired workstation and check that it can reach it.",
+    "source": "https://www.thepalwiki.com/wiki/work-suitability",
+    "route": "#work/facilities/Monitoring_Stand"
+  },
+  {
+    "topic": "远处据点的生产",
+    "groups": [["其他据点","另一个据点","第二个据点","多据点","其他基地","other base","second base","distant base","away from my base"],["运作","工作","生产","停工","work","working","production","produce","running"]],
+    "exclude": ["增益","加成","范围","袭击","传送","buff","range","raid","teleport","how many bases","几个据点"],
+    "zh": "先看世界是否仍在运行。玩家曾观察到，离开一处据点后部分作业仍有进度，不同设施和野外资源的实际产出可能不同。单机退出世界和离开据点是两种情况，专服在客户端退出后仍可运行。若想查自己的生产线，在两个据点各记一笔相同工单和库存，过相同游戏时间再比较。本版资料没有可套用到所有工种的远程效率比例。",
+    "en": "First check whether the world is still running. Players have observed some work progressing at distant bases, with different results for facilities and natural resource nodes. Leaving the base differs from closing a solo world. A dedicated server can stay running when the client closes. To check a particular job, record matching orders and inventories at two bases over the same interval. The available records do not give a universal remote production rate.",
+    "source": "https://docs.palworldgame.com/getting-started/about-server/",
+    "also": ["https://steamcommunity.com/app/1623730/discussions/0/4132683013936511464/?ctp=2"]
+  },
+  {
+    "topic": "玩家防御与护盾承伤",
+    "groups": [["玩家防御","防御力","防御","defense","defence"],["护盾","盾条","shield"],["生效","影响","算","承伤","抵挡","减伤","扣盾","apply","affect","reduce","mitigate","damage taken"]],
+    "exclude": ["伙伴技能","被动词条","回复速度","恢复速度","充能时间","partner skill","which pal","cooldown","formula","公式","精确数值"],
+    "zh": "据玩家对防御属性的记录，提高玩家防御后，护盾承受同一类可减免攻击时也会少扣一些；盾耗尽后，防御仍能减轻生命受到的伤害。这里说的是一次命中造成的损失，护盾容量和充能是另外的属性。这条社区记录早于1.0，现有资料未给出当前版本的精确减伤公式。",
+    "en": "According to a player report, defense mitigates eligible incoming hits while the shield is active and continues to protect health after it runs out. This concerns how much a hit takes away. Shield capacity and recharge are separate properties. The report predates 1.0 and does not establish an exact formula for the current build.",
+    "source": "https://steamcommunity.com/app/1623730/discussions/0/592887031601827751/",
+    "also": ["https://www.thepalwiki.com/wiki/players"]
+  },
+  {
+    "topic": "在据点内调整摆放",
+    "groups": [["据点","基地","base"],["移动","挪动","搬动","换位置","换个位置","挪个位置","挪位置","挪一下","挪到","搬到","move","rearrange","relocate"],["家具","设施","工作台","箱子","东西","stuff","furniture","structure","workbench","chest"]],
+    "exclude": ["搬家","另一个据点","其他据点","跨据点","整个基地","终端","跨界","another base","whole base","palbox","modded","搬运适性","工人","搬运帕鲁","不搬","不肯搬","transporting","my pals","teleport"],
+    "zh": "如果挪的是已放下的普通设施或家具，先取走箱里物资或工位产物，在建造菜单进入拆除模式，只拆这个物件，再在新位置建起来。如果要搬的是箱子里的物资，可以先收到背包，再存入目标箱。你要挪的是哪个物件？",
+    "en": "For a placed piece of furniture or ordinary workstation, empty its storage or collect its output, select just that object in the build menu’s Disassembly Mode, then rebuild it at the new spot. For supplies inside a chest, transfer them into inventory and put them in the destination chest. Which object are you moving?",
+    "source": "https://steamcommunity.com/app/1623730/discussions/0/568165608207722027/"
+  },
+  {
+    "topic": "科技能否全部解锁",
+    "groups": [["科技","技术树","technology","technologies","tech tree"],["全部","全都","所有","全点","every","all"],["解锁","点满","点完","学完","全点","unlock","learn"]],
+    "exclude": ["修改器","指令","一键","重置","退款","cheat","console command","refund","reset"],
+    "zh": "可以逐步解锁。升级送的点数用完后，仍能反复取得并使用技术书来补普通科技点。例如高等技术书可以从暗巫猫等帕鲁的掉落取得。古代科技点是另一种点数，古代技术书可以补充。若某项有等级或其他前置条件，光有点数仍不能跳过它。",
+    "en": "You can keep working toward all unlocks after spending your level-up points. Repeatable drops such as the Advanced Technical Manual from Katress give ordinary Technology Points. Ancient Technology Points are separate and can be obtained from Ancient Technical Manuals. Having points does not bypass a technology's level or other prerequisites.",
+    "source": "https://paldb.cc/cn/Advanced_Technical_Manual",
+    "also": ["https://paldb.cc/cn/Ancient_Technical_Manual"],
+    "route": "#items/TechnologyBook_G1"
   },
   {
     "topic": "配种牧场开工",

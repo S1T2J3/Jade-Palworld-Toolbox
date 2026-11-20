@@ -74,6 +74,12 @@ fn clothing<'a>(data: &'a Data, tag: &str, max_tech: Option<u32>) -> Option<(&'a
 }
 
 impl SurvivalSession {
+    pub(crate) fn has_context(&self) -> bool { self.climate.is_some() }
+
+    pub(crate) fn can_show_alternative_clothing(&self) -> bool {
+        self.subject == Subject::Player && self.level.is_none()
+    }
+
     pub(crate) fn respond(&mut self, data: &Data, q: &str) -> Option<AssistantReply> {
         let climate = if mentions(
             q,
@@ -117,13 +123,16 @@ impl SurvivalSession {
         } else {
             None
         };
+        let player_request = crate::assistant_engine::environmental_help::temperature(q);
+        let climate = climate.or_else(|| player_request
+            .map(|cold| if cold { Climate::Cold } else { Climate::Hot }));
         let subject = if mentions(q, &["孵化", "孵蛋", "帕鲁蛋", "蛋太", "蛋很", "是蛋"])
         {
             Some(Subject::Egg)
         } else if mentions(
             q,
             &["在据点", "在基地", "据点里", "基地里", "给据点", "给基地"],
-        ) {
+        ) || player_request.is_some() && mentions(q, &["据点","基地"]) {
             Some(Subject::Base)
         } else if mentions(
             q,

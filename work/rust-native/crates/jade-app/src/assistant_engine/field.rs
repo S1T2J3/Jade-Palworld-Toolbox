@@ -129,6 +129,29 @@ impl HandbookField {
     }
 }
 
+/// Limit broad location and item lookups to an independently identifiable question.
+pub(super) fn lookup_question(q: &str) -> &str {
+    let Some((title, body)) = q.trim().split_once('\n') else { return q };
+    let title = title.trim();
+    let details = body.trim_start().to_ascii_lowercase();
+    if details.is_empty() || title.is_empty() { return q; }
+    if ["only ", "specifically ", "at night", "during the day", "excluding ", "under level ",
+        "只看", "只想看", "只考虑", "仅限", "排除", "夜间", "只在", "不要列", "不考虑"].iter()
+        .any(|prefix| details.starts_with(prefix)) {
+        return q;
+    }
+    let lower = title.to_ascii_lowercase();
+    let words: Vec<_> = lower.split(|c: char| !c.is_ascii_alphabetic()).filter(|w| !w.is_empty()).collect();
+    // Short references such as "Where can I catch it?" need the species named
+    // in the next line. A self-contained title already establishes its subject.
+    let deictic = words.iter().any(|w| matches!(*w, "this"|"that"|"these"|"those"|"it"|"them"|"here"|"there"|"they"|"their"|"its"))
+        || ["它", "这只", "那只", "这件", "那个", "这些", "这种", "这个", "如下", "以下"].iter().any(|w| title.contains(w));
+    let self_contained = words.len() >= 4 || title.chars().filter(|c| ('\u{3400}'..='\u{9fff}').contains(c)).count() >= 6;
+    let asks = title.ends_with(['?', '？']) || words.first().is_some_and(|w| matches!(*w,"where"|"how"|"what"|"which"|"why"|"does"|"can"|"are"|"is"))
+        || ["怎么", "如何", "怎样", "什么", "哪里", "在哪", "哪种", "能否", "是否"].iter().any(|w| title.contains(w));
+    if asks && self_contained && !deictic { title } else { q }
+}
+
 /// Prefer an explicit title when a forum post also mentions other mechanics in its body.
 pub(super) fn main_field(q: &str) -> Option<HandbookField> {
     let (title, rest) = q.split_once(['?', '？', '\n'])?;
@@ -337,6 +360,17 @@ pub(crate) fn model_field_evidence(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn incidental_equipment_in_a_post_body_does_not_replace_its_subject() {
+        let question = "Where should I look for rare fish?\nI already own deluxe bait.";
+        assert_eq!(lookup_question(question), "Where should I look for rare fish?");
+        let steps = "What to improve before hard towers\nA guide explained where to find my Pal.";
+        assert_eq!(lookup_question(steps), "What to improve before hard towers");
+        for q in ["Where can I find it?\nThe item is Pal Oil.", "My experience with early fishing\nWhere can I find the bait?",
+            "Where can I find Anubis?\nOnly show nighttime spawns."] {
+            assert_eq!(lookup_question(q), q);
+        }
+    }
     use std::path::PathBuf;
     use std::sync::Arc;
 

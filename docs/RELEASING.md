@@ -19,7 +19,7 @@ $built = & ./work/rust-native/build-assistant.ps1
 
 构建脚本先生成独立的助手内核，再用该文件的 SHA-256 编译基础版。打包时会核对基础版中嵌入的内核摘要，发现两个文件不配套会在生成发布文件前停止。每次更新内核都要重新构建配套的基础版并使用新的完整版本号。脚本运行结束时会恢复原先的构建环境。
 
-基础安装包和便携包均可单独使用。同版本的 `Jade-Pal-Assistant-Kernel-<完整版本号>-windows-x64.zip` 供玩家从帕鲁助手中导入。内核包内有 `kernel.json` 和 `Jade-Pal-Assistant-Kernel.exe`，两者位于 ZIP 根目录。版本目录中的 `SHA256SUMS.txt` 同时覆盖安装包、便携包和内核包。
+基础安装包和便携包均可单独使用。自 Rust 2.0.1 起，玩家可在「设置 → 帕鲁助手」下载并启用内核，也可导入离线 ZIP。每个正式 Rust Release 必须以原名上传 `Jade-Pal-Assistant-Kernel-<完整版本号>-windows-x64.zip`，客户端按自身版本访问 `rust-v<完整版本号>` 标签下的这个附件。内核包根目录包含 `kernel.json` 和 `Jade-Pal-Assistant-Kernel.exe`。公开后要从客户端实际使用的地址取回内核并核验，确保版本和内核 SHA-256 与宿主配套。
 
 ## 修改公告
 

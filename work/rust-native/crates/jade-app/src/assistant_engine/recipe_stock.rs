@@ -4,18 +4,23 @@ use crate::data::{Data, array, text};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 mod chain;
+mod construction;
+pub(super) use construction::building_budget;
+pub(super) use construction::level_requirement;
 
 #[derive(Default, Debug, Clone)]
 pub(super) struct RecipeStock {
     product: String,
     stock: HashMap<String, u64>,
+    // "Enough" proves a lower bound on this material, never an exact inventory.
+    minimum_stock: HashMap<String, u128>,
     target: Option<u64>,
     chain: Option<chain::Production>,
 }
 
 const VERBS: &[&str] = &[
-    "制作", "製作", "合成", "打造", "烹饪", "冶炼", "生产", "做", "造", "搓", "烤", "煮", "craft",
-    "make", "produce", "cook",
+    "制作", "製作", "合成", "打造", "烹饪", "冶炼", "生产", "研磨", "磨", "做", "造", "搓", "烤",
+    "煮", "craft", "make", "produce", "cook",
 ];
 const CAPACITY: &[&str] = &[
     "最多",
@@ -95,7 +100,7 @@ const REMAINDER: &[&str] = &[
     "left after",
     "remaining materials",
 ];
-const UNITS: &str = "个個份枚支发把块瓶颗件根袋本盒张条只罐桶卷颗顆斤";
+const UNITS: &str = "个個份枚支发把块瓶颗件根袋本盒张条只罐桶卷颗顆斤副套双对";
 
 fn numeric(c: char) -> bool {
     c.is_ascii_digit() || "零一二两三四五六七八九十百千万".contains(c)
@@ -140,6 +145,85 @@ fn quantity(q: &str, start: usize, end: usize) -> Option<u64> {
     left.or_else(|| leading_number(suffix))
 }
 
+fn enough_statement(
+    q: &str,
+    hit: &chain::Mention<'_>,
+    mentions: &[chain::Mention<'_>],
+) -> Option<bool> {
+    let before = q[..hit.start]
+        .rsplit(['，', ',', '。', '；', ';', '？', '?'])
+        .next()?
+        .trim_end();
+    let mut end = hit.end;
+    // The same status can qualify a short list ("木材和纤维都够了").
+    for other in mentions.iter().filter(|m| m.start >= hit.end) {
+        if other.start < end {
+            continue;
+        }
+        if !matches!(q[end..other.start].trim(), "、" | "和" | "与" | "及" | "跟") {
+            break;
+        }
+        end = other.end;
+    }
+    let after = q[end..].trim_start();
+    let after = ["都", "也", "就"]
+        .iter()
+        .find_map(|w| after.strip_prefix(w))
+        .unwrap_or(after);
+    let after = after.trim_start_matches("已经").trim_start();
+    let word = if ["不够", "不足"].iter().any(|s| after.starts_with(s)) {
+        false
+    } else if [
+        "够了",
+        "够用",
+        "够这次",
+        "够这个",
+        "足够",
+        "充足",
+        "备齐了",
+        "备足了",
+    ]
+    .iter()
+    .any(|s| after.starts_with(s))
+        || ["有足够的", "备足了", "备齐了", "有充足的"]
+            .iter()
+            .any(|s| before.ends_with(s))
+    {
+        true
+    } else {
+        return None;
+    };
+    let clause = after
+        .split(['，', ',', '。', '；', ';', '？', '?'])
+        .next()
+        .unwrap_or("");
+    if [
+        "是不是",
+        "是否",
+        "不知道",
+        "不确定",
+        "确认一下",
+        "确定",
+        "假设",
+        "如果",
+        "要是",
+    ]
+    .iter()
+    .any(|s| before.ends_with(s))
+        || ["吗", "没", "够不够", "能不能"].iter().any(|s| {
+            clause.starts_with(s)
+                || clause
+                    .strip_prefix("够了")
+                    .is_some_and(|tail| tail.starts_with(s))
+        })
+        || clause.ends_with(['吗', '么', '没'])
+        || (clause == after.trim_end_matches(['？', '?']) && after.ends_with(['？', '?']))
+    {
+        return None;
+    }
+    Some(word)
+}
+
 fn names(row: &Value) -> Vec<String> {
     let english = text(row, "en").to_ascii_lowercase();
     let mut names = vec![text(row, "name").to_owned(), english.clone()];
@@ -177,7 +261,7 @@ fn target_quantity(q: &str, allow_short: bool) -> Option<u64> {
     for marker in VERBS.iter().chain(GOAL) {
         for (i, _) in q.match_indices(marker) {
             let tail = q[i + marker.len()..]
-                .trim_start_matches(|c: char| c.is_whitespace() || "到够为是有完：:".contains(c));
+                .trim_start_matches(|c: char| c.is_whitespace() || "到够为是有完出：:".contains(c));
             if let Some(value) = leading_number(tail) {
                 result = Some((i, value)).max(result);
             }
@@ -286,18 +370,20 @@ impl RecipeStock {
             .filter_map(|m| m[0].as_str())
             .collect();
         let mut supplied = HashMap::new();
+        let mut sufficiency = HashMap::new();
         let mut mentions_material = false;
-        for row in items.iter().filter(|r| ids.contains(text(r, "id"))) {
-            let qty = names(row).iter().find_map(|alias| {
-                q.match_indices(alias)
-                    .filter(|(i, _)| whole_name(&q, alias, *i))
-                    .find_map(|(i, _)| {
-                        mentions_material = true;
-                        quantity(&q, i, i + alias.len())
-                    })
-            });
-            if let Some(qty) = qty {
-                supplied.insert(text(row, "id").to_owned(), qty);
+        let inputs = chain::mentions(&q, items);
+        for hit in &inputs {
+            let id = text(hit.row, "id");
+            if !ids.contains(id) {
+                continue;
+            }
+            mentions_material = true;
+            if let Some(enough) = enough_statement(&q, hit, &inputs) {
+                sufficiency.insert(id.to_owned(), enough);
+            }
+            if let Some(qty) = quantity(&q, hit.start, hit.end) {
+                supplied.insert(id.to_owned(), qty);
             }
         }
         let remaining_followup = same
@@ -317,7 +403,7 @@ impl RecipeStock {
             || deficit
             || remaining_followup
             || (same && target.is_some())
-            || !supplied.is_empty() && (same || target.is_some()))
+            || (!supplied.is_empty() || !sufficiency.is_empty()) && (same || target.is_some()))
         {
             return None;
         }
@@ -347,10 +433,11 @@ impl RecipeStock {
         {
             return None;
         }
-        if !same && supplied.is_empty() && !cap {
+        if !same && supplied.is_empty() && sufficiency.is_empty() && !cap {
             return None;
         }
-        if material_followup && supplied.is_empty() && !remaining_followup {
+        if material_followup && supplied.is_empty() && sufficiency.is_empty() && !remaining_followup
+        {
             return None;
         }
         if any(
@@ -384,6 +471,7 @@ impl RecipeStock {
         }
         if !same {
             self.stock.clear();
+            self.minimum_stock.clear();
             self.target = None;
         }
         self.product = product_id.to_owned();
@@ -396,15 +484,60 @@ impl RecipeStock {
             || q.contains("i only have"))
             && !supplied.is_empty()
         {
+            self.minimum_stock.clear();
             for id in &ids {
                 self.stock.insert((*id).to_owned(), 0);
             }
         }
-        self.stock.extend(supplied);
         if !cap && target.is_none() {
             target = self.target;
         }
+        for (id, enough) in sufficiency {
+            if supplied.contains_key(&id) {
+                continue;
+            }
+            self.stock.remove(&id);
+            self.minimum_stock.remove(&id);
+            if enough && let Some(goal) = target {
+                // With multiple recipes, the cheapest matching route is all that the statement proves.
+                let lower_bound = recipes
+                    .iter()
+                    .filter_map(|r| {
+                        let batch = r["qty"].as_u64().filter(|y| *y > 0)?;
+                        let per =
+                            array(&r["materials"]).iter().find(|m| m[0] == id)?[1].as_u64()?;
+                        Some(u128::from(goal.div_ceil(batch)) * u128::from(per))
+                    })
+                    .min();
+                if let Some(bound) = lower_bound {
+                    self.minimum_stock.insert(id, bound);
+                }
+            }
+        }
+        for id in supplied.keys() {
+            self.minimum_stock.remove(id);
+        }
+        self.stock.extend(supplied);
         self.target = target;
+        let restriction = [
+            "只算",
+            "只看",
+            "只问",
+            "只关心",
+            "只核对",
+            "仅问",
+            "仅算",
+            "单看",
+        ]
+        .iter()
+        .filter_map(|m| q.find(m).map(|n| n + m.len()))
+        .min();
+        let asked: HashSet<_> = inputs
+            .iter()
+            .filter(|hit| restriction.is_some_and(|at| hit.start >= at))
+            .map(|hit| text(hit.row, "id"))
+            .filter(|id| ids.contains(id))
+            .collect();
         let mut lines = Vec::new();
         for (index, recipe) in recipes.iter().enumerate() {
             let batch = recipe["qty"].as_u64().filter(|n| *n > 0)?;
@@ -412,11 +545,49 @@ impl RecipeStock {
                 .iter()
                 .map(|m| Some((m[0].as_str()?, m[1].as_u64().filter(|n| *n > 0)?)))
                 .collect();
-            let materials = materials?;
+            let mut materials = materials?;
             if materials.is_empty() {
                 return None;
             }
-            let line = self.calculate(data, text(product, "name"), batch, &materials);
+            let restricted = deficit && self.target.is_some() && !asked.is_empty();
+            if restricted {
+                materials.retain(|(id, _)| asked.contains(id));
+                if materials.is_empty() {
+                    continue;
+                }
+            }
+            let mut line = self.calculate(
+                data,
+                text(product, "name"),
+                batch,
+                &materials,
+                restricted,
+                remainder,
+            );
+            if restricted {
+                line = format!("仅核算所问材料。{line}");
+            }
+            if any(
+                &q,
+                &[
+                    "在哪里",
+                    "在哪",
+                    "哪个台",
+                    "哪做",
+                    "什么设施",
+                    "哪个设施",
+                    "哪台",
+                    "哪种设施",
+                ],
+            ) {
+                let stations: Vec<_> = array(&recipe["stations"])
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect();
+                if !stations.is_empty() {
+                    line.push_str(&format!("可用设施有{}。", stations.join("、")));
+                }
+            }
             lines.push(if recipes.len() > 1 {
                 format!("单用配方 {}：{line}", index + 1)
             } else {
@@ -430,10 +601,19 @@ impl RecipeStock {
         })
     }
 
-    fn calculate(&self, d: &Data, product: &str, batch: u64, materials: &[(&str, u64)]) -> String {
+    fn calculate(
+        &self,
+        d: &Data,
+        product: &str,
+        batch: u64,
+        materials: &[(&str, u64)],
+        restricted: bool,
+        remainder: bool,
+    ) -> String {
         let mut unknown = Vec::new();
         let mut limits = Vec::new();
         let mut missing = Vec::new();
+        let mut covered = Vec::new();
         let mut completed = None;
         let goal = self
             .target
@@ -441,7 +621,14 @@ impl RecipeStock {
         for &(id, per_batch) in materials {
             let name = d.item_name(id);
             let Some(&owned) = self.stock.get(id) else {
-                unknown.push(name);
+                if goal
+                    .zip(self.minimum_stock.get(id))
+                    .is_some_and(|(batches, limit)| batches * u128::from(per_batch) <= *limit)
+                {
+                    covered.push(name);
+                } else {
+                    unknown.push(name);
+                }
                 continue;
             };
             limits.push((owned / per_batch, name.clone()));
@@ -449,6 +636,8 @@ impl RecipeStock {
                 let short = (batches * u128::from(per_batch)).saturating_sub(u128::from(owned));
                 if short > 0 {
                     missing.push(format!("{name} × {short}"));
+                } else {
+                    covered.push(name);
                 }
             }
         }
@@ -461,9 +650,14 @@ impl RecipeStock {
             );
             if !missing.is_empty() {
                 answer.push_str(&format!("还缺{}。", missing.join("、")));
+            } else if restricted && unknown.is_empty() {
+                answer.push_str("所问材料的现有数量已足够。");
             } else if unknown.is_empty() {
                 answer.push_str("现有材料充足。");
                 completed = Some(batches);
+            }
+            if !covered.is_empty() && (!missing.is_empty() || !unknown.is_empty()) {
+                answer.push_str(&format!("{}的现有数量已足够。", covered.join("、")));
             }
         } else if let Some(limit) = limits.iter().map(|(n, _)| *n).min() {
             let output = u128::from(limit) * u128::from(batch);
@@ -491,12 +685,18 @@ impl RecipeStock {
         if let Some(batches) = completed {
             let left: Vec<_> = materials
                 .iter()
-                .map(|&(id, per_batch)| {
-                    let remaining = u128::from(self.stock[id]) - batches * u128::from(per_batch);
-                    format!("{} × {remaining}", d.item_name(id))
+                .filter_map(|&(id, per_batch)| {
+                    let remaining =
+                        u128::from(*self.stock.get(id)?) - batches * u128::from(per_batch);
+                    Some(format!("{} × {remaining}", d.item_name(id)))
                 })
                 .collect();
-            answer.push_str(&format!("做完后剩余材料：{}。", left.join("、")));
+            if !left.is_empty() {
+                answer.push_str(&format!("做完后剩余材料：{}。", left.join("、")));
+            }
+            if remainder && left.len() != materials.len() {
+                answer.push_str("已报够用的材料缺少精确库存，暂无法计算其结余。");
+            }
         }
         answer
     }
@@ -508,6 +708,52 @@ mod tests {
     use crate::assistant_engine::Conversation;
     use serde_json::json;
     use std::{path::PathBuf, sync::Arc};
+
+    #[test]
+    fn a_sufficient_material_has_no_shortage_but_no_invented_stock_or_remainder() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
+        let mut d = Data::new(root.clone(), eframe::egui::Context::default()).unwrap();
+        let catalogue = std::fs::read(root.join("item-catalog-data.json")).unwrap();
+        d.tables.insert(
+            "item-catalog-data".into(),
+            Arc::new(serde_json::from_slice(&catalogue).unwrap()),
+        );
+        let mut chat = Conversation::default();
+        let world = json!({"id":"quality-stock"});
+        let mut ask = |q| chat.ask_world(q, &d, &world).text;
+        let first =
+            ask("做11份简陋钓饵，红色野莓3份、面粉1份，水栖帕鲁的黏液够了。另外两种各还差多少？");
+        assert!(
+            first.contains("红色野莓 × 5")
+                && first.contains("面粉 × 3")
+                && !first.contains("请补充"),
+            "{first}"
+        );
+        let higher = ask("那改成40份还缺多少？");
+        assert!(higher.contains("请补充水栖帕鲁的黏液"), "{higher}");
+        let lower = ask("目标改成10份，还差多少？");
+        assert!(
+            !lower.contains("请补充") && lower.contains("红色野莓 × 1"),
+            "{lower}"
+        );
+        let both = ask("要做两份聚合物，硫磺和优质帕鲁油都够了。材料还缺多少？");
+        assert!(
+            both.contains("材料充足") && !both.contains("剩余材料") && !both.contains("请补充"),
+            "{both}"
+        );
+        let remainder = ask("那做完还剩多少材料？");
+        assert!(
+            remainder.contains("无法计算其结余") && !remainder.contains(" × 0"),
+            "{remainder}"
+        );
+        let unknown = ask("要做两个蛋糕，牛奶两份，蜂蜜够了吗？还缺什么？");
+        assert!(
+            unknown.contains("需要 2 批")
+                && unknown.contains("请补充")
+                && !unknown.contains("蜂蜜的现有数量已足够"),
+            "{unknown}"
+        );
+    }
 
     #[test]
     fn stock_and_targets_persist_in_world_and_reset_on_subject_change() {

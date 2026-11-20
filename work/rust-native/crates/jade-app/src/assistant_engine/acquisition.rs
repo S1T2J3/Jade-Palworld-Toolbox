@@ -8,10 +8,12 @@ mod economy;
 mod shared_drops;
 mod unattended;
 mod ranch_substitutes;
+mod ranch_loot;
 mod item_families;
 pub(super) use item_families::answer as family_sources;
 pub(super) use unattended::answer as unattended_sources;
 pub(super) use ranch_substitutes::answer as ranch_substitute_answer;
+pub(super) use ranch_loot::answer as ranch_loot_answer;
 pub(crate) use economy::EconomySession;
 
 fn has(q: &str, words: &[&str]) -> bool {
@@ -59,19 +61,10 @@ impl Source {
         ) {
             return None;
         }
-        let ranch = has(
-            q,
-            &[
-                "牧场",
-                "放牧",
-                "牧场里",
-                "ranch",
-                "in the farm",
-                "at the farm",
-                "on the farm",
-                "on a farm",
-            ],
-        );
+        let ranch = q.match_indices("牧场").any(|(at, _)|
+            !q[..at].ends_with("配种") && !q[..at].ends_with("繁殖"))
+            || ["放牧", "ranch", "in the farm", "at the farm", "on the farm", "on a farm"]
+                .iter().any(|word| occurs(q, word));
         let drop = has(
             q,
             &[
@@ -111,6 +104,9 @@ impl Source {
                     "怎么拿",
                     "获得途径",
                     "获取途径",
+                    "获取的方法",
+                    "获得的方法",
+                    "获取方法",
                     "途径",
                     "拿到",
                     "能获得",
@@ -256,19 +252,11 @@ impl Source {
                 "ground pick-up",
             ],
         );
-        let fighting = has(
-            q,
-            &[
-                "只打怪",
-                "打怪掉",
-                "战斗掉",
-                "击败",
-                "打怪",
-                "kill",
-                "defeat",
-                "combat drop",
-            ],
-        );
+        // A partner skill may mention a named item without asking for combat loot.
+        let fighting = [
+            "只打怪", "打怪掉", "战斗掉", "击败", "打怪",
+            "kill", "killed", "killing", "defeat", "defeated", "defeating", "combat drop",
+        ].iter().any(|word| occurs(q, word));
         let open = has(
             q,
             &[
@@ -471,6 +459,7 @@ fn normalized(q: &str) -> String {
         .replace("帕鲁体液", "水栖帕鲁的黏液")
         .replace("帕鲁的体液", "水栖帕鲁的黏液")
         .replace("帕鲁粘液", "水栖帕鲁的黏液")
+        .replace("旺旺币", "汪汪币")
 }
 
 fn occurs(q: &str, term: &str) -> bool {
@@ -685,10 +674,43 @@ fn purchased_items<'a>(items: &'a [Value], q: &str, blueprint: bool) -> Vec<&'a 
 }
 
 /// Resolve the recipe's output before the generic location or unlock handler.
+/// A batch recipe can answer a crafting-efficiency question even when the book
+/// gives no timings for comparing two benches.
+pub(super) fn batch_recipe(d: &Data, q: &str) -> Option<AssistantReply> {
+    if !has(q,&["怎么做","如何做","怎么制作","如何制作","怎么批量","怎么量产"]) ||
+        !has(q,&["比较快","快一点","更快","批量","量产","一次做"]) || q.contains('\n') { return None; }
+    let catalog=array(&d.get("item-catalog-data")["items"]);
+    let named=item_candidates(catalog,q,false);
+    let item=match named.as_slice() {
+        [item]=>*item,
+        []=>{
+            let subject=q.split_once("怎么").or_else(||q.split_once("如何"))?.0
+                .trim_start_matches("请问").trim();
+            if !matches!(subject,"鱼饵"|"钓饵") { return None; }
+            catalog.iter().find(|row|text(row,"id")=="FishingBait_1")?
+        }
+        _=>return None,
+    };
+    let recipe=array(&item["recipes"]).iter().find(|r|r["qty"].as_u64().is_some_and(|v|v>1))?;
+    let name=text(item,"name");
+    let station=array(&recipe["stations"]).first()?.as_str()?;
+    let materials:Vec<_>=array(&recipe["materials"]).iter().map(|m|Some(format!("{} × {}",d.item_name(m[0].as_str()?),m[1].as_u64()?))).collect::<Option<_>>()?;
+    if materials.is_empty() { return None; }
+    let msg=format!("以{name}为例，在{station}按组制作，一组产出 {} 个，材料是{}。要做多组可一次排入相应数量。配方表没有各工作台的完成时间，无法据此确定最快的台。",recipe["qty"],materials.join("、"));
+    Some(AssistantReply{text:msg,links:vec![(name.into(),format!("#items/{}",text(item,"id")))],suggestions:vec![]})
+}
+
 pub(super) fn craft_station(d:&Data,q:&str)->Option<AssistantReply>{
     let location=has(q,&["在哪","哪里","哪边","哪个台","哪种台","哪个工作台","哪个设施","where","which station","what station","which bench","what bench"]);
-    if !location || !has(q,&["制作","做出","生产","合成","craft","make","build this"]) {return None;}
-    let items=item_candidates(array(&d.get("item-catalog-data")["items"]),q,has(q,&["设计图","schematic","blueprint"]));
+    let title=q.lines().next()?;
+    let hidden_recipe=has(title,&["找不到","不显示","看不到","没有显示","不在列表","available to craft",
+        "not showing","not listed","doesn't show","does not show","can't find","cannot find","missing from"])
+        && has(q,&["工作台","制作列表","配方","制作台","解锁","recipe","workbench","unlocked","crafting menu","crafting list"]);
+    if !(location || hidden_recipe) || !has(q,&["制作","做出","生产","合成","配方","craft","make","build this","recipe"]) {return None;}
+    // For a missing recipe, the requested output must appear in the question.
+    // Other items in a player's description may only be ingredients or comparisons.
+    let subject=if hidden_recipe {title} else {q};
+    let items=item_candidates(array(&d.get("item-catalog-data")["items"]),subject,has(subject,&["设计图","schematic","blueprint"]));
     let [item]=items.as_slice() else{return None;};
     let recipes=array(&item["recipes"]);
     if recipes.is_empty(){return None;}
@@ -1682,6 +1704,13 @@ mod tests {
                 .insert(id.into(), Arc::new(serde_json::from_slice(&bytes).unwrap()));
         }
         let ask = |q: &str| answer(&d, &field_text(q));
+        assert!(ask("Which partner skill changes a picked-up egg?").is_none());
+        assert!(ask("哪只伙伴能让配种牧场产蛋更快？").is_none());
+        assert!(ask("哪只帕鲁在家畜牧场产蛋？").is_some());
+        for action in ["kill", "kills", "killed", "killing", "defeat", "defeated", "defeating"] {
+            let query = format!("leather from {action} enemies");
+            assert!(matches!(Source::detect(&query, &d).as_deref(), Some([Source::Combat])));
+        }
         let passive = |q: &str| unattended_sources(&d, &field_text(q));
         let pair = passive("请问铬铁矿和珊瑚矿有被动收入吗？").unwrap();
         assert!(pair.text.contains("天坠魔窟") && pair.text.contains("天阳乡浮岛"));

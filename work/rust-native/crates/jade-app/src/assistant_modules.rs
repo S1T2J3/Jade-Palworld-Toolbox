@@ -5,6 +5,7 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read},
     path::{Path, PathBuf},
+    sync::mpsc::{self, Receiver, TryRecvError},
     time::{Duration, Instant, SystemTime},
 };
 
@@ -14,7 +15,13 @@ const EXE: &str = "Jade-Pal-Assistant-Kernel.exe";
 const NOTICE: &str = "Palworld-Knowledge-MIT.txt";
 const NOTICE_BYTES: &[u8] = include_bytes!("../../../licenses/Palworld-Knowledge-MIT.txt");
 const MAX_EXE: u64 = 128 * 1024 * 1024;
+const MAX_PACKAGE: u64 = MAX_EXE + 1024 * 1024;
 const MAX_MANIFEST: u64 = 16 * 1024;
+
+fn kernel_release_url(version: &str) -> String {
+    let repo = crate::updates::REPO;
+    format!("https://github.com/{repo}/releases/download/rust-v{version}/Jade-Pal-Assistant-Kernel-{version}-windows-x64.zip")
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -82,6 +89,7 @@ pub struct ModuleManager {
     active: Option<File>,
     checked_at: Instant,
     message: String,
+    download: Option<Receiver<Result<(), String>>>,
 }
 
 impl ModuleManager {
@@ -103,6 +111,7 @@ impl ModuleManager {
             active: None,
             checked_at: Instant::now(),
             message: String::new(),
+            download: None,
         };
         manager.refresh();
         manager
@@ -233,7 +242,7 @@ impl ModuleManager {
             .clone()
             .ok_or("此构建未登记配套内核，请使用同一版本目录下的原版程序。")?;
         let package = File::open(path).map_err(|e| format!("无法打开内核包：{e}"))?;
-        if package.metadata().map_err(|e| e.to_string())?.len() > MAX_EXE + 1024 * 1024 {
+        if package.metadata().map_err(|e| e.to_string())?.len() > MAX_PACKAGE {
             return Err("内核包过大。".into());
         }
         let mut zip = zip::ZipArchive::new(package).map_err(|_| "无法读取 ZIP 内核包。")?;
@@ -327,7 +336,87 @@ impl ModuleManager {
         result
     }
 
+    fn install_download(&mut self, source: impl Read, size: Option<u64>) -> Result<(), String> {
+        if size.is_some_and(|n| n == 0 || n > MAX_PACKAGE) {
+            return Err("下载的内核包大小异常。".into());
+        }
+        self.check_directories(true)?;
+        let path = self
+            .version_dir()
+            .join(format!(".{}.download", uuid::Uuid::new_v4()));
+        let mut file = File::create_new(&path).map_err(|e| format!("无法暂存下载：{e}"))?;
+        let result = (|| {
+            let n = io::copy(&mut source.take(MAX_PACKAGE + 1), &mut file)
+                .map_err(|e| format!("内核下载中断：{e}"))?;
+            drop(file);
+            if n == 0 || n > MAX_PACKAGE || size.is_some_and(|expected| expected != n) {
+                return Err("内核包未完整下载或超出大小限制。".into());
+            }
+            self.install(&path)
+        })();
+        let _ = fs::remove_file(path);
+        result
+    }
+
+    fn download_release(&mut self) -> Result<(), String> {
+        let agent: ureq::Agent = ureq::Agent::config_builder()
+            .https_only(true)
+            .timeout_global(Some(Duration::from_secs(180)))
+            .build()
+            .into();
+        let mut response = agent
+            .get(&kernel_release_url(VERSION))
+            .header("User-Agent", "Jade-Palworld-Rust")
+            .header("Accept-Encoding", "identity")
+            .call()
+            .map_err(|e| format!("无法下载官方内核：{e}"))?;
+        let size = response
+            .headers()
+            .get("content-length")
+            .and_then(|h| h.to_str().ok()?.parse().ok());
+        self.install_download(response.body_mut().as_reader(), size)
+    }
+
+    fn start_download(&mut self, ctx: &egui::Context) {
+        if self.download.is_some() || self.active.is_some() {
+            return;
+        }
+        let Some(hash) = self.official_hash.clone() else {
+            self.message = "此构建未登记配套内核。".into();
+            return;
+        };
+        let root = self.root.clone();
+        let ctx = ctx.clone();
+        let (tx, rx) = mpsc::channel();
+        match std::thread::Builder::new()
+            .name("assistant-download".into())
+            .spawn(move || {
+                let result = Self::with_hash(root, Some(hash)).download_release();
+                let _ = tx.send(result);
+                ctx.request_repaint();
+            })
+        {
+            Ok(_) => {
+                self.message.clear();
+                self.download = Some(rx);
+            }
+            Err(e) => self.message = format!("无法启动内核下载：{e}"),
+        }
+    }
+
     pub fn poll(&mut self) {
+        if let Some(rx) = &self.download {
+            let result = match rx.try_recv() {
+                Ok(result) => result,
+                Err(TryRecvError::Empty) => return,
+                Err(TryRecvError::Disconnected) => Err("内核下载任务已中断。".into()),
+            };
+            self.download = None;
+            self.refresh();
+            if let Err(error) = result {
+                self.message = error;
+            }
+        }
         if self.checked_at.elapsed() >= Duration::from_secs(1) {
             self.refresh();
         }
@@ -336,6 +425,11 @@ impl ModuleManager {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         self.poll();
         ui.horizontal_wrapped(|ui| {
+            if self.download.is_some() {
+                ui.spinner();
+                ui.label("正在下载、校验并启用内核…");
+                return;
+            }
             if self.active.is_some() {
                 ui.strong("增强内核已启用");
                 if ui.small_button("停用内核").clicked()
@@ -350,6 +444,9 @@ impl ModuleManager {
                     && let Err(e) = self.enable()
                 {
                     self.message = e;
+                }
+                if self.official_hash.is_some() && ui.small_button("下载并启用内核").clicked() {
+                    self.start_download(ui.ctx());
                 }
             }
             if ui
@@ -450,6 +547,31 @@ mod tests {
         let mut unpinned = ModuleManager::with_hash(temp.0.join("other"), None);
         assert!(unpinned.install(&good).is_err());
         assert!(unpinned.active_path().is_none());
+    }
+
+    #[test]
+    fn official_download_checks_size_and_hash_before_enabling_and_can_retry() {
+        assert_eq!(
+            kernel_release_url("2.0.1"),
+            "https://github.com/S1T2J3/Jade-Palworld-Toolbox/releases/download/rust-v2.0.1/Jade-Pal-Assistant-Kernel-2.0.1-windows-x64.zip"
+        );
+        let temp = Temp::new();
+        let mut manager = ModuleManager::with_hash(temp.0.join("profile"), Some(hash()));
+        let good = fs::read(make_zip(&temp.0, VERSION, &hash(), EXE, PAYLOAD)).unwrap();
+        let bad = fs::read(make_zip(&temp.0, VERSION, &hash(), EXE, b"broken")).unwrap();
+        let size = good.len() as u64;
+        for (data, length) in [
+            (good.as_slice(), Some(MAX_PACKAGE + 1)),
+            (&good[..good.len() / 2], Some(size)),
+            (bad.as_slice(), None),
+        ] {
+            assert!(manager.install_download(data, length).is_err());
+            assert!(manager.active_path().is_none() && !manager.marker().exists());
+        }
+        manager.install_download(good.as_slice(), Some(size)).unwrap();
+        assert!(manager.install_download(bad.as_slice(), None).is_err());
+        assert_eq!(fs::read(manager.active_path().unwrap()).unwrap(), PAYLOAD);
+        assert_eq!(fs::read_dir(manager.version_dir()).unwrap().count(), 2);
     }
 
     #[test]

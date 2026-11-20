@@ -36,6 +36,52 @@ fn contains(text: &str, alias: &str) -> bool {
     })
 }
 
+/// After a failed model selection, quote only a curated answer already present
+/// in the offered evidence. Match the requested relationship as well as the subject.
+pub(crate) fn bounded_excerpt(question: &str, facts: &str) -> Option<String> {
+    let q = field_text(question);
+    let title = q.lines().next()?.trim();
+    let has = |words: &[&str]| words.iter().any(|word| contains(title, word));
+    let chinese = title.chars().any(|c| ('\u{3400}'..='\u{9fff}').contains(&c));
+    let (topic, boundary) = if has(&["food box","feed box","饲料箱","食槽"])
+        && has(&["fullness","hungry","hunger","饱食","饱腹","饥饿"])
+        && (title.contains('%') || has(&["threshold","阈值","百分比"])) {
+        ("据点帕鲁自行进食", if chinese {"这条资料没有给出开始或停止进食的固定饱食百分比，也不能单凭它确定频繁往返的原因。"}
+            else {"This source does not give a fixed fullness percentage for starting or stopping a meal, or establish the cause of the repeated trips."})
+    } else if has(&["while in party","in the party","in my party","在队伍中","随队"])
+        && has(&["saddle","saddles","鞍具","坐骑装备"])
+        && !has(&["speed","cooldown","速度","冷却"]) {
+        ("伙伴技能与专用装备", if chinese {"告诉我物种或伙伴技能名，就能核对它有没有装备解锁条件。"}
+            else {"Which species or Partner Skill is this? Its record determines whether gear is required to unlock the effect."})
+    } else if has(&["pal","pals","帕鲁"])
+        && has(&["level them up","levels up","get their levels up","train my pals","给帕鲁练级","给队伍练级","提升它的等级"])
+        && !has(&["fastest","maximum","cap","最快","上限"]) {
+        ("给队伍中的帕鲁练级", "")
+    } else {
+        return None;
+    };
+    let guide = guides().iter().find(|g| g.title == topic)?;
+    if !facts.contains(&guide.zh) && !facts.contains(&guide.en) { return None; }
+    let body = if chinese { &guide.zh } else { &guide.en };
+    Some(if boundary.is_empty() {body.clone()} else {format!("{body}\n{boundary}")})
+}
+
+#[cfg(test)]
+mod bounded_tests {
+    use super::*;
+
+    #[test]
+    fn a_partial_reply_requires_an_offered_fact_and_the_asked_relationship() {
+        let g = guides().iter().find(|g| g.title == "据点帕鲁自行进食").unwrap();
+        let q = "My base worker runs to the feed box at 42% fullness, why?";
+        let answer = bounded_excerpt(q, &g.en).unwrap();
+        assert!(answer.contains(&g.en) && answer.contains("does not give"));
+        assert!(!answer.contains("42%"));
+        assert!(bounded_excerpt(q, "Unrelated attack food tooltip").is_none());
+        assert!(bounded_excerpt("我的食槽里面能放几个食物？", &g.zh).is_none());
+    }
+}
+
 pub(super) fn lookup(terms: &[String]) -> Option<AssistantReply> {
     let mut matches = Vec::new();
     for guide in guides() {

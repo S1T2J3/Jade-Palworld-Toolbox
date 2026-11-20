@@ -1,7 +1,242 @@
-use super::{BreedingSession, Data, ReferenceAnswer, SpeciesSpan, array, sex_by_name, species_mentions, text};
+use super::{BreedingSession, Data, OffspringFormat, ReferenceAnswer, SpeciesSpan, array, sex_by_name, species_mentions, text};
 
 fn has(q: &str, terms: &[&str]) -> bool {
     terms.iter().any(|s| q.contains(s))
+}
+
+pub(super) fn element_question(q: &str) -> bool {
+    let asks_about_type = q.match_indices('系').any(|(i, s)|
+        !q[..i].ends_with(['关', '联', '体', '血', '派']) && !q[i+s.len()..].starts_with(['统', '列', '数']));
+    if asks_about_type && has(q, &["哪", "什", "啥", "几", "各", "分别", "两", "双", "单"]) { return true; }
+    has(q, &["属性", "元素", "什么系", "啥系", "哪系", "哪个系", "哪些系", "哪一系", "哪种系", "哪两系", "哪两种系",
+        "几系", "几种系", "单系", "双系", "系别", "系的", "水系", "火系", "草系", "冰系", "暗系",
+        "龙系", "地系", "土系", "无系", "雷系", "电系", "element", " type", "typing"])
+        || q.starts_with("type")
+}
+
+pub(super) struct OffspringFields {
+    name: bool,
+    types: Option<bool>,
+    restricted: bool,
+    pairing_details: bool,
+}
+
+impl OffspringFields {
+    pub(super) fn format(&self, ordinary_child_lookup: bool) -> OffspringFormat {
+        let compact = !self.pairing_details && (self.restricted || (ordinary_child_lookup && self.name && self.types == Some(true)));
+        match (compact && (self.name || self.types == Some(true)), self.types) {
+            (true, Some(true)) => OffspringFormat::NamesWithTypes,
+            (true, _) => OffspringFormat::Names,
+            (false, Some(false)) => OffspringFormat::WithoutTypes,
+            _ => OffspringFormat::WithTypes,
+        }
+    }
+}
+
+pub(super) fn offspring_fields(q: &str) -> OffspringFields {
+    let mut fields = OffspringFields { name: false, types: None, restricted: false, pairing_details: false };
+    for clause in q.split(['，', ',', '。', '.', '？', '?', '；', ';', '\n']) {
+        let excluded = excluded_parent(clause);
+        if let Some(end) = excluded {
+            fields.restricted = true;
+            if end == 0 { continue; }
+        }
+        let clause = &clause[..excluded.unwrap_or(clause.len())];
+        let name = has(clause, &["名字", "名称", "物种", "图鉴名", "叫啥", "叫什么", "宝宝名", "子代名", "幼崽名", "孩子名", "后代名",
+            "名及", "名与", "名和", "名跟", "哪只", "哪一只", "哪一种", "是哪种", "哪个帕鲁", "是谁", "孵出谁", "会出谁", "name", "species"]);
+        fields.name |= name;
+        let elements = element_question(clause);
+        let numbered_fields = clause.char_indices().any(|(i, unit)| "项件栏条格样点个列行".contains(unit)
+            && clause[..i].trim_end().chars().next_back().is_some_and(|n| n.is_ascii_digit() || "一二两三四五六七八九十".contains(n)));
+        let listing = numbered_fields || has(clause, &["字段", "填表", "答案", "答复", "回复", "记录", "结果", "输出", "清单"]);
+        let restricted = ["只", "仅", "就"].iter().any(|marker| clause.match_indices(marker).any(|(i, _)| {
+            let before = clause[..i].trim_end();
+            let after = clause[i + marker.len()..].trim_start();
+            !["不", "别", "不要", "不能", "不应", "并非", "一", "两", "这", "那", "哪", "几", "每"].iter().any(|s| before.ends_with(s))
+                && !after.starts_with(['有', '能', '是', '会']) && (*marker != "就" || listing
+                    || after.starts_with(['写', '列', '填', '给', '留', '报', '说', '记', '抄', '保']))
+        }));
+        fields.restricted |= ((name || elements || listing) && (restricted || has(clause, &["光说", "就行", "即可", "就好", "就够", "这两项", "两个字段", "only", "just"]))
+            && !has(clause, &["not just", "not only"])) || has(clause, &["别附说明", "不加说明", "不用解释", "不要链接"]);
+        fields.pairing_details |= asks_for_pairing_details(clause);
+        if elements {
+            let omit = has(clause, &["不用", "不要", "不必", "不需要", "无须", "无需", "不问", "不想", "不带", "不列", "不写", "不附", "免写", "免列", "别说", "别报", "别提", "省略", "忽略", "skip", "omit", "without", "no type", "no element"]);
+            let keep = has(clause, &["别漏", "不要漏", "不能漏", "别省", "不要省", "别忽略", "不要忽略", "don't omit", "don't skip"]);
+            fields.types = Some(!omit || keep);
+        }
+    }
+    fields
+}
+
+fn asks_for_pairing_details(clause: &str) -> bool {
+    let subjects = ["搭配", "亲本", "双亲", "父母", "公母", "性别", "父本", "母本", "组合", "条件",
+        "配方", "配种过程", "路线", "步骤", "情况", "parents", "conditions", "sexes", "genders"];
+    subjects.iter().any(|subject| clause.match_indices(subject).any(|(at, word)| {
+        let before = clause[..at].trim_end();
+        let after = clause[at + word.len()..].trim_start();
+        ["列出", "列上", "写出", "写上", "也要", "加上", "带上", "附上", "说明", "注明", "展示", "给出", "说清",
+            "包括", "包含", "对照", "对调", "互换", "list", "show", "swap"].iter().any(|verb| before.ends_with(verb))
+            || ["怎么", "怎样", "如何", "有什么要求", "各是什么", "分别是", "也要", "也写", "也列", "一起写", "一起列",
+                "对调", "互换", "和各自", "与各自"].iter().any(|predicate| after.starts_with(predicate))
+            || (word == "搭配" && before.ends_with("两种") && has(clause, &["列", "各", "分别", "哪些"]))
+    }))
+}
+
+/// Only resolve an omitted species against the previous pair for a question about the child.
+/// A parent's typing, battle weakness, or move element has a different subject.
+pub(super) fn child_followup(q: &str) -> bool {
+    let mut child_subject = None;
+    let mut asks_child = false;
+    for clause in q.split(['，', ',', '。', '.', '？', '?', '！', '!', '；', ';', '\n']).map(str::trim).filter(|s| !s.is_empty()) {
+        if has(clause, &["不问", "不是问", "别讲", "不用讲", "先不管", "不用说", "不想知道"]) {
+            continue;
+        }
+        if has(clause, &["克制", "弱点", "招式", "攻击", "技能", "父本", "母本", "亲本", "双亲", "父母",
+            "父方", "母方", "男方", "女方", "父亲", "母亲", "爸", "妈", "爹", "娘", "家长", "生它的",
+            "工作", "装备", "道具", "材料", "招数", "对手", "那只公的", "那只母的", "opponent", "weak", "move", "attack", "parent", "mother", "father"]) {
+            child_subject = Some(false);
+        } else if has(clause, CHILD) || has(clause, &["幼体", "小帕鲁",
+            "孵出", "孵的", "配出的", "配出来", "刚出生", "下一代", "孩子", "刚才那只", "刚刚那只", "它", "这只", "那只",
+            "offspring", "hatchling", "baby", "the child", "its type", "its element", "is it", "does it"]) {
+            child_subject = Some(true);
+        }
+        if element_question(clause) {
+            let bare = clause.trim_end_matches('呢');
+            asks_child = child_subject.unwrap_or(matches!(bare, "什么属性" | "属性" | "什么系" | "哪几系" | "哪两系" | "什么元素" | "单系还是双系" | "what type" | "what element")
+                || ["两系", "这两系", "系别", "双系", "两种属性"].iter().any(|stem| bare.starts_with(stem)));
+        }
+    }
+    asks_child
+}
+
+pub(super) fn describes_parents(q: &str) -> bool {
+    has(q, &["亲本是", "亲本分别", "作亲本", "当亲本", "作为亲本", "父本是", "母本是", "配给", "×", "+"])
+        || (has(q, &["配种", "配对", "一起配"]) && q.split(['，', ',', '。', '.', '？', '?', '；', ';', '\n']).any(|clause|
+            has(clause, &["和", "跟", "与"]) && (has(clause, &["配种", "配对", "一起配"]) || (!element_question(clause) && has(clause, &["用", "拿", "放入", "放进"])))))
+}
+
+const MOTHER: &[&str] = &["母本", "母方", "雌方", "女方", "母亲", "妈", "娘", "mother"];
+const FATHER: &[&str] = &["父本", "父方", "雄方", "男方", "父亲", "爸", "爹", "father"];
+const PARENTS: &[&str] = &["亲本", "双亲", "父母", "生它的", "家长", "parent"];
+
+fn parent_position(clause: &str) -> Option<usize> {
+    MOTHER.iter().chain(FATHER).chain(PARENTS).filter_map(|word| clause.rfind(word)).max()
+}
+
+fn excluded_parent(clause: &str) -> Option<usize> {
+    let parent = parent_position(clause).or_else(|| ["公母", "亲代", "配对过程", "配种过程"].iter().filter_map(|word| clause.find(word)).min())?;
+    let omit = ["不用", "不必", "无须", "无需", "不要", "不报", "不列", "不说", "不问", "不谈", "不看", "不写", "不提", "不带", "不需要", "不想",
+        "别讲", "别说", "别提", "别列", "别报", "别给", "别把", "别算", "别再", "别管", "别附", "先不管", "排除", "省略", "略过", "跳过", "免写", "忽略"]
+        .iter().flat_map(|term| clause.match_indices(term).filter_map(move |(i, _)|
+            (!term.starts_with('别') || !clause[..i].ends_with(['分', '区', '特', '类', '性', '个'])).then_some(i))).min()?;
+    Some(omit.min(parent))
+}
+
+pub(super) fn profile_field(q: &str) -> bool {
+    let skill = has(q, &["伙伴技能", "搭档技能", "partner skill"]);
+    let speculative = has(q, &["推断", "猜"]) && !has(q, &["不猜", "别猜", "不要猜", "不用猜", "无需猜", "不用推断"]);
+    (skill || element_question(q)) && !speculative && !has(q, &["遗传", "继承", "克制", "弱点", "opponent", "inherit"])
+        && (skill || !has(q, &["技能", "招式", "攻击", "工作", "装备", "对手", "move", "attack"]))
+}
+
+const CHILD: &[&str] = &["子代", "后代", "下一代", "孩子", "宝宝", "小家伙", "小不点", "幼崽", "幼体", "崽", "孵出", "配出的", "配出来", "刚出生", "蛋里", "蛋中", "蛋内",
+    "这窝", "这一窝", "窝里", "这胎", "这一胎", "offspring", "baby", "hatches"];
+
+pub(super) fn parent_field_request(q: &str) -> bool {
+    if !profile_field(q) { return false; }
+    let mut parent_subject = false;
+    let mut requested = false;
+    for clause in q.split(['，', ',', '。', '.', '?', '？', '；', ';', '\n']) {
+        let clause = &clause[..excluded_parent(clause).unwrap_or(clause.len())];
+        let child = CHILD.iter().filter_map(|word| clause.rfind(word)).max();
+        if let Some(parent) = parent_position(clause) {
+            let after = &clause[parent..];
+            let breeding_action = has(after, &["配种", "配对", "交配", "繁殖", "breed"])
+                && !has(after, &["本身", "自己", "自身"]);
+            parent_subject = !breeding_action && !child.is_some_and(|position| position > parent);
+        } else if child.is_some() || has(clause, &["配种", "配对", "交配", "繁殖", "孵化", "breed", "hatch"]) {
+            parent_subject = false;
+        }
+        if profile_field(clause) { requested = parent_subject; }
+    }
+    requested
+}
+
+pub(super) fn forward_then_parent_field<'a>(d: &Data, q: &'a str) -> Option<(&'a str, &'a str, bool)> {
+    let child_outcome = |s: &str| has(s, &["子代", "后代", "孩子", "宝宝", "配出", "孵出", "孵什么", "生出", "会生", "会出", "结果", "offspring", "hatch"]);
+    if !(child_outcome(q) || has(q, &["配种", "配对", "配给", "交配", "breed"])) { return None; }
+    // Keep the complete forward question, including an outcome or no-record clause, before the subject switch.
+    for (i, separator) in q.rmatch_indices(['，', ',', '。', '.', '？', '?', '；', ';', '\n']) {
+        let (first, later) = (&q[..i], q[i+separator.len()..].trim());
+        if !(child_outcome(first) || has(first, &["配种", "配对", "配给", "交配", "breed"])) || !profile_field(later) { continue; }
+        let explicit_parent = parent_field_request(later);
+        if !explicit_parent && (has(later, CHILD) || excluded_parent(later).is_some()
+            || species_mentions(&d.species, later).0.is_empty()) { continue; }
+        if species_mentions(&d.species, first).0.len() < 2 { continue; }
+        let parent_only = has(later, &["只问", "只想", "改问", "单问", "单说", "只关心"])
+            || has(first, &["不问子代", "不问孩子", "不看子代", "先不管子代", "先不看子代", "不关心子代"]);
+        return Some((first, later, child_outcome(first) && !parent_only));
+    }
+    None
+}
+
+pub(super) fn species_elements(d: &Data, id: usize, english: bool) -> Option<String> {
+    let elements = &d.get("combat-guide-data")["elements"];
+    let labels: Vec<_> = array(&d.species[id]["types"]).iter().filter_map(serde_json::Value::as_str)
+        .map(|key| if english { key.to_owned() } else { format!("{}属性", elements[key].as_str().unwrap_or(key)) }).collect();
+    (!labels.is_empty()).then(|| labels.join(if english { " / " } else { "、" }))
+}
+
+/// A parent explicitly mentioned in a previous pair is a dex subject, not a reverse breeding goal.
+pub(super) fn parent_reference(d: &Data, q: &str, parents: [(usize, Option<char>); 2], compared: bool, focus: Option<usize>, explicit: bool) -> Option<(ReferenceAnswer, Option<usize>)> {
+    if !explicit && (has(q, CHILD) || has(q, &["配", "孵", "繁殖", "搭", "×", "+", "breed"])) { return None; }
+    let (mentions, _) = species_mentions(&d.species, q);
+    let mut named: Vec<_> = mentions.iter().map(|span| span.0).collect();
+    let mut parents = parents;
+    if mentions.iter().any(|&(id, _, end)| !parents.iter().any(|p| p.0 == id)
+        || q[end..].strip_prefix('的').is_some_and(|tail| MOTHER.iter().chain(FATHER).chain(PARENTS).any(|role| tail.starts_with(role)))) { return None; }
+    if !explicit && named.is_empty() {
+        if !(has(q, &["它", "这只", "那只", "its "]) || q.ends_with("呢?") || q.ends_with('呢')) { return None; }
+        named.push(focus?);
+    }
+    let sex = match (has(q, MOTHER), has(q, FATHER)) { (true, false) => Some('F'), (false, true) => Some('M'), _ => None };
+    // One specified sex fixes the other for a valid pair. A comparison shows both assignments.
+    if compared { parents = parents.map(|(id, _)| (id, None)); }
+    if let [(_, Some(s)), (b, None)] = parents { parents[1] = (b, Some(if s == 'F' { 'M' } else { 'F' })); }
+    if let [(a, None), (_, Some(s))] = parents { parents[0] = (a, Some(if s == 'F' { 'M' } else { 'F' })); }
+    let mut ids: Vec<_> = parents.iter().filter(|(id, role)| {
+        if !named.is_empty() { named.contains(id) } else { !role.zip(sex).is_some_and(|(a,b)| a!=b) }
+    }).map(|p| p.0).collect();
+    ids.dedup();
+    let focus = (ids.len() == 1).then(|| ids[0]);
+    let english = q.is_ascii();
+    let mut lines = Vec::new();
+    let mut links = Vec::new();
+    if ids.is_empty() || (named.is_empty() && sex.is_some() && parents[0].1.is_none() && parents[0].0 != parents[1].0) {
+        lines.push(if english { "The previous pair did not identify a parent in that role." } else { "上轮这对亲本没有确定该角色所属的物种。" }.to_owned());
+    }
+    for id in ids {
+        let species = &d.species[id];
+        let key = text(species, "key");
+        let label = text(species, if english { "en" } else { "zh" });
+        let link = (label.to_owned(), format!("#paldex/{key}"));
+        if links.contains(&link) { continue; }
+        links.push(link);
+        if element_question(q) {
+            let elements = species_elements(d, id, english).unwrap_or_else(|| if english { "element not recorded" } else { "图鉴未收录属性" }.into());
+            lines.push(format!("{label} · {elements}"));
+        }
+        if has(q, &["伙伴技能", "搭档技能", "partner skill"]) {
+            let skill = &d.get("partner-skills-data")[key];
+            let name = text(skill, "name");
+            if name.is_empty() { lines.push(format!("{label} · {}", if english { "partner skill not recorded" } else { "图鉴未收录伙伴技能" })); }
+            else {
+                lines.push(format!("{label} · {}「{name}」{}", if english { "Partner skill " } else { "伙伴技能" }, text(skill, "effect")));
+                links.push((name.into(), format!("#details/partner/{key}")));
+            }
+        }
+    }
+    Some((ReferenceAnswer { text: lines.join("\n"), links }, focus))
 }
 
 pub(super) fn goal_at(before: &str) -> bool {
@@ -61,8 +296,9 @@ pub(super) fn mate_choices(data: &Data, q: &str) -> Option<ReferenceAnswer> {
     let mut lines = Vec::new();
     let mut links = Vec::new();
     let mut matches = Vec::new();
+    let display = offspring_fields(q).format(false);
     for option in options {
-        let result = session.offspring(data, [parent, gendered(option)]);
+        let result = session.offspring(data, [parent, gendered(option)], display);
         if let Some(want) = goal {
             let route = format!("#lookup/parents/{}", text(&data.species[want], "key"));
             if result.links.iter().any(|(_, href)| href == &route) { matches.push(name(option.0)); }
@@ -80,7 +316,7 @@ pub(super) fn mate_choices(data: &Data, q: &str) -> Option<ReferenceAnswer> {
             (false,true) => format!("以上候选与指定亲本、性别都配不出{label}。"),
         });
     }
-    Some(ReferenceAnswer { text: lines.join("\n"), links })
+    Some(display.visible(ReferenceAnswer { text: lines.join("\n"), links }))
 }
 
 pub(super) fn stage(d: &Data, q: &str) -> Option<ReferenceAnswer> {

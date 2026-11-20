@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use std::time::Duration;
 mod costly_actions;
+mod catalog_excerpt;
 mod passage_selection;
 mod exclusivity;
 
@@ -482,8 +483,12 @@ fn unsupported_prerequisite(answer: &str, quotes: &[Value], facts: &str) -> bool
     }
     for sentence in answer.split(['。', '！', '？', ';', '；', '\n', '!', '?']) {
         let sentence = sentence.to_lowercase();
-        let condition = ["前提是", "条件是", "必须先", "仅当", "only if ", "only when "].iter()
+        let condition = ["前提是", "条件是", "必须先", "仅当", "只需先", "only if ", "only when "].iter()
             .find_map(|marker| sentence.split_once(marker))
+            .or_else(|| {
+                let condition = sentence.split_once("只需要")?;
+                ["任务", "招募", "解锁", "通关"].iter().any(|word| condition.1.contains(word)).then_some(condition)
+            })
             .or_else(|| {
                 let (before, tail) = sentence.split_once("只有")?;
                 Some((before, tail.split_once('才')?.0))
@@ -540,12 +545,14 @@ fn evidence_excerpt(facts: &str, limit: usize) -> String {
 }
 
 pub fn compose(
+    data: &crate::data::Data,
     model: &str,
     question: &str,
     facts: &str,
     history: &[(String, String)],
     partner_record: Option<&str>,
     passages: &[crate::assistant_discovery::EvidencePassage],
+    trace: &mut Value,
     primary: impl FnOnce() -> Option<String>,
 ) -> Result<String, String> {
     let content = facts.lines().map(str::trim).filter(|line| !line.is_empty()
@@ -555,7 +562,13 @@ pub fn compose(
         .collect::<Vec<_>>().join("\n");
     let excerpt = evidence_excerpt(&content, 2400);
     if excerpt.is_empty() || question.trim().is_empty() {
+        *trace = json!({"outcome":"empty_input"});
         return Err("还需要具体的帕鲁问题和相关资料。".into());
+    }
+    let catalog = if history.is_empty() { catalog_excerpt::lookup(data, question, facts) } else { None };
+    if let Some(answer) = catalog.as_ref().filter(|answer| answer.complete) {
+        *trace = json!({"mode":"catalog","outcome":"verified_catalog_answer"});
+        return Ok(answer.text.clone());
     }
     let mut user = question_context(question, history);
     let lines = excerpt.lines().collect::<Vec<_>>();
@@ -566,32 +579,81 @@ pub fn compose(
         "sources":{"type":"array","minItems":1,"maxItems":3,"uniqueItems":true,
             "items":{"type":"integer","minimum":1,"maximum":lines.len()}}
     },"required":["answer","sources"]});
-    let result = if passages.is_empty() || partner_record.is_some() || !history.is_empty() {
-        local_chat(model, ChatStage::Compose, &user, schema)
-            .and_then(|reply| verified_model_answer(&reply, &lines, facts, question))
+    let synthesize = passages.is_empty() || partner_record.is_some() || !history.is_empty();
+    *trace = json!({"mode":if synthesize {"synthesis"} else {"extraction"},
+        "candidateCount":if synthesize {lines.len()} else {passages.len()}});
+    let result = if synthesize {
+        local_chat(model, ChatStage::Compose, &user, schema).and_then(|reply| {
+            let ids: Vec<u64> = reply["sources"].as_array().into_iter().flatten()
+                .filter_map(Value::as_u64).take(3).collect();
+            trace["requestedSources"] = json!(ids);
+            let answer = verified_model_answer(&reply, &lines, facts, question)?;
+            if !catalog_excerpt::owners_match(data, &answer) { return Err(UNSUPPORTED.to_owned()); }
+            Ok(answer)
+        })
     } else {
         let (selection, schema) = passage_selection::request(question, passages);
-        local_chat(model, ChatStage::Extract, &selection, schema)
-            .and_then(|reply| passage_selection::extract(&reply, question, passages)
-                .ok_or_else(|| UNSUPPORTED.to_owned()))
+        local_chat(model, ChatStage::Extract, &selection, schema).and_then(|reply| {
+            trace["requestedSources"] = json!([reply["primary"].as_u64(), reply["additional"].as_u64()]);
+            trace["candidateTitles"] = json!(passages.iter().map(|p| &p.title).collect::<Vec<_>>());
+            passage_selection::extract(&reply, question, passages).ok_or_else(|| UNSUPPORTED.to_owned())
+        })
     };
     match result {
         Ok(answer) => {
+            if let Some(record) = &catalog
+                && ["本机模型没能", "资料不足", "无法确认", "无法确定"].iter().any(|s| answer.trim_start().starts_with(s)) {
+                trace["outcome"] = json!("verified_partial_catalog");
+                return Ok(record.text.clone());
+            }
             if let Some(partner) = partner_record
                 && introduces_new_metric(&answer, partner)
                 && costly_actions::supported(question, partner, &facts.lines().collect::<Vec<_>>()) {
+                trace["outcome"] = json!("verified_partner_record");
                 return Ok(partner.to_owned());
             }
+            if history.is_empty() && partner_record.is_none()
+                && let Some(bounded) = crate::assistant_discovery::bounded_excerpt(question, facts)
+                && bounded.strip_prefix(answer.trim()).is_some_and(|rest| rest.starts_with('\n')) {
+                trace["outcome"] = json!("accepted_with_guide_boundary");
+                return Ok(bounded);
+            }
+            trace["outcome"] = json!("accepted");
             return Ok(answer);
         }
-        Err(error) if error != UNSUPPORTED && !error.starts_with("模型未写完回答")
-            && !error.starts_with("本机模型没有返回可用的结构化回答") => return Err(error),
-        Err(_) => {}
+        Err(error) => {
+            trace["reason"] = json!(if error == UNSUPPORTED {
+                if synthesize { "synthesis_failed_evidence_checks" }
+                else if trace["requestedSources"] == json!([0,0]) { "no_passage_selected" }
+                else { "selected_passages_failed_checks" }
+            } else if error.starts_with("模型未写完回答") { "incomplete_model_reply" }
+            else if error.starts_with("本机模型没有返回可用的结构化回答") { "invalid_model_reply" }
+            else {
+                trace["outcome"] = json!("runtime_error");
+                if let Some(record) = &catalog {
+                    trace["reason"] = json!("runtime_error");
+                    trace["outcome"] = json!("verified_partial_catalog");
+                    return Ok(record.text.clone());
+                }
+                return Err(error);
+            });
+        }
+    }
+    if let Some(record) = catalog {
+        trace["outcome"] = json!("verified_partial_catalog");
+        return Ok(record.text);
+    }
+    if history.is_empty() && partner_record.is_none()
+        && let Some(record) = crate::assistant_discovery::bounded_excerpt(question, facts) {
+        trace["outcome"] = json!("matched_guide_fallback");
+        return Ok(record);
     }
     if let Some(record) = partner_record.map(str::to_owned).or_else(primary)
         && costly_actions::supported(question, &record, &facts.lines().collect::<Vec<_>>()) {
+        trace["outcome"] = json!("verified_record_fallback");
         return Ok(record);
     }
+    trace["outcome"] = json!("abstained");
     Ok("本机模型没能用这些资料核实答案。你可以打开本轮来源查看具体条目。".to_owned())
 }
 
@@ -748,6 +810,7 @@ mod tests {
         assert!(checked_answer(&reply("只有可骑乘的帕鲁才有效。", "可骑乘的帕鲁"), facts).is_ok());
         assert!(checked_answer(&reply("无法确认是否只有最高阶才能学习。", "学习主动技能"), facts).is_ok());
         assert!(checked_answer(&reply("Try this only if your Pal is fully condensed.", "学习主动技能"), facts).is_err());
+        assert!(checked_answer(&reply("你只需要在帕鲁村完成招募任务即可。", "学习主动技能"), facts).is_err());
     }
 
     #[test]

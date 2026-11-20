@@ -463,14 +463,53 @@ fn repeats_location(q: &str) -> bool {
     )
 }
 
+fn acquisition_species<'a>(d: &'a Data, question: &str) -> Option<&'a str> {
+    let mut q = question.trim().trim_end_matches(['?', '？', '。', '.']).trim();
+    for prefix in ["请问一下", "请问", "有人知道", "想问下", "我想知道", "anyone know ", "does anyone know "] {
+        if let Some(rest) = q.strip_prefix(prefix) { q = rest.trim_start_matches(['，', ',', ' ']); }
+    }
+    q = q.trim_end_matches(['呢', '吗']).trim_end();
+    let verbs = ["怎么获得", "如何获得", "怎么获取", "如何获取", "怎么得到", "怎么入手",
+        "how to get ", "how do i get ", "how can i get ", "how to obtain "];
+    let name = verbs.iter().find_map(|verb| q.strip_prefix(verb)
+        .or_else(|| q.strip_suffix(verb.trim())))?.trim();
+    let name = name.strip_prefix("一只").or_else(|| name.strip_prefix("a ")).or_else(|| name.strip_prefix("an "))
+        .unwrap_or(name).trim();
+    if name.is_empty() { return None; }
+    let mut found = d.species.iter().filter(|pal| [text(pal,"zh"),text(pal,"en"),text(pal,"key")].into_iter()
+        .chain(array(&pal["aliases"]).iter().filter_map(Value::as_str)).any(|alias| field_text(alias)==name));
+    let pal = found.next()?;
+    found.next().is_none().then(|| text(pal, "zh"))
+}
+
 impl HabitatSession {
     pub(super) fn respond(&mut self, d: &Data, question: &str) -> Option<AssistantReply> {
         let q = field_text(question);
+        // An older player's dex number may refer to a different species today.
+        // Accept the written name only if the remaining acquisition query is exact.
+        if let Some(tail) = q.strip_prefix("编号").or_else(||q.strip_prefix('#')) {
+            let tail = tail.trim_start();
+            let digits = tail.bytes().take_while(u8::is_ascii_digit).count();
+            if (1..=4).contains(&digits) {
+                let after_number = &tail[digits..];
+                let rest = after_number.strip_prefix('b').unwrap_or(after_number);
+                let name_query = rest.trim_start().strip_prefix('的').unwrap_or(rest).trim_start();
+                if let Some(name) = acquisition_species(d,name_query) {
+                    let pal = d.species.iter().find(|r| text(r,"zh")==name)?;
+                    let mut located = self.respond(d,name_query)?;
+                    located.text = format!("按名称查的是{name}，本版图鉴编号 #{}。\n{}",text(pal,"dex"),located.text);
+                    return Some(located);
+                }
+            }
+        }
+        // A player asking how to obtain a named species can use a verified wild
+        // location. The entire object must be the species, not its gear or loot.
+        let generic = acquisition_species(d, &q);
         if let Some(reply) = reported_sighting(d, &q) {
             *self = Self::default();
             return Some(reply);
         }
-        let where_to = has(
+        let where_to = generic.is_some() || has(
             &q,
             &[
                 "哪里",
@@ -667,7 +706,7 @@ impl HabitatSession {
         ) {
             return None;
         }
-        let subject = subject_text(&q);
+        let subject = generic.unwrap_or_else(|| subject_text(&q));
         let types = element(subject);
         let (mentions, _) = species_mentions(&d.species, subject);
         if (!mentions.is_empty() || types.is_some())
@@ -690,7 +729,7 @@ impl HabitatSession {
                     "encounter",
                 ],
             )
-            && item_mentioned(d, subject)
+            && generic.is_none() && item_mentioned(d, subject)
         {
             return None;
         }
@@ -769,9 +808,10 @@ impl HabitatSession {
             ));
         }
         if !d.ready("spawn-data") {
-            return Some(AssistantReply::new("野生刷新资料还没有载入。", &[]));
+            return generic.is_none().then(|| AssistantReply::new("野生刷新资料还没有载入。", &[]));
         }
-        self.lookup(d)
+        self.lookup(d).filter(|result| generic.is_none()
+            || result.links.iter().any(|(_, url)| url.starts_with("#map/coords/")))
     }
 
     fn lookup(&self, d: &Data) -> Option<AssistantReply> {
@@ -1093,6 +1133,20 @@ mod tests {
         assert!(training_levels("想升到45级，去哪些地点练级和抓帕鲁？").is_none());
         assert!(matches!(training_levels("我30级，想抓45级的帕鲁来练级，去哪抓？"), Some(Levels::At(45))));
         assert!(matches!(training_levels(&field_text("I'm level 30. Where can I catch level 45 Pals and level up?")), Some(Levels::At(45))));
+    }
+
+    #[test]
+    fn generic_acquisition_matches_only_the_complete_species_name() {
+        let d = data();
+        let ask = |q: &str| acquisition_species(&d, &field_text(q)).map(str::to_owned);
+        assert_eq!(ask("有人知道怎么获得腾炎龙吗？").as_deref(), Some("腾炎龙"));
+        assert_eq!(ask("Where can I get a saddle?"), None);
+        assert_eq!(ask("怎么获得腾炎龙的鞍具？"), None);
+        assert_eq!(ask("怎么得到苍焰狼和腾炎龙？"), None);
+        assert!(HabitatSession::default().respond(&d, "腾炎龙如何获取？")
+            .unwrap().links.iter().any(|(_, link)| link.starts_with("#map/coords/")));
+        let numbered = HabitatSession::default().respond(&d,"编号012的冰刺鼠怎么获得").unwrap();
+        assert!(numbered.text.contains("#015B") && numbered.links.iter().any(|(_,link)|link.starts_with("#map/coords/")));
     }
 
     #[test]

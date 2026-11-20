@@ -32,14 +32,15 @@ fn reply(s: String, en: bool) -> AssistantReply {
         suggestions: vec![],
     }
 }
+const CLAUSE_BREAKS: &[char] = &['，', '。', ',', '.', ';', '；', '?', '？', '!', '！', '\n'];
 fn nearby(s: &str) -> &str {
-    s.rsplit(['，', '。', ',', ';', '；', '?', '？', '！', '\n'])
+    s.rsplit(CLAUSE_BREAKS)
         .next()
         .unwrap_or(s)
         .trim()
 }
 fn after(s: &str) -> &str {
-    s.split(['，', '。', ',', ';', '；', '?', '？', '！', '\n'])
+    s.split(CLAUSE_BREAKS)
         .next()
         .unwrap_or(s)
         .trim()
@@ -52,6 +53,28 @@ fn star(q: &str, n: Quantity) -> bool {
         || ends(q[..n.start].trim_end(), &["rank", "星级", "星等"])
 }
 
+// Quantities can share a clause ("三只本体和五只素材"). A star adjective
+// such as "0 星" still belongs to the noun phrase of the preceding headcount.
+fn count_context<'a>(q: &'a str, nums: &[Quantity], i: usize) -> &'a str {
+    let end = nums[i + 1..].iter().find(|&&n| !star(q, n)).map_or(q.len(), |n| n.start);
+    &q[nums[i].end..end]
+}
+
+fn material_description(s: &str) -> bool {
+    // Stop before a question or the cost of an upgrade. In "三只帕鲁需要
+    // 多少素材", the noun 素材 describes the cost rather than the three Pals.
+    let end = ["还要", "还需", "还差", "需要", "多少", "几只", "几份", "得用", "要用", "消耗", "喂给", "投给",
+        "够不够", "够吗", "够用", "能不能", "能否", "能升", "可以", "是不是", "是否"]
+        .iter().filter_map(|w| s.find(w)).min().unwrap_or(s.len());
+    let label = s[..end].trim_end();
+    if has(label, &["不当素材", "不当材料", "不作素材", "不作材料", "不是素材", "不是材料"]) {
+        return false;
+    }
+    ends(label, &["素材", "材料", "祭品", "祭品用的"])
+        || has(label, &["当材料", "作材料", "作为材料", "当素材", "作素材", "作为素材",
+            "当祭品", "as fodder", "as donors"])
+}
+
 #[derive(Clone, Copy, PartialEq)]
 enum Stock {
     Donors,
@@ -62,7 +85,7 @@ enum Stock {
 pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
     let en = !q.chars().any(|c| ('\u{3400}'..='\u{9fff}').contains(&c));
     let feeding_to_rank = has(q, &["星", "★", "star"])
-        && has(q, &["喂到", "喂成", "喂满", "升到", "升至", "raise to", "rank up to"])
+        && has(q, &["喂到", "喂成", "喂满", "升到", "升至", "升满", "raise to", "rank up to"])
         && has(q, &["同种", "本体", "素材", "只", "same species", "keeper", "donor", "copies"]);
     if !feeding_to_rank && !has(
         q,
@@ -163,7 +186,7 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
     let clarify =
         |s: &str, e: &str| Some(reply(format!("{table}\n{}", if en { e } else { s }), en));
     let ranked_material = q
-        .split(['，', '。', ',', ';', '；', '?', '？', '\n'])
+        .split(CLAUSE_BREAKS)
         .any(|part| {
             let unranked = has(
                 part,
@@ -245,8 +268,9 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 continue;
             }
             let rank_suffix = trim_unit(&q[n.end..]);
-            let clause = after(rank_suffix);
+            let clause = after(count_context(q, &nums, i));
             let rank_in_stock = ends(nearby(&q[..n.start]), &["只", "头", "个"])
+                && !has(clause, &["本体", "主力", "要保留"])
                 && has(clause, &["同种", "同类", "当材料", "当素材", "可消耗", "库存"]);
             let ranked_donor = rank_in_stock || ["stars", "star", "星级", "星", "★"]
                 .iter()
@@ -254,7 +278,7 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 .is_some_and(|s| {
                     begins(
                         s.trim_start_matches([' ', '的']),
-                        &["素材", "祭品", "捐赠者", "donor", "fodder", "sacrifice"],
+                        &["素材", "材料", "祭品", "捐赠者", "donor", "fodder", "sacrifice"],
                     )
                 });
             if ranked_donor && n.value > 0 {
@@ -321,6 +345,14 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
     for &(i, n) in &rank_numbers {
         let before = nearby(&q[..n.start]);
         let after = trim_unit(&q[n.end..]);
+        // “刚升到二星” is a completed step. Its destination is the keeper's
+        // starting rank for the next calculation, even if a new target follows.
+        let completed = ends(before, &[
+            "刚到", "刚到达", "刚升到", "刚升至", "刚升成", "已经到", "已升到",
+            "已升至", "已经升到", "已经升至", "已经升成", "刚刚升到", "刚刚升至",
+            "just reached", "already reached", "just reached rank", "already reached rank",
+            "just raised to", "already raised to", "just upgraded to", "already upgraded to",
+        ]);
         let is_target = ends(
             before,
             &[
@@ -344,7 +376,9 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 .unwrap_or(after),
             &["目标"],
         ) && rank_numbers.len() == 1;
-        if is_target {
+        if completed {
+            from = Some(n.value);
+        } else if is_target {
             goal = Some(n.value);
         } else if ends(
             before,
@@ -431,12 +465,15 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
             "maximum number",
         ],
     );
-    let mut recipients = 1u64;
+    let mut recipients = None;
     let mut stock = None;
     let mut total_fed = None;
-    for (_, n) in nums.iter().copied().enumerate().filter(|(i, _)| !used[*i]) {
+    let excludes_keeper = ["不含本体", "不包括本体", "不算本体", "本体另算", "本体另计",
+        "excluding the keeper", "not including the keeper"];
+    for (i, n) in nums.iter().copied().enumerate().filter(|(i, _)| !used[*i]) {
         let before = nearby(&q[..n.start]);
-        let after = after(&q[n.end..]);
+        let context = count_context(q, &nums, i);
+        let after = after(context);
         let value = n.value;
         if &q[n.start..n.end] == "一" && begins(after, &["共", "起", "样", "定"]) {
             continue;
@@ -450,6 +487,8 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
             before,
             &[
                 "进度",
+                "进度是",
+                "进度为",
                 "已喂",
                 "喂了",
                 "喂过",
@@ -476,6 +515,8 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
             continue;
         }
         let only = after.trim_start_matches(['只', '个', '头', ' ']);
+        let keeper_noun = (ends(before, &["其中", "里头", "里面"]) && has(only, &["留", "主力", "本体"]))
+            || begins(only, &["本体", "目标", "主宠", "主力", "要保留", "keeper", "recipient"]);
         let donor = begins(
             only,
             &[
@@ -495,20 +536,7 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 "extra",
                 "uncondensed copies",
             ],
-        ) || has(
-            only,
-            &[
-                "当材料",
-                "作材料",
-                "作为材料",
-                "当素材",
-                "作素材",
-                "作为素材",
-                "当祭品",
-                "as fodder",
-                "as donors",
-            ],
-        ) || ends(
+        ) || material_description(only) || !keeper_noun && ends(
             before,
             &[
                 "额外",
@@ -523,11 +551,9 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 "fodder:",
             ],
         );
-        let keeper = (ends(before, &["其中", "里头", "里面"]) && has(only, &["留", "主力", "本体"]))
-        || begins(
-            only,
-            &["本体", "目标", "主宠", "要保留", "keeper", "recipient"],
-        ) || ends(
+        let shared_rank = ["都想", "都要", "都从", "各自", "一起升", "分别", "每只都",
+            "both", "each starting", "each at"];
+        let keeper = keeper_noun || ends(
             before,
             &[
                 "要做",
@@ -556,19 +582,8 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
             ],
         ) || (!donor
             && !capacity
-            && has(
-                q,
-                &[
-                    "都想",
-                    "都要",
-                    "各自",
-                    "一起升",
-                    "分别",
-                    "both",
-                    "each starting",
-                    "each at",
-                ],
-            ));
+            && (has(only, &shared_rank) || context.split(CLAUSE_BREAKS).skip(1)
+                .find(|s| !s.trim().is_empty()).is_some_and(|s| begins(s.trim(), &shared_rank))));
         let possession = has(
             before,
             &[
@@ -580,6 +595,10 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 "total",
                 "stock",
                 "库存",
+                "箱里",
+                "箱中",
+                "仓库",
+                "背包",
                 "共有",
                 "我有",
                 "手头",
@@ -594,10 +613,10 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 "还有",
                 "有",
             ],
-        ) || begins(only, &["copies", "pals", "同种", "同类"]);
-        if keeper
-            || (!donor
-                && !capacity
+        ) || begins(only, &["copies", "pals", "同种", "同类"])
+            || context.split(CLAUSE_BREAKS).take(2).any(|part| has(part, &excludes_keeper));
+        if !donor && (keeper
+            || (!capacity
                 && begins(
                     only,
                     &[
@@ -612,11 +631,11 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                         "未升星",
                     ],
                 )
-                && !possession)
+                && !possession))
         {
-            recipients = value;
+            recipients = Some(value);
         } else if donor || possession {
-            let kind = if donor {
+            let kind = if donor || has(q, &excludes_keeper) {
                 Stock::Donors
             } else if has(
                 q,
@@ -646,9 +665,10 @@ pub(super) fn answer(_data: &Data, q: &str) -> Option<AssistantReply> {
                 );
             }
         } else if !capacity && (after.starts_with('只') || begins(only, &["pals", "copies"])) {
-            recipients = value;
+            recipients.get_or_insert(value);
         }
     }
+    let recipients = recipients.unwrap_or(1);
     let from = from.unwrap_or(0);
     let next = has(
         q,
@@ -798,11 +818,36 @@ mod tests {
         .unwrap()
     }
     #[test]
+    fn distinguishes_stock_from_keepers_in_condensation_questions() {
+        let data = data();
+        for (question, keepers, donors, outcome) in [
+            ("1.0版，我只给一只刚升到三星的帕鲁升最后一星，本体进度是空的。箱里22只是另外抓的同种零星素材，能直接升满吗？", 1, 24, "还差 2 只"),
+            ("本体三星；箱里十七只是另外抓来的同种零星材料！现在升到四星够吗？", 1, 24, "还差 7 只"),
+            ("箱中有二十六只是我另抓的同种素材。把一只三星主力浓缩到满星。", 1, 24, "数量足够，余 2 只"),
+            ("我保留3只本体和65只同种零星素材，三只本体都要从三星升到满星。还差多少？", 3, 72, "还差 7 只"),
+            ("两只本体都是三星；把49只同种素材喂给它们，都要升到四星。", 2, 48, "数量足够，余 1 只"),
+            ("四只帕鲁都想从三星升到满星，需要多少素材？", 4, 96, "连本体共 100 只"),
+            ("我有三只二星帕鲁，各自想升到三星。另有二十只同种素材，差几只？", 3, 36, "还差 16 只"),
+            ("两只三星本体和四十只普通同种素材，准备一起升满，要再抓多少？", 2, 48, "还差 8 只"),
+            ("箱里总共二十五只同种帕鲁，包括一只三星本体。其余是零星素材，能升满吗？", 1, 24, "数量足够，余 0 只"),
+            ("我的本体已经三星。手里共23只同种零星帕鲁，不含本体，升满还差几只？", 1, 24, "还差 1 只"),
+            ("保留两只帕鲁不当素材，都从三星升到四星，另外有43只同种零星素材，够不够？", 2, 48, "还差 5 只"),
+        ] {
+            let mut conversation = Conversation::default();
+            let result = conversation.ask_world(question, &data, &serde_json::json!({}));
+            let budget = format!("保留 {keepers} 只本体，共需 {donors} 只素材");
+            assert!(conversation.direct_result() && result.text.contains(&budget)
+                && result.text.contains(outcome), "{question}: {}", result.text);
+        }
+    }
+    #[test]
     fn plain_donors_keep_keepers_separate_and_account_for_partial_progress() {
         let data = data();
         for (q, expect) in [
             ("箱子里共有二十四只零星的同种帕鲁，其中一只留着当主力。从零星喂到三星，这二十四只够不够？", "还差 1 只"),
             ("主力已经是二星，只升到三星，要再准备几只零星的同种帕鲁当素材？", "还需 12 只"),
+            ("我保留的那只刚升到2星，这一档进度是零。箱里另有11只同种零星素材，能一次升到3星吗？", "还差 1 只"),
+            ("本体已经升至一星，当前档进度为三，另有4只同种素材。想升到二星还差几只？", "还差 1 只"),
             ("一只帕鲁从零星浓缩到满星，要多少同种？", "连本体共 49 只"),
             (
                 "两只本体都是二星，各自浓缩进度 3/12，都要升到满星。我有 60 只素材，还差多少只？",

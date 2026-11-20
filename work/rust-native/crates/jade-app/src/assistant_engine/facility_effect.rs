@@ -29,12 +29,8 @@ fn name<'a>(item: &'a Value, en: bool) -> &'a str {
 }
 
 // Exact words keep "ore" out of "more" and "mill" out of "million".
-fn span(q: &str, term: &str) -> Option<(usize, usize)> {
-    let term = field_text(term);
-    if term.chars().count() < 2 {
-        return None;
-    }
-    q.match_indices(&term).find_map(|(i, _)| {
+fn matching_spans<'a>(q: &'a str, term: &'a str) -> impl Iterator<Item = (usize, usize)> + 'a {
+    q.match_indices(term).filter_map(move |(i, _)| {
         let mut end = i + term.len();
         if term.is_ascii() {
             if q[..i].ends_with(|c: char| c.is_ascii_alphanumeric()) {
@@ -51,7 +47,13 @@ fn span(q: &str, term: &str) -> Option<(usize, usize)> {
     })
 }
 
-pub(super) fn facilities<'a>(d: &'a Data, q: &str) -> Vec<(&'a Value, usize, usize)> {
+fn span(q: &str, term: &str) -> Option<(usize, usize)> {
+    let term = field_text(term);
+    if term.chars().count() < 2 { return None; }
+    matching_spans(q, &term).next()
+}
+
+pub(super) fn facility_mentions<'a>(d: &'a Data, q: &str) -> Vec<(&'a Value, usize, usize)> {
     let mut found = Vec::new();
     for f in array(&d.get("facilities-data")["facilities"]) {
         let id = text(f, "id");
@@ -84,12 +86,11 @@ pub(super) fn facilities<'a>(d: &'a Data, q: &str) -> Vec<(&'a Value, usize, usi
                 "relic processor",
             ]);
         }
-        if let Some((a, b)) = words
-            .iter()
-            .filter_map(|w| span(q, w))
-            .max_by_key(|(a, b)| b - a)
-        {
-            found.push((f, a, b));
+        for word in words {
+            let term=field_text(word);
+            if term.chars().count() >= 2 {
+                found.extend(matching_spans(q, &term).map(|(a,b)| (f,a,b)));
+            }
         }
     }
     found.sort_by_key(|(_, a, b)| std::cmp::Reverse(b - a));
@@ -103,12 +104,20 @@ pub(super) fn facilities<'a>(d: &'a Data, q: &str) -> Vec<(&'a Value, usize, usi
     distinct
 }
 
+pub(super) fn facilities<'a>(d: &'a Data, q: &str) -> Vec<(&'a Value, usize, usize)> {
+    let mut seen = std::collections::HashSet::new();
+    facility_mentions(d, q)
+        .into_iter()
+        .filter(|(row, _, _)| seen.insert(text(row, "id")))
+        .collect()
+}
+
 pub(crate) fn facility<'a>(d: &'a Data, q: &str) -> Option<(&'a Value, usize, usize)> {
     let matches = facilities(d, q);
     (matches.len() == 1).then(|| matches[0])
 }
 
-fn items<'a>(d: &'a Data, q: &str) -> Vec<&'a Value> {
+pub(super) fn items<'a>(d: &'a Data, q: &str) -> Vec<&'a Value> {
     let mut matches = Vec::new();
     for item in array(&d.get("item-catalog-data")["items"]) {
         let mut words = vec![text(item, "name"), text(item, "en")];

@@ -99,13 +99,13 @@ pub(super) struct Production {
 }
 
 #[derive(Clone, Copy)]
-struct Mention<'a> {
-    start: usize,
-    end: usize,
-    row: &'a Value,
+pub(super) struct Mention<'a> {
+    pub(super) start: usize,
+    pub(super) end: usize,
+    pub(super) row: &'a Value,
 }
 
-fn mentions<'a>(s: &str, items: &'a [Value]) -> Vec<Mention<'a>> {
+pub(super) fn mentions<'a>(s: &str, items: &'a [Value]) -> Vec<Mention<'a>> {
     let mut hits = Vec::new();
     for row in items {
         for alias in names(row) {

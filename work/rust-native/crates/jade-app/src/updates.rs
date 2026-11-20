@@ -16,7 +16,7 @@ use std::{
 
 // Private preview builds share the notice IDs and update channel of their base beta.
 pub const VERSION: &str = env!("JADE_UPDATE_VERSION");
-const REPO: &str = "S1T2J3/Jade-Palworld-Toolbox";
+pub(crate) const REPO: &str = "S1T2J3/Jade-Palworld-Toolbox";
 const EXE: &str = "Jade-Palworld-Rust.exe";
 const PACKAGE: &str = "rust-package.json";
 const MAX_DOWNLOAD: u64 = 2 * 1024 * 1024 * 1024;

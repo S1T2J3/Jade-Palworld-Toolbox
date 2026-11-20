@@ -5,6 +5,7 @@ use crate::{assistant_engine::field_text, data::Data};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
+mod ingredients;
 
 const GRADES: [&str; 5] = ["普通", "少见", "稀有", "史诗", "传说"];
 const GRADE_NAMES: [&[&str]; 5] = [
@@ -89,6 +90,9 @@ impl RecipeNames {
     fn build(items: &[Value]) -> Self {
         let mut names = BTreeMap::<String, Vec<usize>>::new();
         for (i, row) in items.iter().enumerate() {
+            if row["id"]=="Egg" {
+                for alias in ["鸡蛋","禽蛋","鸟蛋"] {names.entry(alias.into()).or_default().push(i);}
+            }
             for key in ["name", "en"] {
                 let name = blueprint_spelling(&field_text(text(row, key)));
                 if name.is_empty() || name == "en text" {
@@ -437,6 +441,17 @@ pub(crate) fn answer(
     d: &Data,
     question: &str,
 ) -> Option<ReferenceAnswer> {
+    answer_recipe(previous,session,d,question,false)
+}
+
+pub(crate) fn scoped_ingredients(
+    previous:&ReferenceSession, session:&mut ReferenceSession, d:&Data, question:&str,
+) -> Option<ReferenceAnswer> {
+    if !ingredients::question(question) {return None;}
+    answer_recipe(previous,session,d,question,true)
+}
+
+fn answer_recipe(previous:&ReferenceSession, session:&mut ReferenceSession, d:&Data, question:&str, need_product_and_inputs:bool) -> Option<ReferenceAnswer> {
     let mut q = question;
     let contextual;
     if let Some(Topic::Item {
@@ -481,8 +496,9 @@ pub(crate) fn answer(
             ],
         );
     let wants_sources = source_request(q);
+    let wants_amounts = ingredients::question(q);
     let mixed = wants_sources
-        && (asks_station
+        && (asks_station || wants_amounts
             || has_any(
                 q,
                 &[
@@ -502,7 +518,7 @@ pub(crate) fn answer(
                     "how do i make",
                 ],
             ));
-    if !(asks_station
+    if !(asks_station || wants_amounts
         || has_any(
             q,
             &[
@@ -559,7 +575,6 @@ pub(crate) fn answer(
                 "够不够",
                 "最多",
                 "替代",
-                "不用",
                 "不想制作",
                 "除了制作",
                 "总价",
@@ -574,6 +589,9 @@ pub(crate) fn answer(
                 "最快",
             ],
         )
+        || q.match_indices("不用").any(|(at,_)| {
+            !["不用给我","不用查","不用照","不用按","不用看"].iter().any(|phrase|q[at..].starts_with(phrase))
+        })
         || !mixed
             && has_any(
                 q,
@@ -608,7 +626,13 @@ pub(crate) fn answer(
         return None;
     }
     let names = d.recipe_names.get_or_init(|| RecipeNames::build(rows));
-    let (hits, rest) = pick(rows, names, &norm)?;
+    let scoped = wants_amounts.then(|| ingredients::select(rows, names, &norm)).flatten();
+    if need_product_and_inputs && scoped.is_none() {return None;}
+    let (hits, rest) = if let Some(scope) = &scoped {
+        (scope.products.clone(), scope.modifiers.clone())
+    } else {
+        pick(rows, names, &norm)?
+    };
     let is_bp = hits.iter().all(|r| text(r, "category") == "设计图");
     let grades: Vec<_> = GRADE_NAMES
         .iter()
@@ -616,7 +640,7 @@ pub(crate) fn answer(
         .filter(|(_, names)| names.iter().any(|n| !mentions(&rest, n).is_empty()))
         .map(|(g, _)| g as u64)
         .collect();
-    if !is_bp
+    if !is_bp && scoped.is_none()
         && has_any(
             &norm,
             &[
@@ -660,7 +684,7 @@ pub(crate) fn answer(
             .iter()
             .filter(|r| text(r, "name") == label && text(r, "category") != "设计图")
             .collect();
-        if family.len() < 2 && grades.is_empty() && !asks_station && !mixed {
+        if family.len() < 2 && grades.is_empty() && !asks_station && !mixed && scoped.is_none() {
             return None;
         }
         // Some translated catalogue labels explicitly name a numbered or "+" edition.
@@ -755,7 +779,7 @@ pub(crate) fn answer(
     }
     let mut answer = ReferenceAnswer::new("");
     let unquoted = norm.replace(['「', '」', '『', '』', '“', '”', '"'], "");
-    let quantity = output_count(&unquoted);
+    let quantity = scoped.as_ref().map_or_else(|| output_count(&unquoted), |s| s.quantity);
     for selected in &candidates {
         let row = if interpret_output {
             let key = text(selected, "id");
@@ -774,7 +798,11 @@ pub(crate) fn answer(
         } else {
             *selected
         };
-        let recipe = scaled_recipe(d, row, quantity);
+        let recipe = if let Some(scope) = &scoped {
+            ingredients::quantities(d, row, scope, q)
+        } else {
+            scaled_recipe(d, row, quantity)
+        };
         if candidates.len() == 1 {
             session.topic = Some(Topic::Item {
                 id: text(row, "id").to_owned(),
@@ -805,7 +833,14 @@ pub(crate) fn answer(
         }
         if mixed {
             let mut subjects = vec![*selected];
-            if material_sources(q) {
+            let named_sources = scoped.as_ref().map(|s|s.inputs.iter().copied().filter(|item|
+                q.split(['，',',','。','；',';','？','?']).any(|clause|
+                    source_request(clause) && ["name","en"].iter().any(|k|{
+                        let name=field_text(text(item,k)); !name.is_empty() && clause.contains(&name)
+                    }))).collect::<Vec<_>>()).unwrap_or_default();
+            if !named_sources.is_empty(){
+                subjects=named_sources;
+            }else if material_sources(q) {
                 subjects = array(&row["recipes"])
                     .first()
                     .map(|recipe| {

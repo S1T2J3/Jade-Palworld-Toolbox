@@ -656,6 +656,7 @@ impl AssistantView {
 fn article_url(target: &str) -> bool {
     if matches!(target, "https://pocketpair.jp/en/game-contact-en/"
         | "https://steamcommunity.com/app/1623730/discussions/0/592886359937520760/"
+        | "https://steamcommunity.com/app/1623730/discussions/0/588433527532571099/"
         | "https://palworld.run/items/training-manual-xl") {
         return true;
     }
@@ -952,6 +953,7 @@ mod tests {
         assert!(route.is_none());
         assert!(output.platform_output.commands.iter().any(|cmd| matches!(cmd, egui::OutputCommand::OpenUrl(target) if target.url == source)));
         assert!(!article_url("https://docs.palworldgame.com.example.org/"));
+        assert!(article_url("https://steamcommunity.com/app/1623730/discussions/0/588433527532571099/"));
 
         entry.borrow_mut().prefill("概率是多少？".into());
         click(&mut view, "问助手");
